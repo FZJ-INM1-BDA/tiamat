@@ -31,3 +31,7 @@ docker-compose up -d tiamat-dzi
 - flake8 formatting (120)
 - unit tests (pytest)
 - main branch is locked, modifications through MRs from feature branches
+
+## Data
+
+Data included in this repository (e.g., example or test data) requires `git-lfs`.
