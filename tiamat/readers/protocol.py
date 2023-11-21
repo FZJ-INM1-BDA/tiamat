@@ -1,5 +1,5 @@
 """
-Base for readers.
+Protocol for readers.
 """
 from typing import Protocol
 
