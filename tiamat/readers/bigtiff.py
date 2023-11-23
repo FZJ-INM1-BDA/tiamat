@@ -1,15 +1,15 @@
 """
 Reader for BigTiff.
 """
-from .base import ImageReader
+from .protocol import ImageReader
 
 
 class BigTiffReader(ImageReader):
     def __init__(self, fname):
         self.fname = fname
 
-    def get_crop(self, x, y, z, c, scale):
+    def read_image(self, x, y, z, c, scale):
         ...
 
-    def get_metadata(self):
+    def read_metadata(self):
         ...

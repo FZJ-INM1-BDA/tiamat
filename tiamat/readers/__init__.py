@@ -1,4 +1,4 @@
-from ._factory import get_reader, register_reader
+from .factory import get_reader, register_reader
 from .. import constants as const
 
 # Generic image formats

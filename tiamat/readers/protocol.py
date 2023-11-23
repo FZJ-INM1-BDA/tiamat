@@ -2,11 +2,13 @@
 Protocol for readers.
 """
 from typing import Protocol
+from ..io import ImageAccessor, ImageResult
+from ..metadata import ImageMetadata
 
 
 class ImageReader(Protocol):
-    def get_crop(self, x, y, scale, z=None, c=None):
+    def read_image(self, accessor: ImageAccessor) -> ImageResult:
         ...
 
-    def get_metadata(self):
+    def read_metadata(self) -> ImageMetadata:
         ...
