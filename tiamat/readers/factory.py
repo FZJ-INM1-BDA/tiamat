@@ -1,6 +1,7 @@
 """
 Factory for readers.
 """
+from ..readers.protocol import ImageReader
 
 _READER_REGISTRY = {}
 
@@ -23,7 +24,7 @@ def get_reader_for_file_type(file_type):
         raise UnknownFileError(f"Could not find reader for file type {file_type}")
 
 
-def get_reader(fname, **kwargs):
+def get_reader(fname: str, **kwargs) -> ImageReader:
     import os
 
     _, ext = os.path.splitext(fname)
