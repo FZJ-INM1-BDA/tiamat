@@ -1,19 +1,12 @@
 """
 Pipeline for affine transformation.
 """
-"""
-Pipeline for image normalization.
-"""
 import numpy as np
 import matplotlib.pyplot as plt
 from tiamat.transformers.affine import AffineTransformer
 from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
-
-zoom_center = (1450, 430)
-affine_center = np.eye(3)
-affine_center[:2, -1] = zoom_center
 
 scale = 0.5
 scale_matrix = np.eye(3)
