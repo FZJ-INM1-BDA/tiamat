@@ -87,19 +87,60 @@ def access_image(image: np.ndarray, accessor: ImageAccessor) -> np.ndarray:
                                       c=accessor.c)
 
     x, y, z, c = _prepare_coordinates(x, y, z, c)
-    x_from, x_to = _zero_clip(x)
-    y_from, y_to = _zero_clip(y)
+
+    max_y, max_x = image.shape[:2]
+
+    def _pad_left(coordinate):
+        if coordinate is None:
+            return 0
+        return max(-coordinate, 0)
+
+    def _pad_right(coordinate, coordinate_max):
+        if coordinate is None:
+            return 0
+        return max(coordinate - coordinate_max, 0)
+
+    def _pad(coordinate, coordinate_max):
+        return max(_pad_left(coordinate), _pad_right(coordinate, coordinate_max))
+
+    def _clip(coordinate, min_coordinate, max_coordinate):
+        if coordinate is None:
+            return coordinate
+        return min(max(coordinate, min_coordinate), max_coordinate - 1)
+
+    x_from, x_to = accessor.x
+    y_from, y_to = accessor.y
+
+    pad_x_left, pad_x_right = _pad(x_from, max_x), _pad(x_to, max_x)
+    pad_y_left, pad_y_right = _pad(y_from, max_y), _pad(y_to, max_y)
+    padding = [(pad_x_left, pad_x_right), (pad_y_left, pad_y_right), ]
+
+    # clip after padding
+    x_from, x_to = [_clip(xi, 0, max_x) for xi in (x_from, x_to)]
+    y_from, y_to = [_clip(yi, 0, max_y) for yi in (y_from, y_to)]
 
     # mind the order of x and y!
     result = image[y_from:y_to, x_from:x_to, ]
 
-    if z is not None:
-        z_from, z_to = _zero_clip(z)
+    if accessor.z is not None:
+        z_from, z_to = accessor.z
+        # Is it okay to assume that z is always the second dimension? Only works as long as nobody passes z coordinates for images for RGB images or something like that.
+        max_z = image.shape[2]
+        pad_z_left, pad_z_right = _pad(z_from, max_z), _pad(z_to, max_z)
+        padding.append((pad_z_left, pad_z_right))
+        z_from, z_to = [_clip(zi, 0, max_z) for zi in (z_from, z_to)]
         result = result[..., z_from:z_to]
 
-    if c is not None:
-        c_from, c_to = _zero_clip(c)
+    if accessor.c is not None:
+        c_from, c_to = accessor.c
         result = result[..., c_from:c_to]
+        padding.append((0, 0))
+
+    # Only do padding if necessary.
+    if any(any(p > 0 for p in pad) for pad in padding):
+        # Additional dimensions without accessor.
+        padding = padding + [(0, 0) for _ in range(len(result.shape) - len(padding))]
+        result = np.pad(result, padding)
 
     return result
 
