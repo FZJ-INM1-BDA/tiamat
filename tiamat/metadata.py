@@ -22,6 +22,7 @@ class ImageMetadata:
     shape: tuple
     value_range: tuple
     dtype: np.dtype
-    spacing: float = None
+    spacing: float | tuple[float, ...] = None
     channel_dimension: int = 2
     channel_interpretation: str = CHANNEL_INTERPRETATION_COLOR
+    additional_metadata: dict = None
