@@ -14,7 +14,7 @@ metadata = reader.read_metadata()
 print(metadata)
 
 # read the entire image
-crop = reader.read_image(ImageAccessor(file_name=fname, scale=1.0))
+crop = reader.read_image(ImageAccessor(file_name=fname, scale=1.0, metadata=metadata))
 print(crop.image.shape)
 
 crop = reader.read_image(ImageAccessor(file_name=fname, x=x, y=y, scale=1.0, metadata=metadata))

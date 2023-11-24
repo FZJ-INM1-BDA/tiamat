@@ -1,6 +1,7 @@
 """
 Reader for generic image formats.
 """
+from functools import cache
 from .protocol import ImageReader
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -31,6 +32,7 @@ class GenericReader(ImageReader):
 
         return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
 
+    @cache
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 

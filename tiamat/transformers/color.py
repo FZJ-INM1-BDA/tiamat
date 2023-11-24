@@ -49,6 +49,8 @@ class GrayscaleTransformer(Transformer):
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
 
-        image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
+        # Only do something if the image is not already grayscale.
+        if image_result.image.ndim > 2:
+            image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
 
         return image_result

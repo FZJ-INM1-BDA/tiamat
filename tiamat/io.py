@@ -18,11 +18,14 @@ class ImageAccessor:
     y: tuple[int | float | None, int | float | None] | int = None
     z: tuple[int | float | None, int | float | None] | int = None
     c: tuple[int | float | None, int | float | None] | int = None
+    # scale/spacing to retrieve
     scale: float = 1.0
     spacing: float = None
+    # scale/spacing of coordinates
+    coordinate_scale: float = 1.0
+    coordinate_spacing: float = 1.0
     metadata: ImageMetadata = None
     interpolation: int = None
-    coordinate_spacing: float = None
 
 
 @dataclass
