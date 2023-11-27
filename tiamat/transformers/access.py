@@ -4,6 +4,7 @@ Transformers that affect how files are accessed.
 import math
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
+from ..metadata import ImageMetadata
 
 
 class SpacingToScaleTransformer(Transformer):
@@ -24,6 +25,9 @@ class SpacingToScaleTransformer(Transformer):
         accessor.y = self._scale_coordinate(coordinate=accessor.y, input_spacing=accessor.coordinate_spacing, output_spacing=metadata.spacing)
 
         return accessor
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        return metadata
 
     def transform_image(self, image_result):
         return image_result
@@ -61,6 +65,9 @@ class FractionTransformer(Transformer):
         accessor.coordinate_spacing = metadata.spacing
 
         return accessor
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         return image_result

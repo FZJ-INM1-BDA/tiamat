@@ -3,6 +3,7 @@ Normalization transformers.
 """
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
+from ..metadata import ImageMetadata
 
 
 class MinMaxNormalizationTransformer(Transformer):
@@ -11,6 +12,9 @@ class MinMaxNormalizationTransformer(Transformer):
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         return accessor
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         assert image_result.metadata, f"LUTTransformer requires metadata."
