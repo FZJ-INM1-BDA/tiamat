@@ -3,6 +3,7 @@ Affine transformers.
 """
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
+from ..metadata import ImageMetadata
 
 
 class AffineTransformer(Transformer):
@@ -39,19 +40,8 @@ class AffineTransformer(Transformer):
 
         return accessor
 
-    def _warp_coordinates(self, accessor, affine):
-        import numpy as np
-        from ..readers._processing import _prepare_coordinates
-
-        x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
-        y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
-
-        # Transform points
-        x_from_t, y_from_t = np.ceil(affine[:2, :2] @ (x_from, y_from) + affine[:2, -1]).astype(int)
-        x_to_t, y_to_t = np.ceil(affine[:2, :2] @ (x_to, y_to) + affine[:2, -1]).astype(int)
-
-        return (x_from_t, y_from_t), (x_to_t, y_to_t)
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
@@ -85,3 +75,17 @@ class AffineTransformer(Transformer):
         image_result.image = cv2.warpAffine(src=image_result.image, M=affine[:2], dsize=target_size, flags=OPENCV_INTERPOLATION_CODES[interpolation])
 
         return image_result
+
+    def _warp_coordinates(self, accessor, affine):
+        import numpy as np
+        from ..readers._processing import _prepare_coordinates
+
+        x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
+        y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
+
+        # Transform points
+        x_from_t, y_from_t = np.ceil(affine[:2, :2] @ (x_from, y_from) + affine[:2, -1]).astype(int)
+        x_to_t, y_to_t = np.ceil(affine[:2, :2] @ (x_to, y_to) + affine[:2, -1]).astype(int)
+
+        return (x_from_t, y_from_t), (x_to_t, y_to_t)
