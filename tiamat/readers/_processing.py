@@ -129,6 +129,11 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     x_from, x_to = x
     y_from, y_to = y
 
+    if x_to < 0 or x_from >= image.shape[1] or y_to < 0 or y_to >= image.shape[0]:
+        # the image will be empty, just return an empty array
+        shape = (y_to - y_from, x_to - x_from, *image.shape[2:])
+        return np.zeros(shape=shape, dtype=image.dtype)
+
     pad_x_left, pad_x_right = _pad(x_from, max_x), _pad(x_to, max_x)
     pad_y_left, pad_y_right = _pad(y_from, max_y), _pad(y_to, max_y)
     padding = [(pad_x_left, pad_x_right), (pad_y_left, pad_y_right), ]
