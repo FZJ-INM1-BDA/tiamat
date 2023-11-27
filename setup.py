@@ -13,6 +13,7 @@ setup(name="tiamat",
           "click",
           "numpy>=1.25.0",
           "opencv-python>=4.8.1",
+          "pytiff",
       ],
       entry_points={
           "console_scripts": [
