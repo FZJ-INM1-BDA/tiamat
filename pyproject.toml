@@ -1,0 +1,7 @@
+[tool.flake8]
+ignore = []
+max-line-length = 120
+
+[tool.autopep8]
+ignore = []
+max_line_length = 120
