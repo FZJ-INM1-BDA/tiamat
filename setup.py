@@ -12,7 +12,7 @@ setup(name="tiamat",
       install_requires=[
           "click",
           "numpy>=1.25.0",
-          "opencv-python>=4.8.1",
+          "opencv-python-headless>=4.8.1",
           "pytiff",
       ],
       entry_points={
