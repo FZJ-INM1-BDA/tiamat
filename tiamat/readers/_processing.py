@@ -129,7 +129,7 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     x_from, x_to = x
     y_from, y_to = y
 
-    if x_to < 0 or x_from >= image.shape[1] or y_to < 0 or y_to >= image.shape[0]:
+    if x_to < 0 or x_from >= image.shape[1] or y_to < 0 or y_from >= image.shape[0]:
         # the image will be empty, just return an empty array
         shape = (y_to - y_from, x_to - x_from, *image.shape[2:])
         return np.zeros(shape=shape, dtype=image.dtype)
