@@ -63,8 +63,7 @@ class FloatToByteTransformer(Transformer):
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import numpy as np
 
-        assert np.issubdtype(image_result.image.dtype, np.floating), f"FloatToByteTransformer expects float as input, got {image_result.image.dtype}"
-
-        image_result.image = (image_result.image * 255).astype(np.uint8)
+        if np.issubdtype(image_result.image.dtype, np.floating):
+            image_result.image = (image_result.image * 255).astype(np.uint8)
 
         return image_result
