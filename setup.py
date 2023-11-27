@@ -14,6 +14,7 @@ setup(name="tiamat",
           "numpy>=1.25.0",
           "opencv-python-headless>=4.8.1",
           "pytiff",
+          "matplotlib",
       ],
       entry_points={
           "console_scripts": [

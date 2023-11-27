@@ -54,3 +54,17 @@ class GrayscaleTransformer(Transformer):
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
 
         return image_result
+
+
+class FloatToByteTransformer(Transformer):
+    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+        return accessor
+
+    def transform_image(self, image_result: ImageResult) -> ImageResult:
+        import numpy as np
+
+        assert np.issubdtype(image_result.image.dtype, np.floating), f"FloatToByteTransformer expects float as input, got {image_result.image.dtype}"
+
+        image_result.image = (image_result.image * 255).astype(np.uint8)
+
+        return image_result
