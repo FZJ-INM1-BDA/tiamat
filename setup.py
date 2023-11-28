@@ -9,6 +9,10 @@ setup(name="tiamat",
       author_email="c.schiffer@fz-juelich.de",
       url="https://jugit.fz-juelich.de/inm-1/bda/tiamat/tiamat.git",
       description="tiamat",
+      setup_requires=[
+          "numpy>=1.25.0",
+          "cython==0.29.32",
+      ],
       install_requires=[
           "click",
           "numpy>=1.25.0",
