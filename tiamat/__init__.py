@@ -1,4 +1,6 @@
-from ._version import get_versions
+""" Top-level package for Tiamat.
+"""
 
-__version__ = get_versions()['version']
-del get_versions
+import importlib.metadata
+
+__version__ = importlib.metadata.version("tiamat")

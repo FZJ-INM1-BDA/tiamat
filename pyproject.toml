@@ -1,3 +1,63 @@
+[project]
+name = "tiamat"
+description = "Tiled Image Access, Manipulation, and Analysis Toolkit"
+authors = [{ name = "INM-1/FZJ", email = "inm1@fz-juelich.de" }]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["version"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "click",
+    "numpy>=1.25.0",
+    "pytiff",
+    "h5py",
+    "matplotlib",
+    "opencv-python-headless>=4.8.1",
+]
+
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-git-versioning>=1.13.1,<2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools-git-versioning]
+enabled = true
+tag_filter = "v(?P<tag>.*)"
+template = "{tag}"
+dev_template = "{tag}.post{ccount}+git.{sha}+{branch}"
+dirty_template = "{tag}.post{ccount}+git.{sha}.dirty+{branch}+{timestamp:%Y-%m-%d}"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tiamat*"]
+
+[project.scripts]
+tiamat = "tiamat.cli:cli"
+
+[project.optional-dependencies]
+dev = ["autopep8", "flake8", "pytest"]
+
+[project.urls]
+homepage = "https://www.fz-juelich.de/de/inm/inm-1"
+documentation = "https://jugit.fz-juelich.de/inm-1/bda/tiamat/tiamat/-/blob/master/README.md?ref_type=heads"
+repository = "https://jugit.fz-juelich.de/inm-1/bda/tiamat/tiamat"
+
+# TODO: add pytest options
+# [tool.pytest.ini_options]
+# minversion = "6.0"
+# addopts = "-ra -q"
+# testpaths = ["tests"]
+
 [tool.flake8]
 ignore = []
 max-line-length = 120
@@ -5,3 +65,4 @@ max-line-length = 120
 [tool.autopep8]
 ignore = []
 max_line_length = 120
+style = "pep440"
