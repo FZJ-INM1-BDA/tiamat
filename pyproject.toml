@@ -52,11 +52,10 @@ homepage = "https://www.fz-juelich.de/de/inm/inm-1"
 documentation = "https://jugit.fz-juelich.de/inm-1/bda/tiamat/tiamat/-/blob/master/README.md?ref_type=heads"
 repository = "https://jugit.fz-juelich.de/inm-1/bda/tiamat/tiamat"
 
-# TODO: add pytest options
-# [tool.pytest.ini_options]
-# minversion = "6.0"
-# addopts = "-ra -q"
-# testpaths = ["tests"]
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
 
 [tool.flake8]
 ignore = []
