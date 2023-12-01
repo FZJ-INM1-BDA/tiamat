@@ -26,6 +26,10 @@ before_script:
   - apt-get -y update
   - apt-get -y upgrade
   - apt-get install -y git
+  - pip3 install --upgrade pip
+  - pip3 install --upgrade setuptools
+  - pip3 install --upgrade wheel
+  - pip3 install git+https://github.com/FZJ-INM1-BDA/pytiff
 
 .build:
   stage: build
