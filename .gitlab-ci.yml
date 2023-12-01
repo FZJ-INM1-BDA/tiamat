@@ -22,6 +22,7 @@ cache:
     - if: $CI_COMMIT_MESSAGE =~ /.*(RUN-CI).*/
       when: on_success
 
+# TODO: use docker instead of before_script
 before_script:
   - apt-get -y update
   - apt-get -y upgrade
@@ -29,9 +30,8 @@ before_script:
   - pip3 install --upgrade pip
   - pip3 install --upgrade setuptools
   - pip3 install --upgrade wheel
-
   # Install dependencies
-  - apt-get install -y gcc
+  - apt-get install -y gcc build-essential libtiff-dev
   - pip3 install git+https://github.com/FZJ-INM1-BDA/pytiff
 
 .build:
