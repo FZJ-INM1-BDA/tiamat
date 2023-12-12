@@ -19,7 +19,7 @@ affine_matrix = scale_matrix
 pipeline = Pipeline(
     transformers=[MinMaxNormalizationTransformer(), AffineTransformer(affine_matrix=affine_matrix), ],
 )
-result = pipeline(ImageAccessor("./data/Koala.jpg", x=(int(1350 * scale), int(1550 * scale)), y=(int(330 * scale), int(530 * scale))))
+result = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=(int(1350 * scale), int(1550 * scale)), y=(int(330 * scale), int(530 * scale))))
 
 print(result.image.shape)
 plt.imshow(result.image)

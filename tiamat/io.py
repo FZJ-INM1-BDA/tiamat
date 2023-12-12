@@ -13,7 +13,6 @@ INTERPOLATION_TYPE_CUBIC = "cubic"
 
 @dataclass
 class ImageAccessor:
-    file_name: str
     x: tuple[int | float | None, int | float | None] | int = None
     y: tuple[int | float | None, int | float | None] | int = None
     z: tuple[int | float | None, int | float | None] | int = None
