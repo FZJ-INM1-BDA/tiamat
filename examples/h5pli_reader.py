@@ -51,8 +51,8 @@ pipeline = Pipeline(
     access_transformers=[FractionTransformer()],
     image_transformers=[GrayscaleTransformer(), LUTTransformer(color_map="plasma")],
 )
-result_0 = pipeline(ImageAccessor(tmp_file.name, x=(0, 0.5), y=(0, 0.5), scale=0.10))
-result_1 = pipeline(ImageAccessor(tmp_file.name, x=(0, 0.5), y=(0, 0.5), scale=0.50))
+result_0 = pipeline(file_name=tmp_file.name, accessor=ImageAccessor(x=(0, 0.5), y=(0, 0.5), scale=0.10))
+result_1 = pipeline(file_name=tmp_file.name, accessor=ImageAccessor(x=(0, 0.5), y=(0, 0.5), scale=0.50))
 
 fig, (ax0, ax1) = plt.subplots(1, 2)
 ax0.imshow(result_0.image)
