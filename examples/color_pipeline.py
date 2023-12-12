@@ -13,7 +13,7 @@ pipeline = Pipeline(
     access_transformers=[FractionTransformer()],
     image_transformers=[GrayscaleTransformer(), LUTTransformer(color_map="plasma")],
 )
-result = pipeline(ImageAccessor("./data/Koala.jpg", x=(0.25, 0.75), y=(0.25, 0.75)))
+result = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=(0.25, 0.75), y=(0.25, 0.75)))
 
 plt.imshow(result.image)
 plt.show()

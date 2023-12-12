@@ -12,11 +12,11 @@ from tiamat.pipeline import Pipeline
 pipeline = Pipeline(
     transformers=[FractionTransformer(), MinMaxNormalizationTransformer(), ],
 )
-result_0 = pipeline(ImageAccessor("./data/Koala.jpg", x=(-0.1, 0.1), y=(-0.1, 0.1)))
+result_0 = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=(-0.1, 0.1), y=(-0.1, 0.1)))
 print(result_0.image.shape)
-result_1 = pipeline(ImageAccessor("./data/Koala.jpg", x=(0.9, 1.1), y=(0.9, 1.1)))
+result_1 = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=(0.9, 1.1), y=(0.9, 1.1)))
 print(result_1.image.shape)
-result_2 = pipeline(ImageAccessor("./data/Koala.jpg", x=(-0.1, 1.1), y=(-0.1, 1.1)))
+result_2 = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=(-0.1, 1.1), y=(-0.1, 1.1)))
 print(result_2.image.shape)
 
 fig, (ax0, ax1, ax2) = plt.subplots(1, 3)
