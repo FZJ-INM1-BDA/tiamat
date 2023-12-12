@@ -42,8 +42,8 @@ class Pipeline:
 
         self.reader_factory = reader_factory or get_reader
 
-    def __call__(self, accessor: ImageAccessor, read_metadata=True, **reader_kwargs) -> ImageResult:
-        reader = self.reader_factory(accessor.file_name, **reader_kwargs)
+    def __call__(self, file_name, accessor: ImageAccessor, read_metadata=True, **reader_kwargs) -> ImageResult:
+        reader = self.reader_factory(file_name, **reader_kwargs)
         if not accessor.metadata and read_metadata:
             accessor.metadata = reader.read_metadata()
 
