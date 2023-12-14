@@ -79,6 +79,8 @@ class BigTiffReader(ImageReader):
     @cache
     def is_page_tiled(self, page_index: int) -> bool:
         current_page = self.file_handle.current_page
+        # At the moment, we read metadata from page zero by default.
+        # We might want to change this in the future.
         self.file_handle.set_page(page_index)
         is_tiled = self.file_handle.is_tiled()
         self.file_handle.set_page(current_page)
@@ -101,6 +103,7 @@ class BigTiffReader(ImageReader):
     @cached_property
     def tags(self) -> dict:
         current_page = self.file_handle.current_page
+        self.file_handle.set_page(0)
         tags = self.file_handle.read_tags()
         self.file_handle.set_page(current_page)
         return tags
