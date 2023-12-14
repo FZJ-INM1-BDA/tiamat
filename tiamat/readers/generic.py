@@ -42,6 +42,7 @@ class GenericReader(ImageReader):
         return md.ImageMetadata(image_type=md.IMAGE_TYPE_IMAGE,
                                 shape=image.shape,
                                 dtype=image.dtype,
+                                file_path=self.fname,
                                 value_range=(0, 255),
                                 spacing=self.image_spacing,
                                 channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR)

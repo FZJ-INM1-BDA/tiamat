@@ -20,6 +20,7 @@ class BigTiffReader(ImageReader):
         return md.ImageMetadata(image_type=md.IMAGE_TYPE_IMAGE,
                                 shape=self.shape,
                                 dtype=self.file_handle.dtype,
+                                file_path=self.fname,
                                 value_range=self.value_range,
                                 spacing=self.image_spacing,
                                 channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
