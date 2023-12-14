@@ -20,7 +20,12 @@ class SpacingToScaleTransformer(Transformer):
 
         accessor = replace(accessor)
         # Compute the scale
-        accessor.scale = metadata.spacing / accessor.spacing
+        image_spacing = metadata.spacing
+        if isinstance(image_spacing, (list, tuple)):
+            assert all(image_spacing[0] == i for i in image_spacing), f"SpacingToScaleTransformer does currently not support anisotropic image spacing (got {image_spacing}). PRs welcome."
+            image_spacing = image_spacing[0]
+
+        accessor.scale = image_spacing / accessor.spacing
         accessor.x = self._scale_coordinate(coordinate=accessor.x, input_spacing=accessor.coordinate_spacing, output_spacing=metadata.spacing)
         accessor.y = self._scale_coordinate(coordinate=accessor.y, input_spacing=accessor.coordinate_spacing, output_spacing=metadata.spacing)
 
