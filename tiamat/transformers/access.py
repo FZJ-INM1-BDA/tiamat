@@ -26,8 +26,8 @@ class SpacingToScaleTransformer(Transformer):
             image_spacing = image_spacing[0]
 
         accessor.scale = image_spacing / accessor.spacing
-        accessor.x = self._scale_coordinate(coordinate=accessor.x, input_spacing=accessor.coordinate_spacing, output_spacing=metadata.spacing)
-        accessor.y = self._scale_coordinate(coordinate=accessor.y, input_spacing=accessor.coordinate_spacing, output_spacing=metadata.spacing)
+        accessor.x = self._scale_coordinate(coordinate=accessor.x, input_spacing=accessor.coordinate_spacing, output_spacing=image_spacing)
+        accessor.y = self._scale_coordinate(coordinate=accessor.y, input_spacing=accessor.coordinate_spacing, output_spacing=image_spacing)
 
         return accessor
 
