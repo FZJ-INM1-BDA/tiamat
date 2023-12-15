@@ -1,7 +1,7 @@
 """
 IO objects.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 from tiamat.metadata import ImageMetadata
 
@@ -25,6 +25,7 @@ class ImageAccessor:
     coordinate_spacing: float = 1.0
     metadata: ImageMetadata = None
     interpolation: int = None
+    history: dict = field(default_factory=dict)
 
 
 @dataclass
