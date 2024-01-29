@@ -1,7 +1,13 @@
 """
 Affine transformers.
 """
+<<<<<<< HEAD
 from typing import Tuple
+=======
+from dataclasses import asdict
+from itertools import repeat, product
+
+>>>>>>> 20e4d6d (feat: add affine pipeline metadata transform)
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
@@ -64,7 +70,24 @@ class AffineTransformer(Transformer):
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        return metadata
+        import numpy as np
+        from dataclasses import replace
+
+        metadata_dict = asdict(metadata)
+        shape_tuple = metadata_dict.pop("shape")
+
+        # converts shape to extends
+        # e.g. shape of 10, 20
+        # extents = ((0, 10), (0, 20))
+        extents = list(zip(repeat(0), shape_tuple))
+        extent_coords = list(product(*extents))
+        
+        transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
+        
+        xmax = np.max(transformed_coords[:,0])
+        ymax = np.max(transformed_coords[:,1])
+        
+        return replace(metadata, shape=(xmax, ymax))
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
@@ -99,45 +122,3 @@ class AffineTransformer(Transformer):
         image_result.image = cv2.warpAffine(src=image_result.image, M=affine[:2], dsize=target_size, flags=OPENCV_INTERPOLATION_CODES[interpolation])
 
         return image_result
-<<<<<<< HEAD
-
-    def _transform_point(self, x: int, y: int, affine: np.ndarray) -> Tuple[int, int]:
-        return np.ceil(affine[:2, :2] @ (x, y) + affine[:2, -1]).astype(int)
-
-    def _warp_coordinates(self, accessor: ImageAccessor, affine: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """This function warps the rectangular image accessor frame with an affine tranform.
-        It returns the cordinates of a rectangular frame that span over all four transformed corner points
-        (forming a parallelogram).
-
-        Parameters
-        ----------
-        accessor : ImageAccessor
-            Image accessor to be transformed
-        affine : np.ndarray
-            3x3 affine matrix
-
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            (x_from_t, y_from_t), (x_to_t, y_to_t)
-        """
-        from ..readers.processing import _prepare_coordinates
-
-        x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
-        y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
-
-        # Transform all four corners of the affine to determine min, max coordinates
-        x1, y1 = self._transform_point(x_from, y_from, affine)
-        x2, y2 = self._transform_point(x_to, y_from, affine)
-        x3, y3 = self._transform_point(x_to, y_to, affine)
-        x4, y4 = self._transform_point(x_from, y_to, affine)
-
-        x_from_t = min(x1, x2, x3, x4)
-        y_from_t = min(y1, y2, y3, y4)
-        x_to_t = max(x1, x2, x3, x4)
-        y_to_t = max(y1, y2, y3, y4)
-
-        return (x_from_t, y_from_t), (x_to_t, y_to_t)
-=======
->>>>>>> 3483384 (Running example for full affine support)
