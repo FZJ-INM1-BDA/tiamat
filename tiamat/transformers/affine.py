@@ -79,15 +79,21 @@ class AffineTransformer(Transformer):
         # converts shape to extends
         # e.g. shape of 10, 20
         # extents = ((0, 10), (0, 20))
-        extents = list(zip(repeat(0), shape_tuple))
+        extents = list(zip(repeat(0), shape_tuple[::-1]))
         extent_coords = list(product(*extents))
         
-        transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
+        # shape is ONLY affected by rotation component of 3x3 matrix
+        transformed_coords = (self.affine_matrix[:2, :2] @ np.array(extent_coords).T).T
         
         xmax = np.max(transformed_coords[:,0])
         ymax = np.max(transformed_coords[:,1])
         
-        return replace(metadata, shape=(xmax, ymax))
+        new_metadata = replace(metadata, shape=(ymax, xmax))
+
+        transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
+        new_metadata.extents = transformed_coords.tolist()
+
+        return new_metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2

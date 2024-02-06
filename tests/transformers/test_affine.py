@@ -38,7 +38,13 @@ def rotate_affine_xformer():
 
 def test_translate_metadata(sample_metadata: ImageMetadata, transl_affine_xformer: AffineTransformer):
     new_metadata = transl_affine_xformer.transform_metadata(sample_metadata)
-    assert new_metadata.shape == (31, 22)
+    assert new_metadata.shape == (1, 2)
+    assert sorted(new_metadata.extents) == sorted([
+        [30, 20],
+        [32, 20],
+        [30, 21],
+        [32, 21],
+    ])
 
 def test_rotation_transformer(sample_metadata: ImageMetadata, rotate_affine_xformer: AffineTransformer):
     new_metadata = rotate_affine_xformer.transform_metadata(sample_metadata)
