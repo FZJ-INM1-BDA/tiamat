@@ -6,7 +6,7 @@ stages:
 
 variables:
   USER: "marvin"
-  IMAGE_NAME: $CI_REGISTRY_IMAGE-ci
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 cache:
