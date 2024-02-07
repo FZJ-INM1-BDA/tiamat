@@ -1,13 +1,9 @@
 """
 Affine transformers.
 """
-<<<<<<< HEAD
-from typing import Tuple
-=======
 from dataclasses import asdict
 from itertools import repeat, product
 
->>>>>>> 20e4d6d (feat: add affine pipeline metadata transform)
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
