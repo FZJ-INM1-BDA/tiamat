@@ -4,10 +4,11 @@ Normalization transformers.
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
+import numpy as np
 
 
 class MinMaxNormalizationTransformer(Transformer):
-    def __init__(self, target_dtype=float):
+    def __init__(self, target_dtype=np.float32):
         self.target_dtype = target_dtype
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
