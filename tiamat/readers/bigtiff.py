@@ -98,8 +98,9 @@ class BigTiffReader(ImageReader):
         assert resolution_unit in (3, ), f"Unsupported resolution unit: {resolution_unit}"
         # centimeter
         resolution_unit_micron = 10000
+
         #
-        return self.tags[tags.x_resolution] / resolution_unit_micron, self.tags[tags.y_resolution] / resolution_unit_micron
+        return float(self.tags[tags.x_resolution]) / resolution_unit_micron, float(self.tags[tags.y_resolution]) / resolution_unit_micron
 
     @cached_property
     def tags(self) -> dict:
