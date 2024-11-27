@@ -1,9 +1,12 @@
 """
 Affine transformers.
 """
+from typing import Tuple
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
+
+import numpy as np
 
 
 class AffineTransformer(Transformer):
@@ -11,7 +14,6 @@ class AffineTransformer(Transformer):
         self.affine_matrix = affine_matrix
 
     def _resolve_coordinate(self, coordinate, image_dimension):
-        import numpy as np
 
         if coordinate is None:
             return image_dimension
@@ -23,7 +25,6 @@ class AffineTransformer(Transformer):
             return tuple(self._resolve_coordinate(coordinate_i, image_dimension) for coordinate_i in coordinate)
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
-        import numpy as np
         from dataclasses import replace
 
         assert accessor.metadata is not None, f"AffineTransformer requires metadata."
@@ -58,14 +59,20 @@ class AffineTransformer(Transformer):
         # 2. Apply our actual affine matrix.
         # 3. Specify an affine matrix shifting towards the origin of the target image.
 
+        print(accessor)
+
+        # Result is a rectangle oriented around a parallelogram
+        (x_from, y_from), (x_to, y_to) = self._warp_coordinates(accessor=accessor, affine=self.affine_matrix)
+
+        # We need to find the maximum rectangle, oriented along the coordinate axes, that fits inside the parallelogram
+        target_size = (x_to - x_from, y_to - y_from)
+
         # Step 1: Shift towards input.
         input_origin_affine = np.eye(3)
         input_origin_affine[:2, -1] = (x_from_input, y_from_input)
 
         # Step 3: Shift towards target. Determine these coordinates by inverting the matrix we used on the way here.
         # Invert the affine transformation we applied in the forward pass to determine the image size
-        (x_from, y_from), (x_to, y_to) = self._warp_coordinates(accessor=accessor, affine=self.affine_matrix)
-        target_size = (x_to - x_from, y_to - y_from)
         target_origin_affine = np.eye(3)
         target_origin_affine[:2, -1] = (-x_from, -y_from)
 
@@ -76,16 +83,41 @@ class AffineTransformer(Transformer):
 
         return image_result
 
-    def _warp_coordinates(self, accessor, affine):
-        import numpy as np
+    def _transform_point(self, x: int, y: int, affine: np.ndarray) -> Tuple[int, int]:
+        return np.ceil(affine[:2, :2] @ (x, y) + affine[:2, -1]).astype(int)
+
+    def _warp_coordinates(self, accessor: ImageAccessor, affine: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """This function warps the rectangular image accessor frame with an affine tranform.
+        It returns the cordinates of a rectangular frame that span over all four transformed corner points
+        (forming a parallelogram).
+
+        Parameters
+        ----------
+        accessor : ImageAccessor
+            Image accessor to be transformed
+        affine : np.ndarray
+            3x3 affine matrix
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            (x_from_t, y_from_t), (x_to_t, y_to_t)
+        """
         from ..readers.processing import _prepare_coordinates
 
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
         x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
         y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
 
-        # Transform points
-        x_from_t, y_from_t = np.ceil(affine[:2, :2] @ (x_from, y_from) + affine[:2, -1]).astype(int)
-        x_to_t, y_to_t = np.ceil(affine[:2, :2] @ (x_to, y_to) + affine[:2, -1]).astype(int)
+        # Transform all four corners of the affine to determine min, max coordinates
+        x1, y1 = self._transform_point(x_from, y_from, affine)
+        x2, y2 = self._transform_point(x_to, y_from, affine)
+        x3, y3 = self._transform_point(x_to, y_to, affine)
+        x4, y4 = self._transform_point(x_from, y_to, affine)
+
+        x_from_t = min(x1, x2, x3, x4)
+        y_from_t = min(y1, y2, y3, y4)
+        x_to_t = max(x1, x2, x3, x4)
+        y_to_t = max(y1, y2, y3, y4)
 
         return (x_from_t, y_from_t), (x_to_t, y_to_t)
