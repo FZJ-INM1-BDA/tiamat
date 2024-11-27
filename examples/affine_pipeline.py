@@ -8,18 +8,46 @@ from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
 
-scale = 0.5
-scale_matrix = np.eye(3)
-scale_matrix[:2, :2] *= scale
+# Image is 1600, 2560  shape
+image_height, image_width = 1600, 2560
+scale = 1.0
+rotation = 0
+mirror_x = True
+mirror_y = False
+translate = [0,  image_width]
 
-affine_matrix = scale_matrix
+access_frame = np.array([
+    [0 * scale, (image_height / 2) * scale],
+    [0 * scale, (image_width / 2) * scale],
+], dtype=int)
+
+###
+
+def build_affine(scale=1.0, rotation=0, mirror_x=False, mirror_y=False, translate=[0., 0.]):
+    angle_rad = np.deg2rad(rotation)
+
+    cos_angle = np.cos(angle_rad) * scale
+    sin_angle = np.sin(angle_rad) * scale
+    
+    # Build the affine transformation matrix
+    affine_matrix = np.array([
+        [(1. - 2. * float(mirror_y)) * cos_angle, -sin_angle, translate[0]],
+        [sin_angle, (1. - 2. * float(mirror_x)) * cos_angle, translate[1]],
+        [0., 0., 1.]
+    ], dtype=np.float32)
+    
+    return affine_matrix
+
+affine_matrix = build_affine(scale, rotation, mirror_x, mirror_y, translate)
+
+print(affine_matrix)
 
 # Convert an image to grayscale, then apply a colormap.
 # Let's also combine it with some coordinate transformers.
 pipeline = Pipeline(
     transformers=[MinMaxNormalizationTransformer(), AffineTransformer(affine_matrix=affine_matrix), ],
 )
-result = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=(int(1350 * scale), int(1550 * scale)), y=(int(330 * scale), int(530 * scale))))
+result = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=access_frame[0], y=access_frame[1]))
 
 print(result.image.shape)
 plt.imshow(result.image)

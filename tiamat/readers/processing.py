@@ -129,6 +129,8 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     x_from, x_to = x
     y_from, y_to = y
 
+    print(image.shape, x, y)
+
     if x_to is not None and (x_to < 0 or x_from >= image.shape[1]) \
        or y_to is not None and (y_to < 0 or y_from >= image.shape[0]):
         # the image will be empty, just return an empty array
