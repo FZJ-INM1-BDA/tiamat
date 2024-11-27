@@ -24,6 +24,6 @@ class ImageMetadata:
     dtype: np.dtype
     file_path: str = None
     spacing: float | tuple[float, ...] = None
-    channel_dimension: int = 2
+    channel_dimension: int = 2  # Set to None for no channel dim
     channel_interpretation: str = CHANNEL_INTERPRETATION_COLOR
     additional_metadata: dict = None
