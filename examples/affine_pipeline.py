@@ -9,16 +9,16 @@ from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
 
 # Image is 1600, 2560  shape
-image_height, image_width = 1600, 2560
+image_width, image_height = 2560, 1600
 scale = 1.0
-rotation = 0
-mirror_x = True
-mirror_y = False
-translate = [0,  image_width]
+rotation = 45
+mirror_x = 0
+mirror_y = True
+translate = [0, image_height]
 
 access_frame = np.array([
-    [0 * scale, (image_height / 2) * scale],
-    [0 * scale, (image_width / 2) * scale],
+    [0 * scale, (image_width) * scale],
+    [0 * scale, (image_height) * scale],
 ], dtype=int)
 
 ###
@@ -31,8 +31,8 @@ def build_affine(scale=1.0, rotation=0, mirror_x=False, mirror_y=False, translat
     
     # Build the affine transformation matrix
     affine_matrix = np.array([
-        [(1. - 2. * float(mirror_y)) * cos_angle, -sin_angle, translate[0]],
-        [sin_angle, (1. - 2. * float(mirror_x)) * cos_angle, translate[1]],
+        [(1. - 2. * float(mirror_x)) * cos_angle, -sin_angle, translate[0]],
+        [sin_angle, (1. - 2. * float(mirror_y)) * cos_angle, translate[1]],
         [0., 0., 1.]
     ], dtype=np.float32)
     
