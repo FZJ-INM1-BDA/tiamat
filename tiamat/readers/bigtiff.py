@@ -91,15 +91,24 @@ class BigTiffReader(ImageReader):
     def image_spacing(self) -> tuple[float, float]:
         from pytiff import tags
         resolution_unit = self.tags[tags.resolution_unit]
-        # https://www.awaresystems.be/imaging/tiff/tifftags/resolutionunit.html
-        # 0 - no unit
-        # 1 - inch
+        # https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf
+        # 1 - no unit
+        # 2 - inch
         # 3 - cm
-        assert resolution_unit in (3, ), f"Unsupported resolution unit: {resolution_unit}"
-        # centimeter
-        resolution_unit_micron = 10000
+        assert resolution_unit in (1, 2, 3, ), f"Unsupported resolution unit: {resolution_unit}"
+        
+        # no unit
+        if resolution_unit == 1:
+            resolution_unit_micron = 1
 
-        #
+        # inch
+        if resolution_unit == 2:
+            resolution_unit_micron = 25400
+
+        # centimeter
+        if resolution_unit == 3:
+            resolution_unit_micron = 10000
+
         return float(self.tags[tags.x_resolution]) / resolution_unit_micron, float(self.tags[tags.y_resolution]) / resolution_unit_micron
 
     @cached_property
