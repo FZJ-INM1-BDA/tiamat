@@ -8,6 +8,15 @@ import pytiff
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
 
+# Reference: https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf
+TIFF_RESOLUTION_UNIT_TO_MICRON = {
+    # no unit
+    1: 1,
+    # inch
+    2: 25400,
+    # centimeter
+    3: 10000,
+}
 
 class BigTiffReader(ImageReader):
     def __init__(self, fname):
@@ -87,27 +96,15 @@ class BigTiffReader(ImageReader):
         self.file_handle.set_page(current_page)
         return is_tiled
 
-    @property
+    @cached_property
     def image_spacing(self) -> tuple[float, float]:
         from pytiff import tags
+
         resolution_unit = self.tags[tags.resolution_unit]
-        # https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf
-        # 1 - no unit
-        # 2 - inch
-        # 3 - cm
-        assert resolution_unit in (1, 2, 3, ), f"Unsupported resolution unit: {resolution_unit}"
-        
-        # no unit
-        if resolution_unit == 1:
-            resolution_unit_micron = 1
 
-        # inch
-        if resolution_unit == 2:
-            resolution_unit_micron = 25400
-
-        # centimeter
-        if resolution_unit == 3:
-            resolution_unit_micron = 10000
+        resolution_unit_micron = TIFF_RESOLUTION_UNIT_TO_MICRON.get(resolution_unit)
+        if not resolution_unit_micron:
+            raise RuntimeError(f"Encountered invalid resolution unit {resolution_unit} in {self.fname}. See https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf for supported units.")
 
         return float(self.tags[tags.x_resolution]) / resolution_unit_micron, float(self.tags[tags.y_resolution]) / resolution_unit_micron
 
