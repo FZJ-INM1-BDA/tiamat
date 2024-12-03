@@ -20,7 +20,7 @@ classifiers = [
 dependencies = [
     "click",
     "numpy>=1.25.0",
-    "pytiff",
+    "pytiff @ git+https://github.com/FZJ-INM1-BDA/pytiff.git@master",
     "h5py",
     "matplotlib",
     "opencv-python-headless>=4.8.1",
