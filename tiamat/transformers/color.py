@@ -1,6 +1,7 @@
 """
 Color transformers.
 """
+
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -18,10 +19,13 @@ class LUTTransformer(Transformer):
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         assert image_result.metadata, f"LUTTransformer requires metadata."
-        assert image_result.metadata.value_range is not None, f"LUTTransformer requires metadata.value_range."
+        assert (
+            image_result.metadata.value_range is not None
+        ), f"LUTTransformer requires metadata.value_range."
 
-        image_result.image = self._apply_color_map(image=image_result.image,
-                                                   value_range=image_result.metadata.value_range)
+        image_result.image = self._apply_color_map(
+            image=image_result.image, value_range=image_result.metadata.value_range
+        )
 
         return image_result
 
@@ -56,6 +60,20 @@ class GrayscaleTransformer(Transformer):
         # Only do something if the image is not already grayscale.
         if image_result.image.ndim > 2:
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
+
+        return image_result
+
+
+class GrayscaleToRGBTransformer(Transformer):
+    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+        return accessor
+
+    def transform_image(self, image_result: ImageResult) -> ImageResult:
+        import cv2
+
+        # Only do something if the image is not already grayscale.
+        if image_result.image.ndim == 2:
+            image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_GRAY2RGB)
 
         return image_result
 
