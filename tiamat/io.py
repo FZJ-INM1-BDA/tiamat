@@ -9,6 +9,8 @@ from tiamat.metadata import ImageMetadata
 INTERPOLATION_TYPE_NEAREST = "nearest"
 INTERPOLATION_TYPE_LINEAR = "linear"
 INTERPOLATION_TYPE_CUBIC = "cubic"
+INTERPOLATION_TYPE_AREA = "area"
+INTERPOLATION_TYPE_LANCZOS4 = "lanczos4"
 
 
 @dataclass
