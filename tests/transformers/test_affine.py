@@ -98,14 +98,24 @@ affine_xform_img_args = [
 
 @pytest.mark.parametrize("src_img, affine, exp_img", affine_xform_img_args)
 def test_affine_transform_image(src_img, affine, exp_img):
+    
     img_nd = np.array(src_img)
+
+    # Backward path
     meta = ImageMetadata(image_type="image",
                          shape=img_nd.shape,
                          value_range=(np.min(img_nd), np.max(img_nd)),
                          dtype=img_nd.dtype)
-    src = ImageResult(img_nd, ImageAccessor(metadata=meta, interpolation="nearest"), meta)
+    output_accessor = ImageAccessor(metadata=meta, interpolation="nearest")
     xform = AffineTransformer(np.array(affine))
+    input_accessor = xform.transform_access(output_accessor)
+
+    # Forward path
+    src = ImageResult(img_nd, input_accessor, meta)
     result = xform.transform_image(src)
+
+    print(result.image, "\n", np.array(exp_img))
+
     assert np.all(result.image == np.array(exp_img))
 
 IMG_SIZE = 100
