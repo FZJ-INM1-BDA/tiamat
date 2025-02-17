@@ -41,16 +41,16 @@ class AffineTransformer(Transformer):
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
 
-        # Read coordinates from access and cache them for transform path
+        # Read coordinates for requested frame
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        self.x_from, self.x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
-        self.y_from, self.y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
+        x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
+        y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
 
         # Transform all four corners of the affine to determine min, max coordinates
-        x1, y1 = self._transform_point(self.x_from, self.y_from, affine)
-        x2, y2 = self._transform_point(self.x_to, self.y_from, affine)
-        x3, y3 = self._transform_point(self.x_to, self.y_to, affine)
-        x4, y4 = self._transform_point(self.x_from, self.y_to, affine)
+        x1, y1 = self._transform_point(x_from, y_from, affine)
+        x2, y2 = self._transform_point(x_to, y_from, affine)
+        x3, y3 = self._transform_point(x_to, y_to, affine)
+        x4, y4 = self._transform_point(x_from, y_to, affine)
 
         # Request outer bounds of the transformed view
         x_from_t = min(x1, x2, x3, x4)
@@ -59,7 +59,9 @@ class AffineTransformer(Transformer):
         y_to_t = max(y1, y2, y3, y4)
 
         # Replace accessor with new request
+        old_accessor = accessor
         accessor = replace(accessor)
+        accessor.history[id(self)] = old_accessor
         accessor.x = (x_from_t, x_to_t)
         accessor.y = (y_from_t, y_to_t)
 
@@ -96,8 +98,13 @@ class AffineTransformer(Transformer):
         import numpy as np
         from ..readers.processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
 
-        # We need to find the maximum rectangle, oriented along the coordinate axes, that fits inside the parallelogram
-        target_size = (self.x_to - self.x_from, self.y_to - self.y_from)
+        # Restore extent from requested frame
+        old_accessor = image_result.accessor.history[id(self)]
+        x, y, *_ = _prepare_coordinates(x=old_accessor.x, y=old_accessor.y, z=old_accessor.z, c=old_accessor.c)
+        x_from, x_to = self._resolve_coordinate(x, old_accessor.metadata.shape[1])
+        y_from, y_to = self._resolve_coordinate(y, old_accessor.metadata.shape[0])
+
+        target_size = (x_to - x_from, y_to - y_from)
 
         accessor = image_result.accessor
         (x_from_input, x_to_input), (y_from_input, y_to_input), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
@@ -116,7 +123,7 @@ class AffineTransformer(Transformer):
         # Step 3: Shift towards target. Determine these coordinates by inverting the matrix we used on the way here.
         # Invert the affine transformation we applied in the forward pass to determine the image size
         target_origin_affine = np.eye(3)
-        target_origin_affine[:2, -1] = (-self.x_from, -self.y_from)
+        target_origin_affine[:2, -1] = (-x_from, -y_from)
 
         # Step 1., 2., and 3.
         affine = target_origin_affine @ self.affine_matrix @ input_origin_affine
