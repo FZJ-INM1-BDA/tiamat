@@ -67,9 +67,11 @@ class BigTiffReader(ImageReader):
     @cached_property
     def page_sizes(self) -> list[tuple[int, int]]:
         page_sizes = []
+        current_page = self.file_handle.current_page
         for page in range(self.num_pages):
             self.file_handle.set_page(page)
             page_sizes.append(self.file_handle.shape)
+        self.file_handle.set_page(current_page)
         return page_sizes
 
     @cached_property
