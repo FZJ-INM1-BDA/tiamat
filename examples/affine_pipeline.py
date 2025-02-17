@@ -12,9 +12,9 @@ from tiamat.pipeline import Pipeline
 image_width, image_height = 2560, 1600
 scale = 1.0
 rotation = 45
-mirror_x = 0
+mirror_x = False
 mirror_y = True
-translate = [0, image_height]
+translate = [0, image_height / 2]
 
 access_frame = np.array([
     [0 * scale, (image_width) * scale],
@@ -30,11 +30,18 @@ def build_affine(scale=1.0, rotation=0, mirror_x=False, mirror_y=False, translat
     sin_angle = np.sin(angle_rad) * scale
     
     # Build the affine transformation matrix
-    affine_matrix = np.array([
-        [(1. - 2. * float(mirror_x)) * cos_angle, -sin_angle, translate[0]],
-        [sin_angle, (1. - 2. * float(mirror_y)) * cos_angle, translate[1]],
+    rot_matrix = np.array([
+        [cos_angle, -sin_angle, 0],
+        [sin_angle, cos_angle, 0],
         [0., 0., 1.]
     ], dtype=np.float32)
+    mirror_matrix = np.array([
+        [1 - 2 * float(mirror_x), 0, 0],
+        [0, 1 - 2 * float(mirror_y), 0],
+        [0., 0., 1.]
+    ], dtype=np.float32)
+    affine_matrix = rot_matrix @ mirror_matrix
+    affine_matrix[:2, -1] = translate
     
     return affine_matrix
 
