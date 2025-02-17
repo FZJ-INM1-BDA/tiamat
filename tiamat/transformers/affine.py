@@ -45,6 +45,7 @@ class AffineTransformer(Transformer):
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
         x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
         y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
+        accessor.history[id(self)] = (x_from, x_to, y_from, y_to)
 
         # Transform all four corners of the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)
@@ -59,9 +60,7 @@ class AffineTransformer(Transformer):
         y_to_t = max(y1, y2, y3, y4)
 
         # Replace accessor with new request
-        old_accessor = accessor
         accessor = replace(accessor)
-        accessor.history[id(self)] = old_accessor
         accessor.x = (x_from_t, x_to_t)
         accessor.y = (y_from_t, y_to_t)
 
@@ -99,11 +98,10 @@ class AffineTransformer(Transformer):
         from ..readers.processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
 
         # Restore extent from requested frame
-        old_accessor = image_result.accessor.history[id(self)]
-        x, y, *_ = _prepare_coordinates(x=old_accessor.x, y=old_accessor.y, z=old_accessor.z, c=old_accessor.c)
-        x_from, x_to = self._resolve_coordinate(x, old_accessor.metadata.shape[1])
-        y_from, y_to = self._resolve_coordinate(y, old_accessor.metadata.shape[0])
-
+        try:
+            x_from, x_to, y_from, y_to = image_result.accessor.history[id(self)]
+        except KeyError:
+            raise Exception("transform_access has to be called once before transform_image")
         target_size = (x_to - x_from, y_to - y_from)
 
         accessor = image_result.accessor
