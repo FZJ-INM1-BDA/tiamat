@@ -17,7 +17,13 @@ except ImportError:
 
 from ..io import ImageAccessor, INTERPOLATION_TYPE_NEAREST, INTERPOLATION_TYPE_LINEAR, INTERPOLATION_TYPE_CUBIC, INTERPOLATION_TYPE_AREA, INTERPOLATION_TYPE_LANCZOS4
 
-OPENCV_INTERPOLATION_CODES = {INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST, INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR, INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC, INTERPOLATION_TYPE_AREA: cv2.INTER_AREA, INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4}
+OPENCV_INTERPOLATION_CODES = {
+    INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
+    INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
+    INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
+    INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
+    INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4
+}
 
 
 def _expand_to_image_shape(value, image_shape):
@@ -26,7 +32,12 @@ def _expand_to_image_shape(value, image_shape):
     return value
 
 
-def rescale(image: np.ndarray, scale: float | tuple[float, ...], interpolation: str = INTERPOLATION_TYPE_CUBIC) -> np.ndarray:
+def rescale(
+        image: np.ndarray,
+        scale: float | tuple[float, ...],
+        interpolation: str = INTERPOLATION_TYPE_CUBIC,
+        anti_aliasing: bool = False,
+    ) -> np.ndarray:
     import numpy as np
 
     scale = _expand_to_image_shape(scale, image.shape[:2])
@@ -38,10 +49,15 @@ def rescale(image: np.ndarray, scale: float | tuple[float, ...], interpolation: 
 
     # Note: Rescale always rounds up. This is a design decision, that we might want to revisit.
     target_shape = np.ceil(np.array([dim * s for dim, s in zip(image.shape[:2], scale)], dtype=float)).astype(int)
-    return resize(img=image, shape=target_shape, interpolation=interpolation)
+    return resize(img=image, shape=target_shape, interpolation=interpolation, anti_aliasing=anti_aliasing)
 
 
-def resize(img, shape, interpolation=INTERPOLATION_TYPE_CUBIC):
+def resize(
+        img,
+        shape,
+        interpolation=INTERPOLATION_TYPE_CUBIC,
+        anti_aliasing: bool = False,
+    ):
     """Resize the image to specified shape using the given interpolation.
     If anti-alias is defined, a gauss filter will smooth the image before downsizing.
     If interpolation is NEAREST, anti-aliasing is turned of.
@@ -57,10 +73,25 @@ def resize(img, shape, interpolation=INTERPOLATION_TYPE_CUBIC):
     if min(img.shape) == 0:
         warnings.warn("Not possible to resize image of shape {}".format(img.shape))
         return img
+    
+    # Scaling factors per dimension
+    factors = np.divide(img.shape[:2], shape)
+
     # take care of rgb images and 2dim shapes
     if len(img.shape) == 3 and len(shape) == 2:
         shape = (shape[0], shape[1], img.shape[2])
-    arr = img
+
+    if anti_aliasing and np.any(factors > 1):
+        sigma = np.maximum(0, (factors - 1) / 2)
+        ksize = np.ceil(4. * sigma, dtype=int, casting='unsafe')
+        ksize = ksize + (1 - ksize % 2)
+
+        print(anti_aliasing, ksize, sigma, factors)
+
+        arr = cv2.GaussianBlur(img, ksize[::-1], sigmaX=sigma[1], sigmaY=sigma[0])
+    else:
+        arr = img
+        
     res = cv2.resize(src=arr, dsize=(shape[1], shape[0]), interpolation=OPENCV_INTERPOLATION_CODES[interpolation])
 
     # Resize tends to loose dimensions with size one, so we need to add them back
@@ -179,7 +210,7 @@ def access_and_rescale_image(image: np.ndarray, accessor: ImageAccessor, image_s
 
     interpolation = get_interpolation_for_accessor(accessor)
     target_scale = tuple(s / s_image for s, s_image in zip(scale, image_scale))
-    image = rescale(image, scale=target_scale, interpolation=interpolation)
+    image = rescale(image, scale=target_scale, interpolation=interpolation, anti_aliasing=accessor.anti_aliasing)
 
     return image
 
