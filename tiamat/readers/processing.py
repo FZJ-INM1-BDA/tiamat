@@ -168,7 +168,6 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
 
     pad_x_left, pad_x_right = _pad(x_from, max_x), _pad(x_to, max_x)
     pad_y_left, pad_y_right = _pad(y_from, max_y), _pad(y_to, max_y)
-    # attention: the final padding is in y-x again, as it is applied to the image.
     padding = [(pad_y_left, pad_y_right), (pad_x_left, pad_x_right), ]
 
     # clip after padding
@@ -183,7 +182,7 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
         # Is it okay to assume that z is always the second dimension? Only works as long as nobody passes z coordinates for images for RGB images or something like that.
         max_z = image.shape[2]
         pad_z_left, pad_z_right = _pad(z_from, max_z), _pad(z_to, max_z)
-        padding.append((pad_z_left, pad_z_right))
+        padding = [(pad_z_left, pad_z_right)] + padding
         z_from, z_to = [_clip(zi, 0, max_z) for zi in (z_from, z_to)]
         result = result[..., z_from:z_to]
 
@@ -196,7 +195,7 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     if any(any(p > 0 for p in pad) for pad in padding):
         # Additional dimensions without accessor.
         padding = padding + [(0, 0) for _ in range(len(result.shape) - len(padding))]
-        result = np.pad(result, padding)
+        result = np.pad(result, padding, constant_values=accessor.fill_value)
 
     return result
 
