@@ -4,23 +4,12 @@ Affine transformers.
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
+from .coordinates import resolve_coordinate_slice
 
 
 class AffineTransformer(Transformer):
     def __init__(self, affine_matrix):
         self.affine_matrix = affine_matrix
-
-    def _resolve_coordinate(self, coordinate, image_dimension):
-        import numpy as np
-
-        if coordinate is None:
-            return image_dimension
-        elif isinstance(coordinate, (np.integer, int)):
-            return coordinate
-        elif isinstance(coordinate, (np.floating, float)):
-            raise RuntimeError(f"AffineTransformer encountered fractional value {coordinate}, which is not supported at the moment.")
-        else:
-            return tuple(self._resolve_coordinate(coordinate_i, image_dimension) for coordinate_i in coordinate)
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         import numpy as np
@@ -81,8 +70,9 @@ class AffineTransformer(Transformer):
         from ..readers.processing import _prepare_coordinates
 
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
-        y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
+        
+        x_from, x_to = resolve_coordinate_slice(x, accessor.metadata.shape[1])
+        y_from, y_to = resolve_coordinate_slice(y, accessor.metadata.shape[0])
 
         # Transform points
         x_from_t, y_from_t = np.ceil(affine[:2, :2] @ (x_from, y_from) + affine[:2, -1]).astype(int)
