@@ -5,6 +5,7 @@ Transforms manipulating individual axes of images
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
+from .coordinates import resolve_coordinate_slice
 
 
 class TransposeTransformer(Transformer):
@@ -33,7 +34,7 @@ class TransposeTransformer(Transformer):
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        # TODO: Think of this again
+        # TODO: Shape should be changed in image metadata as well!
         return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
@@ -41,5 +42,43 @@ class TransposeTransformer(Transformer):
 
         # TODO: Only support 2D for now, remove [1:] later if 3D supported
         image_result.image = np.transpose(image_result.image, axes=self.reorder_axes[1:])
+
+        return image_result
+
+
+class MirrorTransformer(Transformer):
+
+    def __init__(self, mirror_x=False, mirror_y=False, mirror_z=False):
+        self.mirror_x = mirror_x
+        self.mirror_y = mirror_y
+        self.mirror_z = mirror_z
+
+    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+        from dataclasses import replace
+
+        # TODO: Only support 2D for now, leave 3D for later
+        height, width = accessor.metadata.shape[:2]
+
+        accessor = replace(accessor)
+
+        if self.mirror_x:
+            x_from, x_to = resolve_coordinate_slice(accessor.x, width)
+            accessor.x = (width - x_to, width - x_from)
+
+        if self.mirror_y:
+            y_from, y_to = resolve_coordinate_slice(accessor.y, height)
+            accessor.y = (height - y_to, height - y_from)
+
+        return accessor
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        return metadata
+
+    def transform_image(self, image_result: ImageResult) -> ImageResult:
+        import numpy as np
+
+        flip_axes = self.mirror_y * [0] + self.mirror_x * [1]
+
+        image_result.image = np.flip(image_result.image, axis=flip_axes)
 
         return image_result
