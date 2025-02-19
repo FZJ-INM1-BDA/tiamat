@@ -86,13 +86,19 @@ affine_xform_img_args = [
     # this does not work, apparently scaling up is not as easy as scaling down
     # (two_by_two, scale_double, four_by_four),
     (two_by_two,
-     
      [[-1, 0, 1],
       [0, 1, 0],
       [0, 0, 1]],
-      
      [[2, 1],
       [4, 3]]),
+    (four_by_four,
+     [[-1, 0, -5],
+      [0, 1, 0],
+      [0, 0, 1]],
+     [[2, 2, 1, 1],
+      [2, 2, 1, 1],
+      [4, 4, 3, 3],
+      [4, 4, 3, 3]]),
 ]
 
 
