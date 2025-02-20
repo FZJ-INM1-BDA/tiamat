@@ -26,8 +26,8 @@ class AffineTransformer(Transformer):
         else:
             return tuple(self._resolve_coordinate(coordinate_i, image_dimension) for coordinate_i in coordinate)
 
-    def _transform_point(self, x: int, y: int, affine: np.ndarray) -> Tuple[int, int]:
-        return np.ceil(affine[:2, :2] @ (x, y) + affine[:2, -1]).astype(int)
+    def _transform_point(self, x: int | float, y: int | float, affine: np.ndarray) -> Tuple[int | float, int | float]:
+        return affine[:2, :2] @ (x, y) + affine[:2, -1]
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
@@ -35,8 +35,8 @@ class AffineTransformer(Transformer):
 
         assert accessor.metadata is not None, f"AffineTransformer requires metadata."
 
-        #TODO: Take care of spacing and/or scale.
-        #TODO: Handle 3D.
+        # TODO: Take care of spacing and/or scale.
+        # TODO: Handle 3D.
 
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
@@ -59,10 +59,15 @@ class AffineTransformer(Transformer):
         x_to_t = max(x1, x2, x3, x4)
         y_to_t = max(y1, y2, y3, y4)
 
+        # Calculate offsets of the requested frame due to integer rounding
+        # TODO: Take this offset into account for the transform_image call
+        offset_x = int(x_from_t) - x_from_t
+        offset_y = int(y_from_t) - y_from_t
+
         # Replace accessor with new request
         accessor = replace(accessor)
-        accessor.x = (x_from_t, x_to_t + 1)
-        accessor.y = (y_from_t, y_to_t + 1)
+        accessor.x = (int(x_from_t), int(x_to_t) + 1)
+        accessor.y = (int(y_from_t), int(y_to_t) + 1)
 
         return accessor
 
@@ -107,9 +112,6 @@ class AffineTransformer(Transformer):
         accessor = image_result.accessor
         (x_from_input, x_to_input), (y_from_input, y_to_input), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
 
-        print("x_from_input", x_from_input, ", x_to_input", x_to_input, ", accessor.x", accessor.x)
-        print("target_size", target_size[0])
-
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.
         # To get the result we want, we do the following:
@@ -125,9 +127,14 @@ class AffineTransformer(Transformer):
         target_origin_affine = np.eye(3)
         target_origin_affine[:2, -1] = (-x_from, -y_from)
 
+        print("Before\n", image_result.image)
+
         # Step 1., 2., and 3.
         affine = target_origin_affine @ self.affine_matrix @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
+        # CV2 
         image_result.image = cv2.warpAffine(src=image_result.image, M=affine[:2], dsize=target_size, flags=OPENCV_INTERPOLATION_CODES[interpolation])
+
+        print("After\n", affine, target_size, image_result.image)
 
         return image_result
