@@ -128,6 +128,8 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     )
     x, y, z, c = _prepare_coordinates(x, y, z, c)
 
+    print(x, y, z)
+
     def _pad_left(coordinate):
         if coordinate is None:
             return 0
@@ -144,7 +146,7 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     def _clip(coordinate, min_coordinate, max_coordinate):
         if coordinate is None:
             return coordinate
-        return min(max(int(coordinate), int(min_coordinate)), int(max_coordinate) - 1)
+        return min(max(int(coordinate), int(min_coordinate)), int(max_coordinate))
 
     # Separate image and channel dimensions
     # TODO: Support reading multiple channels
@@ -168,6 +170,8 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     access_ch_dims = [c] if n_ch_dims == 1 else []
 >>>>>>> eddfc88 (Allow variable image dimensions and channels in image access):tiamat/readers/_processing.py
 
+    print(access_image_dims)
+
     # Loop over all dimensions to create request
     request_slices = [slice(None)] * len(image.shape)
     access_shape = np.ones((len(image.shape)), dtype=np.int64)
@@ -175,8 +179,12 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
         max_c = image.shape[dim]
         c_from, c_to = coord
 
+        print(max_c)
+
         request_slices[dim] = slice(_clip(c_from, 0, max_c), _clip(c_to, 0, max_c))
         access_shape[dim] = c_to - c_from if c_to is not None else image.shape[dim]
+
+    print(request_slices)
 
     # Loop over image dimensions to determine padding
     padding = [(0, 0)] * len(image.shape)
@@ -192,12 +200,16 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
         request_slices[dim] = slice(_clip(coord_from, 0, max_coord), _clip(coord_to, 0, max_coord))
         access_shape[dim] = coord_to - coord_from if coord_to is not None else image.shape[dim]
 
+    print(request_slices)
+
     # Read requested data
     result = image[tuple(request_slices)]
 
     # Only do padding if necessary
     if any(any(p > 0 for p in pad) for pad in padding):
         result = np.pad(result, padding)
+
+    print(result.shape)
 
     return result
 

@@ -84,7 +84,7 @@ affine_xform_img_args = [
     (two_by_two, identity, two_by_two),
     (four_by_four, identity, four_by_four),
     # this does not work, apparently scaling up is not as easy as scaling down
-    # (two_by_two, scale_double, four_by_four),
+    (two_by_two, scale_double, four_by_four),
     (two_by_two,
      [[-1, 0, 1],
       [0, 1, 0],
@@ -106,23 +106,33 @@ affine_xform_img_args = [
 def test_affine_transform_image(src_img, affine, exp_img):
     
     img_nd = np.array(src_img)
+    exp_nd = np.array(exp_img)
 
     # Backward path
     meta = ImageMetadata(image_type="image",
                          shape=img_nd.shape,
                          value_range=(np.min(img_nd), np.max(img_nd)),
                          dtype=img_nd.dtype)
-    output_accessor = ImageAccessor(metadata=meta, interpolation="nearest")
+    output_accessor = ImageAccessor(
+        x=(0, exp_nd.shape[1]),
+        y=(0, exp_nd.shape[0]),
+        metadata=meta,
+        interpolation="nearest"
+    )
     xform = AffineTransformer(np.array(affine))
     input_accessor = xform.transform_access(output_accessor)
+
+    print("Request:", output_accessor)
+    print("Reader:", input_accessor)
 
     # Forward path
     src = ImageResult(img_nd, input_accessor, meta)
     result = xform.transform_image(src)
 
-    print(result.image, "\n", np.array(exp_img))
+    print(result.image, exp_nd)
 
-    assert np.all(result.image == np.array(exp_img))
+    assert np.all(result.image == exp_nd)
+
 
 IMG_SIZE = 100
 
@@ -137,11 +147,9 @@ affine_xform_xform_xs_args = [
     (((0, 2), (0, 2)), scale_double, ((0, 1), (0, 1))),
     (((5, 10), (15, 20)), scale_double, ((3, 5), (8, 10))), # np.ceil
 
-    
     (((0, 2), (0, 2)), scale_half, ((0, 4), (0, 4))),
     (((5, 10), (15, 20)), scale_half, ((10, 20), (30, 40))),
 
-    
     (((0, 2), (0, 2)), translate, ((-5, -3), (-10, -8))),
     (((5, 10), (15, 20)), translate, ((0, 5), (5, 10))),
     

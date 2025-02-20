@@ -10,11 +10,11 @@ from tiamat.pipeline import Pipeline
 
 # Image is 1600, 2560  shape
 image_width, image_height = 2560, 1600
-scale = 1.0
-rotation = 0
+scale = 1.5
+rotation = 45
 mirror_x = True
 mirror_y = False
-translate = [image_width - 1, 0]
+translate = [1.7 * image_width - 1, image_height]
 
 access_frame = np.array([
     [0 * scale, (image_width) * scale],
