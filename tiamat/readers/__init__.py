@@ -10,3 +10,8 @@ register_reader(GenericReader)
 from .bigtiff import BigTiffReader
 
 register_reader(BigTiffReader)
+
+# HDF5
+from .hdf5 import HDF5Reader
+
+register_reader(HDF5Reader)
