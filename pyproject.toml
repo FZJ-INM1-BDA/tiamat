@@ -7,23 +7,24 @@ readme = "README.md"
 requires-python = ">=3.8"
 dynamic = ["version"]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: POSIX :: Linux",
-    "Topic :: Scientific/Engineering",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "click",
-    "numpy>=1.25.0",
-    "pytiff @ git+https://github.com/FZJ-INM1-BDA/pytiff.git@master",
-    "h5py",
-    "matplotlib",
-    "opencv-python-headless>=4.8.1",
+  "click",
+  "numpy>=1.25.0",
+  "pytiff @ git+https://github.com/FZJ-INM1-BDA/pytiff.git@master",
+  "h5py",
+  "matplotlib",
+  "opencv-python-headless>=4.8.1",
+  "imageio",
 ]
 
 [build-system]
