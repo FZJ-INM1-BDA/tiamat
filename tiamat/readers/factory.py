@@ -6,14 +6,9 @@ from ..readers.protocol import ImageReader
 _READER_REGISTRY = {}
 
 
-def register_reader(file_types, reader_class, overwrite=False):
-    from tiamat.errors import ReaderExistsError
-
-    for file_type in file_types:
-        if file_type in _READER_REGISTRY and not overwrite:
-            raise ReaderExistsError(f"Error while registering {reader_class} for file type {file_type}:"
-                                    f"Reader already exists (registered: {_READER_REGISTRY[file_type]})")
-        _READER_REGISTRY[file_type] = reader_class
+def register_reader(reader_class):
+    if reader_class not in _READER_REGISTRY:
+        _READER_REGISTRY.append(reader_class)
 
 
 def get_reader_for_file_type(file_type):
