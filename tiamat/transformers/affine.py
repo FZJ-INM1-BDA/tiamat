@@ -12,12 +12,16 @@ import numpy as np
 
 
 class AffineTransformer(Transformer):
-    def __init__(self, affine_matrix):
-        self.affine_matrix = self._make_corner_px_affine(affine_matrix)
+    def __init__(
+            self,
+            affine_matrix,
+            request_margin: int = 0,
+        ):
+        self.affine_matrix = affine_matrix
 
         # Margin around image data requested by this transform to avoid resampling artifacts
         # TODO: Debug affine transform with margin > 0
-        self.request_margin = 0 # 1
+        self.request_margin = request_margin
 
     def _make_corner_px_affine(self, affine):
         # Make input affine matrix corner pixel aligned by shifted half a pixel value and reverse
@@ -44,6 +48,7 @@ class AffineTransformer(Transformer):
         return affine[:2, :2] @ (x, y) + affine[:2, -1]
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+        import math
         from dataclasses import replace
         from tiamat.readers._processing import _prepare_coordinates
 
@@ -62,9 +67,9 @@ class AffineTransformer(Transformer):
 
         # Transform all four corners of the requested frame by the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)
-        x2, y2 = self._transform_point(x_to - 1, y_from, affine)
-        x3, y3 = self._transform_point(x_to - 1, y_to - 1, affine)
-        x4, y4 = self._transform_point(x_from, y_to - 1, affine)
+        x2, y2 = self._transform_point(x_to, y_from, affine)
+        x3, y3 = self._transform_point(x_to, y_to, affine)
+        x4, y4 = self._transform_point(x_from, y_to, affine)
 
         # Request outer bounds of the transformed view
         x_from_t = min(x1, x2, x3, x4) - self.request_margin
@@ -73,13 +78,13 @@ class AffineTransformer(Transformer):
         y_to_t = max(y1, y2, y3, y4) + self.request_margin
 
         # Calculate offsets of the requested frame due to integer rounding
-        offset_x_input = int(x_from_t) - x_from_t
-        offset_y_input = int(y_from_t) - y_from_t
+        offset_x_input = math.floor(x_from_t) - x_from_t
+        offset_y_input = math.floor(y_from_t) - y_from_t
 
         # Replace accessor with new requested input
         accessor = replace(accessor)
-        accessor.x = (int(x_from_t), int(x_to_t) + 1)
-        accessor.y = (int(y_from_t), int(y_to_t) + 1)
+        accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
+        accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
         accessor.history[id(self)] = (x_from, x_to, offset_x_input, y_from, y_to, offset_y_input)
 
         return accessor
@@ -142,7 +147,7 @@ class AffineTransformer(Transformer):
         target_origin_affine[:2, -1] = (-x_from, -y_from)
 
         # Step 1., 2., and 3.
-        affine = target_origin_affine @ self.affine_matrix @ input_origin_affine
+        affine = target_origin_affine @ self._make_corner_px_affine(self.affine_matrix) @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
 
         # CV2 

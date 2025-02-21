@@ -119,7 +119,10 @@ def test_affine_transform_image(src_img, affine, exp_img):
         metadata=meta,
         interpolation="nearest"
     )
-    xform = AffineTransformer(np.array(affine))
+    xform = AffineTransformer(
+        np.array(affine),
+        request_margin=0,
+    )
     input_accessor = xform.transform_access(output_accessor)
 
     print("Request:\n", output_accessor)
@@ -145,8 +148,8 @@ affine_xform_xform_xs_args = [
     (((0, 2), (0, 2)), identity, ((0, 2), (0, 2))),
     (((5, 10), (15, 20)), identity, ((5, 10), (15, 20))),
 
-    (((0, 2), (0, 2)), scale_double, ((0, 1), (0, 1))),
-    (((5, 10), (15, 20)), scale_double, ((3, 5), (8, 10))), # np.ceil
+    (((0, 4), (0, 3)), scale_double, ((0, 2), (0, 2))),
+    (((5, 9), (15, 20)), scale_double, ((2, 5), (7, 10))),
 
     (((0, 2), (0, 2)), scale_half, ((0, 4), (0, 4))),
     (((5, 10), (15, 20)), scale_half, ((10, 20), (30, 40))),
@@ -161,15 +164,31 @@ affine_xform_xform_xs_args = [
 
 @pytest.mark.parametrize("src_xy, affine, expected_xy", affine_xform_xform_xs_args)
 def test_affine_transform_access(src_xy, affine, expected_xy):
+
     img_nd = np.zeros((IMG_SIZE, IMG_SIZE))
-    meta = ImageMetadata(image_type="image",
-                         shape=img_nd.shape,
-                         value_range=(np.min(img_nd), np.max(img_nd)),
-                         dtype=img_nd.dtype)
-    accessor = ImageAccessor(*src_xy, metadata=meta)
-    xformer = AffineTransformer(np.array(affine))
+    ex_x, ex_y, *_ = expected_xy
+
+    meta = ImageMetadata(
+        image_type="image",
+        shape=img_nd.shape,
+        value_range=(np.min(img_nd), np.max(img_nd)),
+        dtype=img_nd.dtype
+    )
+
+    print("Source xy:", *src_xy)
+
+    accessor = ImageAccessor(
+        *src_xy,
+        metadata=meta
+    )
+    xformer = AffineTransformer(
+        np.array(affine),
+        request_margin=0
+    )
     result = xformer.transform_access(accessor)
 
-    ex_x, ex_y, *_ = expected_xy
+    print("Result xy:", result.x, result.y)
+    print("Expected xy:", *expected_xy)
+
     assert result.x == ex_x
     assert result.y == ex_y
