@@ -24,7 +24,7 @@ class GenericReader(ImageReader):
         return image
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
-        from ._processing import access_and_rescale_image
+        from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
         image = self._read_image()
