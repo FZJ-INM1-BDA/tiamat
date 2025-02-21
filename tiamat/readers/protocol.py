@@ -12,3 +12,6 @@ class ImageReader(Protocol):
 
     def read_metadata(self) -> ImageMetadata:
         ...
+
+    def check_file(self) -> bool:
+        ...
