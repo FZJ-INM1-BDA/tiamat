@@ -8,7 +8,8 @@ _READER_REGISTRY = []
 
 
 def register_reader(reader_class):
-    _READER_REGISTRY.append(reader_class)
+    if reader_class not in _READER_REGISTRY:
+        _READER_REGISTRY.append(reader_class)
 
 
 def get_reader_for_file_type(file_type):
