@@ -13,7 +13,21 @@ import numpy as np
 
 class AffineTransformer(Transformer):
     def __init__(self, affine_matrix):
-        self.affine_matrix = affine_matrix
+        self.affine_matrix = self._make_corner_px_affine(affine_matrix)
+
+        # Margin around image data requested by this transform to avoid resampling artifacts
+        # TODO: Debug affine transform with margin > 0
+        self.request_margin = 0 # 1
+
+    def _make_corner_px_affine(self, affine):
+        # Make input affine matrix corner pixel aligned by shifted half a pixel value and reverse
+        input_offset = np.eye(3)
+        input_offset[:2, -1] = (0.5, 0.5)   
+
+        target_offset = np.eye(3)
+        target_offset[:2, -1] = (-0.5, -0.5)
+
+        return target_offset @ affine @ input_offset
 
     def _resolve_coordinate(self, coordinate, image_dimension):
 
@@ -45,7 +59,6 @@ class AffineTransformer(Transformer):
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
         x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
         y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
-        accessor.history[id(self)] = (x_from, x_to, y_from, y_to)
 
         # Transform all four corners of the requested frame by the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)
@@ -54,20 +67,20 @@ class AffineTransformer(Transformer):
         x4, y4 = self._transform_point(x_from, y_to - 1, affine)
 
         # Request outer bounds of the transformed view
-        x_from_t = min(x1, x2, x3, x4)
-        y_from_t = min(y1, y2, y3, y4)
-        x_to_t = max(x1, x2, x3, x4)
-        y_to_t = max(y1, y2, y3, y4)
+        x_from_t = min(x1, x2, x3, x4) - self.request_margin
+        y_from_t = min(y1, y2, y3, y4) - self.request_margin
+        x_to_t = max(x1, x2, x3, x4) + self.request_margin
+        y_to_t = max(y1, y2, y3, y4) + self.request_margin
 
         # Calculate offsets of the requested frame due to integer rounding
-        # TODO: Take this offset into account for the transform_image call
-        offset_x = int(x_from_t) - x_from_t
-        offset_y = int(y_from_t) - y_from_t
+        offset_x_input = int(x_from_t) - x_from_t
+        offset_y_input = int(y_from_t) - y_from_t
 
-        # Replace accessor with new request
+        # Replace accessor with new requested input
         accessor = replace(accessor)
         accessor.x = (int(x_from_t), int(x_to_t) + 1)
         accessor.y = (int(y_from_t), int(y_to_t) + 1)
+        accessor.history[id(self)] = (x_from, x_to, offset_x_input, y_from, y_to, offset_y_input)
 
         return accessor
 
@@ -104,7 +117,7 @@ class AffineTransformer(Transformer):
 
         # Restore extent from requested frame
         try:
-            x_from, x_to, y_from, y_to = image_result.accessor.history[id(self)]
+            x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = image_result.accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
         target_size = (x_to - x_from, y_to - y_from)
@@ -114,6 +127,7 @@ class AffineTransformer(Transformer):
 
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.
+        # Subtract and add 0.5 to make the transformation corner aligned (center is default in CV2)
         # To get the result we want, we do the following:
         # 1. Specify an affine matrix shifting towards the origin of the input image
         # 2. Apply our actual affine matrix.
@@ -121,20 +135,17 @@ class AffineTransformer(Transformer):
 
         # Step 1: Shift towards input.
         input_origin_affine = np.eye(3)
-        input_origin_affine[:2, -1] = (x_from_input, y_from_input)
+        input_origin_affine[:2, -1] = (x_from_input + offset_x_input, y_from_input + offset_y_input )
 
         # Step 3: Shift towards target.
         target_origin_affine = np.eye(3)
         target_origin_affine[:2, -1] = (-x_from, -y_from)
 
-        print("Before\n", image_result.image)
-
         # Step 1., 2., and 3.
         affine = target_origin_affine @ self.affine_matrix @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
+
         # CV2 
         image_result.image = cv2.warpAffine(src=image_result.image, M=affine[:2], dsize=target_size, flags=OPENCV_INTERPOLATION_CODES[interpolation])
-
-        print("After\n", affine, target_size, image_result.image)
 
         return image_result

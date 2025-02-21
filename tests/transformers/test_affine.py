@@ -92,7 +92,7 @@ affine_xform_img_args = [
      [[2, 1],
       [4, 3]]),
     (four_by_four,
-     [[-1, 0, -5],
+     [[-1, 0, 4],
       [0, 1, 0],
       [0, 0, 1]],
      [[2, 2, 1, 1],
@@ -122,14 +122,15 @@ def test_affine_transform_image(src_img, affine, exp_img):
     xform = AffineTransformer(np.array(affine))
     input_accessor = xform.transform_access(output_accessor)
 
-    print("Request:", output_accessor)
-    print("Reader:", input_accessor)
+    print("Request:\n", output_accessor)
+    print("Reader:\n", input_accessor)
 
     # Forward path
     src = ImageResult(img_nd, input_accessor, meta)
     result = xform.transform_image(src)
 
-    print(result.image, exp_nd)
+    print("Result:\n", result.image)
+    print("Expected:\n", exp_nd)
 
     assert np.all(result.image == exp_nd)
 
