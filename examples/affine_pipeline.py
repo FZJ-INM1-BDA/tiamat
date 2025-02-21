@@ -47,8 +47,6 @@ def build_affine(scale=1.0, rotation=0, mirror_x=False, mirror_y=False, translat
 
 affine_matrix = build_affine(scale, rotation, mirror_x, mirror_y, translate)
 
-print(affine_matrix)
-
 # Convert an image to grayscale, then apply a colormap.
 # Let's also combine it with some coordinate transformers.
 pipeline = Pipeline(
@@ -56,6 +54,5 @@ pipeline = Pipeline(
 )
 result = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=access_frame[0], y=access_frame[1]))
 
-print(result.image.shape)
 plt.imshow(result.image)
 plt.show()
