@@ -46,7 +46,7 @@ class AffineTransformer(Transformer):
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
         import numpy as np
-        from ..readers._processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
+        from ..readers.processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
 
         accessor = image_result.accessor
         (x_from_input, x_to_input), (y_from_input, y_to_input), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
@@ -78,7 +78,7 @@ class AffineTransformer(Transformer):
 
     def _warp_coordinates(self, accessor, affine):
         import numpy as np
-        from ..readers._processing import _prepare_coordinates
+        from ..readers.processing import _prepare_coordinates
 
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
         x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
