@@ -27,7 +27,7 @@ class BigTiffReader(ImageReader):
                                 additional_metadata=self.tags)
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
-        from ._processing import access_and_rescale_image
+        from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
         target_scale = accessor.scale
