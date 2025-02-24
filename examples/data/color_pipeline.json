@@ -1,0 +1,7 @@
+{
+  "image_transformers": [
+    { "class": "GrayscaleTransformer", "args": {} },
+    { "class": "LUTTransformer", "args": { "color_map": "plasma" } }
+  ],
+  "access_transformers": [{ "class": "FractionTransformer", "args": {} }]
+}
