@@ -41,6 +41,7 @@ class GenericReader(ImageReader):
 
         # For generic images, we have to assume a lot and cannot derive much, even with reading the data.
         image = self._read_image()
+        channel_dimension = None if len(image.shape) == 2 else 2
 
         return md.ImageMetadata(
             image_type=md.IMAGE_TYPE_IMAGE,
@@ -49,6 +50,7 @@ class GenericReader(ImageReader):
             file_path=self.fname,
             value_range=(0, 255),
             spacing=self.image_spacing,
+            channel_dimension=channel_dimension,
             channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
         )
 

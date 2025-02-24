@@ -36,7 +36,7 @@ def make_object_from_config(config_entry: dict):
     return create_instance(config_entry["class"], config_entry.get("args", {}))
 
 
-def load_pipeline_from_config(config: dict):
+def load_pipeline_from_config(config: dict, **kwargs):
     """Make a pipeline from a config dict."""
     from .pipeline import Pipeline
 
@@ -52,4 +52,5 @@ def load_pipeline_from_config(config: dict):
             make_object_from_config(item)
             for item in config.get("image_transformers", [])
         ],
+        **kwargs,
     )
