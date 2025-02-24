@@ -126,7 +126,7 @@ def _zero_clip(values):
     return [max(value, 0) if value is not None else None for value in values]
 
 
-def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[float, ...], fill_value = 0) -> np.ndarray:
+def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[float, ...]) -> np.ndarray:
     """Access image content.
 
     Assume a row-major coordinate system of image (z, y, x).
@@ -210,7 +210,7 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
 
         if (coord_to is not None and coord_to < 0) or coord_from >= max_coord:
             # The image will be empty, just return an empty array
-            return np.full(access_shape, fill_value=fill_value, dtype=image.dtype)
+            return np.full(access_shape, fill_value=accessor.fill_value, dtype=image.dtype)
 
         padding[dim] = (_pad(coord_from, max_coord), _pad(coord_to, max_coord))
         request_slices[dim] = slice(_clip(coord_from, 0, max_coord), _clip(coord_to, 0, max_coord))
@@ -221,7 +221,7 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
 
     # Only do padding if necessary
     if any(any(p > 0 for p in pad) for pad in padding):
-        result = np.pad(result, padding)
+        result = np.pad(result, padding, constant_values=accessor.fill_value)
 
     return result
 
