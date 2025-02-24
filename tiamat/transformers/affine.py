@@ -8,6 +8,7 @@ from itertools import repeat, product
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
+from .coordinates import resolve_coordinate_slice
 
 import numpy as np
 

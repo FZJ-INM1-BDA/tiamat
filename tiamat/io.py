@@ -9,6 +9,8 @@ from tiamat.metadata import ImageMetadata
 INTERPOLATION_TYPE_NEAREST = "nearest"
 INTERPOLATION_TYPE_LINEAR = "linear"
 INTERPOLATION_TYPE_CUBIC = "cubic"
+INTERPOLATION_TYPE_AREA = "area"
+INTERPOLATION_TYPE_LANCZOS4 = "lanczos4"
 
 
 @dataclass
@@ -25,6 +27,12 @@ class ImageAccessor:
     coordinate_spacing: float = 1.0
     metadata: ImageMetadata = None
     interpolation: int = None
+    # Wether to apply Gauss smothing, default is False:
+    anti_aliasing: bool = False
+    # (Maybe not needed) Std of Gauss filter, default is (s - 1) / 2:
+    # anti_aliasing_sigma: float = None
+    # Fill value for out-of-bounds request:
+    fill_value: int | float = 0
     history: dict = field(default_factory=dict)
 
 
