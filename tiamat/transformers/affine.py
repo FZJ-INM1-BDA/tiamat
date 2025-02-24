@@ -51,7 +51,7 @@ class AffineTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         import math
         from dataclasses import replace
-        from tiamat.readers._processing import _prepare_coordinates
+        from tiamat.readers.processing import _prepare_coordinates
 
         assert accessor.metadata is not None, f"AffineTransformer requires metadata."
 

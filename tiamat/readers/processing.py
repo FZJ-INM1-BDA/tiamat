@@ -157,16 +157,9 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
 
     assert n_image_dims == 2 or n_image_dims == 3, "Only 2D or 3D images supported"
 
-<<<<<<< HEAD:tiamat/readers/processing.py
-    pad_x_left, pad_x_right = _pad(x_from, max_x), _pad(x_to, max_x)
-    pad_y_left, pad_y_right = _pad(y_from, max_y), _pad(y_to, max_y)
-    # attention: the final padding is in y-x again, as it is applied to the image.
-    padding = [(pad_y_left, pad_y_right), (pad_x_left, pad_x_right), ]
-=======
     # Filter requested coordinates for each dim, assuming row major order
     access_image_dims = [z, y, x][-n_image_dims:]
     access_ch_dims = [c] if n_ch_dims == 1 else []
->>>>>>> eddfc88 (Allow variable image dimensions and channels in image access):tiamat/readers/_processing.py
 
     # Loop over all dimensions to create request
     request_slices = [slice(None)] * len(image.shape)
