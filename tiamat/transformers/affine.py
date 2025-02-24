@@ -1,6 +1,7 @@
 """
 Affine transformers.
 """
+from typing import Tuple
 from dataclasses import asdict
 from itertools import repeat, product
 
@@ -26,7 +27,7 @@ class AffineTransformer(Transformer):
     def _make_corner_px_affine(self, affine):
         # Make input affine matrix corner pixel aligned by shifted half a pixel value and reverse
         input_offset = np.eye(3)
-        input_offset[:2, -1] = (0.5, 0.5)   
+        input_offset[:2, -1] = (0.5, 0.5)  
 
         target_offset = np.eye(3)
         target_offset[:2, -1] = (-0.5, -0.5)
