@@ -137,7 +137,8 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
 
     pad_x_left, pad_x_right = _pad(x_from, max_x), _pad(x_to, max_x)
     pad_y_left, pad_y_right = _pad(y_from, max_y), _pad(y_to, max_y)
-    padding = [(pad_x_left, pad_x_right), (pad_y_left, pad_y_right), ]
+    # attention: the final padding is in y-x again, as it is applied to the image.
+    padding = [(pad_y_left, pad_y_right), (pad_x_left, pad_x_right), ]
 
     # clip after padding
     x_from, x_to = [_clip(xi, 0, max_x) for xi in (x_from, x_to)]
