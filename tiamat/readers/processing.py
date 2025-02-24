@@ -86,8 +86,6 @@ def resize(
         ksize = np.ceil(4. * sigma, dtype=int, casting='unsafe')
         ksize = ksize + (1 - ksize % 2)
 
-        print(anti_aliasing, ksize, sigma, factors)
-
         arr = cv2.GaussianBlur(img, ksize[::-1], sigmaX=sigma[1], sigmaY=sigma[0])
     else:
         arr = img

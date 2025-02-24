@@ -41,7 +41,6 @@ class HDF5Reader(ImageReader):
         # Read, crop, and rescale.
         target_scale = accessor.scale
         available_scale, available_scale_index = self._find_scale(target_scale)
-        print(target_scale, available_scale)
 
         pyramid_level = self.pyramid_datasets[available_scale_index]
         image = access_and_rescale_image(
