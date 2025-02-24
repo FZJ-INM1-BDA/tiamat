@@ -1,6 +1,7 @@
 """
 Reading BigTiff images.
 """
+import os
 import matplotlib.pyplot as plt
 from tiamat.transformers.color import GrayscaleTransformer, LUTTransformer
 from tiamat.transformers.access import FractionTransformer
@@ -10,6 +11,9 @@ from tiamat.readers import get_reader, bigtiff_zstack
 
 
 fname = "/p/fastdata/bigbrains/scans/zstack-incoming/B20/0100_0199/B20_0197.zstack"
+if not os.path.exists(fname):
+    print(f"File {fname} not found")
+    exit(0)
 reader: bigtiff_zstack.ZstackBigTiffReader = get_reader(fname)
 
 print(f"Slices: {reader.slices}")
