@@ -40,6 +40,20 @@ class BigTiffReader(ImageReader):
         )
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
+        """Reads image crops from a BigTiff file.
+
+        WARNING: As tiffio is not thread-safe, do not use it in a threaded environment. Use multiprocessing instead.
+
+        Parameters
+        ----------
+        accessor : ImageAccessor
+            Image accessor object to request data.
+
+        Returns
+        -------
+        ImageResult
+            Resulting image data, rescaled to the requested scale. Missing values are padded.
+        """
         from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
