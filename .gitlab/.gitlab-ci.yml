@@ -6,7 +6,7 @@ stages:
 
 variables:
   USER: "marvin"
-  IMAGE_NAME: $CI_REGISTRY_IMAGE-ci
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 cache:
@@ -101,8 +101,8 @@ test.python3.11:
   extends: .global-rules
   script:
     - pip3 install .
-    - for example in examples/*.py; echo "Running $example"; do python3
-      $example; done
+    - cd examples/
+    - for example in ./*.py; do echo "Running $example"; python3 $example; done
 
 examples.python3.10:
   extends: .examples

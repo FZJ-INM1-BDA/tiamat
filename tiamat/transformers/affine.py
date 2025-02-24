@@ -1,47 +1,140 @@
 """
 Affine transformers.
 """
+from typing import Tuple
+from dataclasses import asdict
+from itertools import repeat, product
+
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
 from .coordinates import resolve_coordinate_slice
 
+import numpy as np
+
 
 class AffineTransformer(Transformer):
-    def __init__(self, affine_matrix):
+    def __init__(
+            self,
+            affine_matrix,
+            request_margin: int = 0,
+        ):
         self.affine_matrix = affine_matrix
 
+        # Margin around image data requested by this transform to avoid resampling artifacts
+        # TODO: Debug affine transform with margin > 0
+        self.request_margin = request_margin
+
+    def _make_corner_px_affine(self, affine):
+        # Make input affine matrix corner pixel aligned by shifted half a pixel value and reverse
+        input_offset = np.eye(3)
+        input_offset[:2, -1] = (0.5, 0.5)  
+
+        target_offset = np.eye(3)
+        target_offset[:2, -1] = (-0.5, -0.5)
+
+        return target_offset @ affine @ input_offset
+
+    def _resolve_coordinate(self, coordinate, image_dimension):
+
+        if coordinate is None:
+            return image_dimension
+        elif isinstance(coordinate, (np.integer, int)):
+            return coordinate
+        elif isinstance(coordinate, (np.floating, float)):
+            raise RuntimeError(f"AffineTransformer encountered fractional value {coordinate}, which is not supported at the moment.")
+        else:
+            return tuple(self._resolve_coordinate(coordinate_i, image_dimension) for coordinate_i in coordinate)
+
+    def _transform_point(self, x: int | float, y: int | float, affine: np.ndarray) -> Tuple[int | float, int | float]:
+        return affine[:2, :2] @ (x, y) + affine[:2, -1]
+
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
-        import numpy as np
+        import math
         from dataclasses import replace
+        from tiamat.readers.processing import _prepare_coordinates
 
         assert accessor.metadata is not None, f"AffineTransformer requires metadata."
+
         # TODO: Take care of spacing and/or scale.
-        # TODO. Handle 3D.
+        # TODO: Handle 3D.
 
-        # invert affine to find which coordinates we need to read
+        # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
-        (x_from, y_from), (x_to, y_to) = self._warp_coordinates(accessor=accessor, affine=affine)
 
+        # Read coordinates for requested frame
+        x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
+        y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
+
+        # Transform all four corners of the requested frame by the affine to determine min, max coordinates
+        x1, y1 = self._transform_point(x_from, y_from, affine)
+        x2, y2 = self._transform_point(x_to, y_from, affine)
+        x3, y3 = self._transform_point(x_to, y_to, affine)
+        x4, y4 = self._transform_point(x_from, y_to, affine)
+
+        # Request outer bounds of the transformed view
+        x_from_t = min(x1, x2, x3, x4) - self.request_margin
+        y_from_t = min(y1, y2, y3, y4) - self.request_margin
+        x_to_t = max(x1, x2, x3, x4) + self.request_margin
+        y_to_t = max(y1, y2, y3, y4) + self.request_margin
+
+        # Calculate offsets of the requested frame due to integer rounding
+        offset_x_input = math.floor(x_from_t) - x_from_t
+        offset_y_input = math.floor(y_from_t) - y_from_t
+
+        # Replace accessor with new requested input
         accessor = replace(accessor)
-        accessor.x = (x_from, x_to)
-        accessor.y = (y_from, y_to)
+        accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
+        accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
+        accessor.history[id(self)] = (x_from, x_to, offset_x_input, y_from, y_to, offset_y_input)
 
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        return metadata
+        import numpy as np
+        from dataclasses import replace
+
+        metadata_dict = asdict(metadata)
+        shape_tuple = metadata_dict.pop("shape")
+
+        # converts shape to extends
+        # e.g. shape of 10, 20
+        # extents = ((0, 10), (0, 20))
+        extents = list(zip(repeat(0), shape_tuple[::-1]))
+        extent_coords = list(product(*extents))
+        
+        # shape is ONLY affected by rotation component of 3x3 matrix
+        transformed_coords = (self.affine_matrix[:2, :2] @ np.array(extent_coords).T).T
+        
+        xmax = np.max(transformed_coords[:,0])
+        ymax = np.max(transformed_coords[:,1])
+        
+        new_metadata = replace(metadata, shape=(ymax, xmax))
+
+        transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
+        new_metadata.extents = transformed_coords.tolist()
+
+        return new_metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
         import numpy as np
         from ..readers.processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
 
+        # Restore extent from requested frame
+        try:
+            x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = image_result.accessor.history[id(self)]
+        except KeyError:
+            raise Exception("transform_access has to be called once before transform_image")
+        target_size = (x_to - x_from, y_to - y_from)
+
         accessor = image_result.accessor
         (x_from_input, x_to_input), (y_from_input, y_to_input), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
 
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.
+        # Subtract and add 0.5 to make the transformation corner aligned (center is default in CV2)
         # To get the result we want, we do the following:
         # 1. Specify an affine matrix shifting towards the origin of the input image
         # 2. Apply our actual affine matrix.
@@ -49,33 +142,17 @@ class AffineTransformer(Transformer):
 
         # Step 1: Shift towards input.
         input_origin_affine = np.eye(3)
-        input_origin_affine[:2, -1] = (x_from_input, y_from_input)
+        input_origin_affine[:2, -1] = (x_from_input + offset_x_input, y_from_input + offset_y_input )
 
-        # Step 3: Shift towards target. Determine these coordinates by inverting the matrix we used on the way here.
-        # Invert the affine transformation we applied in the forward pass to determine the image size
-        (x_from, y_from), (x_to, y_to) = self._warp_coordinates(accessor=accessor, affine=self.affine_matrix)
-        target_size = (x_to - x_from, y_to - y_from)
+        # Step 3: Shift towards target.
         target_origin_affine = np.eye(3)
         target_origin_affine[:2, -1] = (-x_from, -y_from)
 
         # Step 1., 2., and 3.
-        affine = target_origin_affine @ self.affine_matrix @ input_origin_affine
+        affine = target_origin_affine @ self._make_corner_px_affine(self.affine_matrix) @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
+
+        # CV2 
         image_result.image = cv2.warpAffine(src=image_result.image, M=affine[:2], dsize=target_size, flags=OPENCV_INTERPOLATION_CODES[interpolation])
 
         return image_result
-
-    def _warp_coordinates(self, accessor, affine):
-        import numpy as np
-        from ..readers.processing import _prepare_coordinates
-
-        x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        
-        x_from, x_to = resolve_coordinate_slice(x, accessor.metadata.shape[1])
-        y_from, y_to = resolve_coordinate_slice(y, accessor.metadata.shape[0])
-
-        # Transform points
-        x_from_t, y_from_t = np.ceil(affine[:2, :2] @ (x_from, y_from) + affine[:2, -1]).astype(int)
-        x_to_t, y_to_t = np.ceil(affine[:2, :2] @ (x_to, y_to) + affine[:2, -1]).astype(int)
-
-        return (x_from_t, y_from_t), (x_to_t, y_to_t)
