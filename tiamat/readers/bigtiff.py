@@ -39,7 +39,7 @@ class BigTiffReader(ImageReader):
             spacing=self.image_spacing,
             channel_dimension=channel_dimension,
             channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
-            additional_metadata=self.tags
+            additional_metadata=self.tags,
         )
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
