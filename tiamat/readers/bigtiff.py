@@ -28,6 +28,8 @@ class BigTiffReader(ImageReader):
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 
+        channel_dimension = None if self.num_channels == 1 else 2
+
         return md.ImageMetadata(
             image_type=md.IMAGE_TYPE_IMAGE,
             shape=self.shape,
@@ -35,11 +37,26 @@ class BigTiffReader(ImageReader):
             file_path=self.fname,
             value_range=self.value_range,
             spacing=self.image_spacing,
+            channel_dimension=channel_dimension,
             channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
             additional_metadata=self.tags,
         )
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
+        """Reads image crops from a BigTiff file.
+
+        WARNING: As tiffio is not thread-safe, do not use it in a threaded environment. Use multiprocessing instead.
+
+        Parameters
+        ----------
+        accessor : ImageAccessor
+            Image accessor object to request data.
+
+        Returns
+        -------
+        ImageResult
+            Resulting image data, rescaled to the requested scale. Missing values are padded.
+        """
         from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
@@ -73,6 +90,10 @@ class BigTiffReader(ImageReader):
     @cached_property
     def file_handle(self) -> pytiff.Tiff:
         return pytiff.Tiff(self.fname)
+    
+    @cached_property
+    def num_channels(self) -> int:
+        return self.file_handle.samples_per_pixel
 
     @cached_property
     def num_pages(self) -> int:
