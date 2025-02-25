@@ -1,6 +1,7 @@
 """
 IO objects.
 """
+
 from dataclasses import dataclass, field
 import numpy as np
 from tiamat.metadata import ImageMetadata
@@ -31,7 +32,8 @@ class ImageAccessor:
     anti_aliasing: bool = False
     # (Maybe not needed) Std of Gauss filter, default is (s - 1) / 2:
     # anti_aliasing_sigma: float = None
-    # Fill value for out-of-bounds request:
+    # Fill value for out-of-bounds request (padding)
+    # Can be set to None for no padding
     fill_value: int | float = 0
     history: dict = field(default_factory=dict)
 
