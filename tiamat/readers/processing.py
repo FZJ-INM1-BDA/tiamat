@@ -15,9 +15,15 @@ except ImportError:
     warnings.warn("image: Module cv2 is not available, using scikit-image as a fallback")
     CV2_AVAILABLE = False
 
-from ..io import ImageAccessor, INTERPOLATION_TYPE_NEAREST, INTERPOLATION_TYPE_LINEAR, INTERPOLATION_TYPE_CUBIC
+from ..io import ImageAccessor, INTERPOLATION_TYPE_NEAREST, INTERPOLATION_TYPE_LINEAR, INTERPOLATION_TYPE_CUBIC, INTERPOLATION_TYPE_AREA, INTERPOLATION_TYPE_LANCZOS4
 
-OPENCV_INTERPOLATION_CODES = {INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST, INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR, INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC}
+OPENCV_INTERPOLATION_CODES = {
+    INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
+    INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
+    INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
+    INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
+    INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4
+}
 
 
 def _expand_to_image_shape(value, image_shape):
@@ -26,7 +32,12 @@ def _expand_to_image_shape(value, image_shape):
     return value
 
 
-def rescale(image: np.ndarray, scale: float | tuple[float, ...], interpolation: str = INTERPOLATION_TYPE_CUBIC) -> np.ndarray:
+def rescale(
+        image: np.ndarray,
+        scale: float | tuple[float, ...],
+        interpolation: str = INTERPOLATION_TYPE_CUBIC,
+        anti_aliasing: bool = False,
+    ) -> np.ndarray:
     import numpy as np
 
     scale = _expand_to_image_shape(scale, image.shape[:2])
@@ -38,10 +49,15 @@ def rescale(image: np.ndarray, scale: float | tuple[float, ...], interpolation: 
 
     # Note: Rescale always rounds up. This is a design decision, that we might want to revisit.
     target_shape = np.ceil(np.array([dim * s for dim, s in zip(image.shape[:2], scale)], dtype=float)).astype(int)
-    return resize(img=image, shape=target_shape, interpolation=interpolation)
+    return resize(img=image, shape=target_shape, interpolation=interpolation, anti_aliasing=anti_aliasing)
 
 
-def resize(img, shape, interpolation=INTERPOLATION_TYPE_CUBIC):
+def resize(
+        img,
+        shape,
+        interpolation=INTERPOLATION_TYPE_CUBIC,
+        anti_aliasing: bool = False,
+    ):
     """Resize the image to specified shape using the given interpolation.
     If anti-alias is defined, a gauss filter will smooth the image before downsizing.
     If interpolation is NEAREST, anti-aliasing is turned of.
@@ -57,10 +73,23 @@ def resize(img, shape, interpolation=INTERPOLATION_TYPE_CUBIC):
     if min(img.shape) == 0:
         warnings.warn("Not possible to resize image of shape {}".format(img.shape))
         return img
+    
+    # Scaling factors per dimension
+    factors = np.divide(img.shape[:2], shape)
+
     # take care of rgb images and 2dim shapes
     if len(img.shape) == 3 and len(shape) == 2:
         shape = (shape[0], shape[1], img.shape[2])
-    arr = img
+
+    if anti_aliasing and np.any(factors > 1):
+        sigma = np.maximum(0, (factors - 1) / 2)
+        ksize = np.ceil(4. * sigma, dtype=int, casting='unsafe')
+        ksize = ksize + (1 - ksize % 2)
+
+        arr = cv2.GaussianBlur(img, ksize[::-1], sigmaX=sigma[1], sigmaY=sigma[0])
+    else:
+        arr = img
+        
     res = cv2.resize(src=arr, dsize=(shape[1], shape[0]), interpolation=OPENCV_INTERPOLATION_CODES[interpolation])
 
     # Resize tends to loose dimensions with size one, so we need to add them back
@@ -96,27 +125,47 @@ def _zero_clip(values):
 
 
 def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[float, ...]) -> np.ndarray:
+    """Access image content.
+
+    Assume a row-major coordinate system of image (z, y, x).
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Row-major image content as numpy array
+    accessor : ImageAccessor
+        Requested image coordinates
+    image_scale : tuple[float, ...]
+        Scaling of each image dimension
+    default_value: float or int
+        Fill value for out of bounds request
+
+    Returns
+    -------
+    np.ndarray
+        Requested image content
+    """
+
     coordinate_scale = _expand_to_image_shape(accessor.coordinate_scale, image.shape)
-    x, y, z, c = _prepare_coordinates(x=accessor.x,
-                                      y=accessor.y,
-                                      z=accessor.z,
-                                      c=accessor.c,
-                                      image_scale=image_scale,
-                                      coordinate_scale=coordinate_scale)
-
+    x, y, z, c = _prepare_coordinates(
+        x=accessor.x,
+        y=accessor.y,
+        z=accessor.z,
+        c=accessor.c,
+        image_scale=image_scale,
+        coordinate_scale=coordinate_scale
+    )
     x, y, z, c = _prepare_coordinates(x, y, z, c)
-
-    max_y, max_x = image.shape[:2]
 
     def _pad_left(coordinate):
         if coordinate is None:
             return 0
-        return max(-coordinate, 0)
+        return max(-int(coordinate), 0)
 
     def _pad_right(coordinate, coordinate_max):
         if coordinate is None:
             return 0
-        return max(coordinate - coordinate_max, 0)
+        return max(int(coordinate) - int(coordinate_max), 0)
 
     def _pad(coordinate, coordinate_max):
         return max(_pad_left(coordinate), _pad_right(coordinate, coordinate_max))
@@ -124,48 +173,53 @@ def access_image(image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[
     def _clip(coordinate, min_coordinate, max_coordinate):
         if coordinate is None:
             return coordinate
-        return min(max(coordinate, min_coordinate), max_coordinate - 1)
+        return min(max(int(coordinate), int(min_coordinate)), int(max_coordinate))
 
-    x_from, x_to = x
-    y_from, y_to = y
+    # Separate image and channel dimensions
+    # TODO: Support reading multiple channels
+    ch_dims = accessor.metadata.channel_dimension
+    ch_dims = [ch_dims] if ch_dims is not None else []
+    n_ch_dims = len(ch_dims )
 
-    if x_to is not None and (x_to < 0 or x_from >= image.shape[1]) \
-       or y_to is not None and (y_to < 0 or y_from >= image.shape[0]):
-        # the image will be empty, just return an empty array
-        shape = (y_to - y_from, x_to - x_from, *image.shape[2:])
-        return np.zeros(shape=shape, dtype=image.dtype)
+    image_dims = sorted(list(set(range(len(image.shape))) - set(ch_dims)))
+    n_image_dims = len(image_dims)
 
-    pad_x_left, pad_x_right = _pad(x_from, max_x), _pad(x_to, max_x)
-    pad_y_left, pad_y_right = _pad(y_from, max_y), _pad(y_to, max_y)
-    # attention: the final padding is in y-x again, as it is applied to the image.
-    padding = [(pad_y_left, pad_y_right), (pad_x_left, pad_x_right), ]
+    assert n_image_dims == 2 or n_image_dims == 3, "Only 2D or 3D images supported"
 
-    # clip after padding
-    x_from, x_to = [_clip(xi, 0, max_x) for xi in (x_from, x_to)]
-    y_from, y_to = [_clip(yi, 0, max_y) for yi in (y_from, y_to)]
+    # Filter requested coordinates for each dim, assuming row major order
+    access_image_dims = [z, y, x][-n_image_dims:]
+    access_ch_dims = [c] if n_ch_dims == 1 else []
 
-    # mind the order of x and y!
-    result = image[y_from:y_to, x_from:x_to, ]
+    # Loop over all dimensions to create request
+    request_slices = [slice(None)] * len(image.shape)
+    access_shape = np.ones((len(image.shape)), dtype=np.int64)
+    for dim, coord in zip(ch_dims + image_dims, access_ch_dims + access_image_dims):
+        max_c = image.shape[dim]
+        c_from, c_to = coord
 
-    if accessor.z is not None:
-        z_from, z_to = z
-        # Is it okay to assume that z is always the second dimension? Only works as long as nobody passes z coordinates for images for RGB images or something like that.
-        max_z = image.shape[2]
-        pad_z_left, pad_z_right = _pad(z_from, max_z), _pad(z_to, max_z)
-        padding.append((pad_z_left, pad_z_right))
-        z_from, z_to = [_clip(zi, 0, max_z) for zi in (z_from, z_to)]
-        result = result[..., z_from:z_to]
+        request_slices[dim] = slice(_clip(c_from, 0, max_c), _clip(c_to, 0, max_c))
+        access_shape[dim] = c_to - c_from if c_to is not None else image.shape[dim]
 
-    if accessor.c is not None:
-        c_from, c_to = c
-        result = result[..., c_from:c_to]
-        padding.append((0, 0))
+    # Loop over image dimensions to determine padding
+    padding = [(0, 0)] * len(image.shape)
+    for dim, coord in zip(image_dims, access_image_dims):
+        max_coord = image.shape[dim]
+        coord_from, coord_to = coord
 
-    # Only do padding if necessary.
+        if (coord_to is not None and coord_to < 0) or coord_from >= max_coord:
+            # The image will be empty, just return an empty array
+            return np.full(access_shape, fill_value=accessor.fill_value, dtype=image.dtype)
+
+        padding[dim] = (_pad(coord_from, max_coord), _pad(coord_to, max_coord))
+        request_slices[dim] = slice(_clip(coord_from, 0, max_coord), _clip(coord_to, 0, max_coord))
+        access_shape[dim] = coord_to - coord_from if coord_to is not None else image.shape[dim]
+
+    # Read requested data
+    result = image[tuple(request_slices)]
+
+    # Only do padding if necessary
     if any(any(p > 0 for p in pad) for pad in padding):
-        # Additional dimensions without accessor.
-        padding = padding + [(0, 0) for _ in range(len(result.shape) - len(padding))]
-        result = np.pad(result, padding)
+        result = np.pad(result, padding, constant_values=accessor.fill_value)
 
     return result
 
@@ -179,7 +233,7 @@ def access_and_rescale_image(image: np.ndarray, accessor: ImageAccessor, image_s
 
     interpolation = get_interpolation_for_accessor(accessor)
     target_scale = tuple(s / s_image for s, s_image in zip(scale, image_scale))
-    image = rescale(image, scale=target_scale, interpolation=interpolation)
+    image = rescale(image, scale=target_scale, interpolation=interpolation, anti_aliasing=accessor.anti_aliasing)
 
     return image
 

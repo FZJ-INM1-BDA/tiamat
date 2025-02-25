@@ -2,9 +2,6 @@
 Reading BigTiff images.
 """
 
-import matplotlib
-
-matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from tiamat.transformers.color import GrayscaleTransformer, LUTTransformer
 from tiamat.transformers.access import FractionTransformer
