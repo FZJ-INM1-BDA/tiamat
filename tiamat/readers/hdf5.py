@@ -19,6 +19,10 @@ class HDF5Reader(ImageReader):
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 
+        # TODO: Need a better way to determine channel dimensions
+        # This implementation causes problems when moving to 3D
+        channel_dimension = None if len(self.shape) == 2 else 2
+
         return md.ImageMetadata(
             image_type=md.IMAGE_TYPE_IMAGE,
             shape=self.shape,
@@ -26,6 +30,7 @@ class HDF5Reader(ImageReader):
             file_path=self.fname,
             value_range=self.value_range,
             spacing=self.image_spacing,
+            channel_dimension=channel_dimension,
             channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
             additional_metadata=self.attributes,
         )
@@ -36,7 +41,6 @@ class HDF5Reader(ImageReader):
         # Read, crop, and rescale.
         target_scale = accessor.scale
         available_scale, available_scale_index = self._find_scale(target_scale)
-        print(target_scale, available_scale)
 
         pyramid_level = self.pyramid_datasets[available_scale_index]
         image = access_and_rescale_image(
