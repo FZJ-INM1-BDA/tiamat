@@ -8,8 +8,9 @@ register_reader(GenericReader)
 
 # BigTiff
 from .bigtiff import BigTiffReader
-
+from .bigtiff_zstack import ZstackBigTiffReader
 register_reader(BigTiffReader)
+register_reader(ZstackBigTiffReader)
 
 # HDF5
 from .hdf5 import HDF5Reader
