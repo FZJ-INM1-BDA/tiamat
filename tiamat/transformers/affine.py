@@ -185,7 +185,7 @@ class AffineTransformer(Transformer):
             # Loop over first spatial dimension
             for i in range(image_result.image.shape[spatial_dimensions[0]]):
                 result_imgs.append(_apply_affine(image_result.image[i]))
-            result_image = np.vstack(result_imgs)
+            result_image = np.stack(result_imgs, axis=0)
             image_result.image = result_image
         else:
             # CV2

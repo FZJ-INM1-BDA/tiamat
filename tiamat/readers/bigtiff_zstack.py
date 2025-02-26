@@ -15,7 +15,7 @@ from .bigtiff import BigTiffReader
 
 def _find_slices(fname: str) -> tuple[str, ...]:
     head, _ = os.path.splitext(fname)
-    pattern = f"{head}_Slice[0-9][0-9].tif*"
+    pattern = f"{head}[0-9][0-9].tif*"
     slices = sorted(glob.glob(pattern))
     return tuple(slices)
 
@@ -114,3 +114,6 @@ class ZstackBigTiffReader(ImageReader):
     def num_slices(self) -> int:
         return len(self.slices)
 
+    @classmethod
+    def check_file(cls, fname: str) -> bool | int | float:
+        return 10 if fname.lower().endswith("_slice") else False
