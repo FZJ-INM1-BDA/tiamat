@@ -53,13 +53,13 @@ class ZstackBigTiffReader(ImageReader):
         # Read and stack all images. For efficiency, create empty array first, then write remaining data into arrays.
         slice_handles = self._get_ordered_slice_handles()
         first_result = slice_handles[0].read_image(accessor=accessor)
-        shape = tuple([*first_result.image.shape, self.num_slices])
+        shape = tuple([self.num_slices, *first_result.image.shape])
         dtype = first_result.image.dtype
         image = np.zeros(shape=shape, dtype=dtype)
-        image[..., 0] = first_result.image
+        image[0] = first_result.image
         # write remaining images
         for i, handle in enumerate(slice_handles[1:], 1):
-            image[..., i] = handle.read_image(accessor=accessor).image
+            image[i] = handle.read_image(accessor=accessor).image
         return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
 
     @cached_property

@@ -169,13 +169,26 @@ class AffineTransformer(Transformer):
         affine = target_origin_affine @ px_affine @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
 
-        # CV2
-        image_result.image = cv2.warpAffine(
-            src=image_result.image,
-            M=affine[:2],
-            dsize=target_size,
-            flags=OPENCV_INTERPOLATION_CODES[interpolation],
-            borderValue=accessor.fill_value,
-        )
+        def _apply_affine(image):
+            return cv2.warpAffine(
+                src=image,
+                M=affine[:2],
+                dsize=target_size,
+                flags=OPENCV_INTERPOLATION_CODES[interpolation],
+                borderValue=accessor.fill_value,
+            )
+
+        # Apply to image or loop over stack of images if 3 spatial dims
+        spatial_dimensions = accessor.metadata.spatial_dimensions
+        if len(spatial_dimensions) > 2:
+            result_imgs = []
+            # Loop over first spatial dimension
+            for i in range(image_result.image.shape[spatial_dimensions[0]]):
+                result_imgs.append(_apply_affine(image_result.image[i]))
+            result_image = np.vstack(result_imgs)
+            image_result.image = result_image
+        else:
+            # CV2
+            image_result.image = _apply_affine(image_result.image)
 
         return image_result

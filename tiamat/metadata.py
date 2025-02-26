@@ -30,6 +30,14 @@ class ImageMetadata:
     additional_metadata: dict = None
 
     @property
+    def spatial_dimensions(self):
+        """
+        Returns indices of spatial axes, excluding channels
+        """
+        ch_dims = [self.channel_dimension] if self.channel_dimension is not None else []
+        return sorted(list(set(range(len(self.shape))) - set(ch_dims)))
+
+    @property
     def extents(self):
         """
         Extents of the image. Provided as a list of tuple of coordinates. 
