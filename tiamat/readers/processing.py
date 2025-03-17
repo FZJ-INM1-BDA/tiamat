@@ -125,8 +125,8 @@ def _prepare_coordinates(
 ):
     prepared = []
     for i, coord in enumerate((x, y, z, c)):
-        c_scale = coordinate_scale[i] if i < len(image_scale) else 1.0
-        i_scale = image_scale[i] if i < len(coordinate_scale) else 1.0
+        c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
+        i_scale = image_scale[i] if i < len(image_scale) else 1.0
         factor = i_scale / c_scale
 
         if isinstance(coord, int):
