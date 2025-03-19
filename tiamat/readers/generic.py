@@ -1,7 +1,8 @@
 """
 Reader for generic image formats.
 """
-from functools import cache
+
+from functools import cache, cached_property
 from .protocol import ImageReader
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -17,14 +18,16 @@ class GenericReader(ImageReader):
     def _read_image(self):
         from imageio.v3 import imread
 
-        image = self._cached_image if self._cached_image is not None else imread(self.fname)
+        image = (
+            self._cached_image if self._cached_image is not None else imread(self.fname)
+        )
         if self.cache_image:
             self._cached_image = image
 
         return image
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
-        from ._processing import access_and_rescale_image
+        from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
         image = self._read_image()
@@ -38,11 +41,31 @@ class GenericReader(ImageReader):
 
         # For generic images, we have to assume a lot and cannot derive much, even with reading the data.
         image = self._read_image()
+        channel_dimension = None if len(image.shape) == 2 else 2
 
-        return md.ImageMetadata(image_type=md.IMAGE_TYPE_IMAGE,
-                                shape=image.shape,
-                                dtype=image.dtype,
-                                file_path=self.fname,
-                                value_range=(0, 255),
-                                spacing=self.image_spacing,
-                                channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR)
+        return md.ImageMetadata(
+            image_type=md.IMAGE_TYPE_IMAGE,
+            shape=image.shape,
+            dtype=image.dtype,
+            file_path=self.fname,
+            value_range=(0, 255),
+            spacing=self.image_spacing,
+            channel_dimension=channel_dimension,
+            channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
+        )
+
+    @classmethod
+    def supported_extensions(cls):
+        import imageio
+
+        extensions = []
+        for fmt in imageio.formats:
+            extensions.extend(fmt.extensions)
+        return extensions
+
+    @classmethod
+    def check_file(cls, fname) -> bool | int | float:
+        import os
+
+        _, ext = os.path.splitext(fname)
+        return ext in cls.supported_extensions()
