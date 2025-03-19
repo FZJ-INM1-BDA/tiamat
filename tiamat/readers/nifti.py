@@ -39,3 +39,6 @@ class NiftiReader(ImageReader):
                                 dtype=nii.get_data_dtype(),
                                 file_path=self.fname)
 
+    @classmethod
+    def check_file(cls, fname: str):
+        return fname.endswith(".nii") or fname.endswith(".nii.gz")
