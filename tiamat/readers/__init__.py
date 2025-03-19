@@ -14,3 +14,6 @@ register_reader(const.FILE_TYPES_BIGTIFF_ZSTACK, ZstackBigTiffReader)
 # H5Pli
 from .h5pli import H5Pli
 register_reader(const.FILE_TYPES_HDF5, H5Pli)
+
+from .nifti import NiftiReader
+register_reader(const.FILE_TYPES_NIFTI, NiftiReader)
