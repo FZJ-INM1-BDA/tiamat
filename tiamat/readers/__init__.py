@@ -19,4 +19,4 @@ register_reader(HDF5Reader)
 # nifti
 from .nifti import NiftiReader
 
-register_reader(const.FILE_TYPES_NIFTI, NiftiReader)
+register_reader(NiftiReader)
