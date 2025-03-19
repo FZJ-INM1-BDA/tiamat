@@ -3,17 +3,20 @@ from .factory import get_reader, register_reader
 
 # Generic image formats
 from .generic import GenericReader
-register_reader(const.FILE_TYPES_GENERIC, GenericReader)
+
+register_reader(GenericReader)
 
 # BigTiff
 from .bigtiff import BigTiffReader
-from .bigtiff_zstack import ZstackBigTiffReader
-register_reader(const.FILE_TYPES_BIGTIFF, BigTiffReader)
-register_reader(const.FILE_TYPES_BIGTIFF_ZSTACK, ZstackBigTiffReader)
 
-# H5Pli
-from .h5pli import H5Pli
-register_reader(const.FILE_TYPES_HDF5, H5Pli)
+register_reader(BigTiffReader)
 
+# HDF5
+from .hdf5 import HDF5Reader
+
+register_reader(HDF5Reader)
+
+# nifti
 from .nifti import NiftiReader
+
 register_reader(const.FILE_TYPES_NIFTI, NiftiReader)
