@@ -26,10 +26,17 @@ def get_reader_for_file_type(file_type):
 
 def get_reader(fname: str, **kwargs) -> ImageReader:
     import os
+    from tiamat.errors import UnknownFileError
 
-    _, ext = os.path.splitext(fname)
-    # remove the leading dot
-    ext = ext[1:]
+    filename = os.path.basename(fname)
+    fragments = filename.split(".")
 
-    reader_cls = get_reader_for_file_type(ext)
-    return reader_cls(fname, **kwargs)
+    # start from the most specific (contains all fragments)
+    # to least specific (contains only the ext)
+    while len(fragments) > 0:
+        try:
+            reader_cls = get_reader_for_file_type(".".join(fragments))
+            return reader_cls(fname, **kwargs)
+        except UnknownFileError:
+            fragments.pop(0)
+    raise UnknownFileError(f"Could not find reader for {fname}")
