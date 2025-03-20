@@ -61,7 +61,11 @@ class Array(object):
     @property
     def shape(self):
         """Shape of the image."""
-        return self.metadata.shape
+        import numpy as np
+
+        return tuple(
+            np.ceil(np.array(self.metadata.shape) * self.scale).astype(int).tolist()
+        )
 
     @property
     def ndim(self):

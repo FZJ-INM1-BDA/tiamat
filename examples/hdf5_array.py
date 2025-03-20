@@ -25,3 +25,4 @@ print(array.scale)
 
 array_pyramid = Array.create_arrays_for_scales(file_name=fname, pipeline=pipeline)
 print([array.scale for array in array_pyramid])
+print([array.shape for array in array_pyramid])
