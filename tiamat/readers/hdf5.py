@@ -32,6 +32,7 @@ class HDF5Reader(ImageReader):
             spacing=self.image_spacing,
             channel_dimension=channel_dimension,
             channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
+            scales=self.scales,
             additional_metadata=self.attributes,
         )
 
