@@ -39,6 +39,7 @@ class BigTiffReader(ImageReader):
             spacing=self.image_spacing,
             channel_dimension=channel_dimension,
             channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
+            scales=self.scales,
             additional_metadata=self.tags,
         )
 
@@ -90,7 +91,7 @@ class BigTiffReader(ImageReader):
     @cached_property
     def file_handle(self) -> pytiff.Tiff:
         return pytiff.Tiff(self.fname)
-    
+
     @cached_property
     def num_channels(self) -> int:
         return self.file_handle.samples_per_pixel
