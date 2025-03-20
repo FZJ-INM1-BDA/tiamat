@@ -40,8 +40,16 @@ class TransposeTransformer(Transformer):
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import numpy as np
 
+        metadata = image_result.accessor.metadata
+        assert metadata is not None, "CPNTransformer requires metadata."
+
         # TODO: Only support 2D for now, remove [1:] later if 3D supported
-        image_result.image = np.transpose(image_result.image, axes=self.reorder_axes[1:])
+        image_result.image = np.moveaxis(
+            image_result.image,
+            [metadata.spatial_dimensions[i] for i in self.reorder_axes[1:]],
+            metadata.spatial_dimensions,
+        )
+        # image_result.image = np.transpose(image_result.image, axes=self.reorder_axes[1:])
 
         return image_result
 
@@ -77,7 +85,11 @@ class MirrorTransformer(Transformer):
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import numpy as np
 
-        flip_axes = self.mirror_y * [0] + self.mirror_x * [1]
+        metadata = image_result.accessor.metadata
+        assert metadata is not None, "CPNTransformer requires metadata."
+
+        # TODO: Only support 2D for now, use spatial_dimensions[0]] for z later
+        flip_axes = self.mirror_y * [metadata.spatial_dimensions[0]] + self.mirror_x * [metadata.spatial_dimensions[1]]
 
         image_result.image = np.flip(image_result.image, axis=flip_axes)
 
