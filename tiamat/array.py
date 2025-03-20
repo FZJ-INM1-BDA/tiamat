@@ -12,7 +12,6 @@ Things to keep in mind:
 from typing import Iterable, Tuple
 from functools import cached_property
 
-from numpy import array, isin, ndim
 from .pipeline import Pipeline
 from .metadata import ImageMetadata
 from .io import ImageAccessor
@@ -68,6 +67,13 @@ class Array(object):
     def ndim(self):
         """Number of dimensions."""
         return len(self.shape)
+
+    @property
+    def size(self):
+        """Size of the array."""
+        import math
+
+        return math.prod(self.shape)
 
     @property
     def dtype(self):
