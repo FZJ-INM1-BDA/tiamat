@@ -1,5 +1,15 @@
 from .protocol import ImageReader
 
+DTYPE_MINMAX_DICT = {
+    "int8": (-128, 127),
+    "int16": (-32_768, 32_767),
+    "int32": (-2_147_483_648, 2_147_483_647),
+
+    "uint8": (0, 255),
+    "uint16": (0, 65_525),
+    "uint32": (0, 4_294_967_295),
+}
+
 class NiftiReader(ImageReader):
 
     def __init__(self, fname: str):
@@ -14,29 +24,25 @@ class NiftiReader(ImageReader):
         
         nii: nib.Nifti1Image = nib.load(self.fname)
         data = nii.get_fdata()
-
-        # assert np.max(data) < 257
-
-        # new_data = np.astype(data, np.uint8)
         
         image = access_and_rescale_image(data, accessor)
-        print(accessor.metadata)
         
         return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
 
     def read_metadata(self):
         from tiamat import metadata as md
         import nibabel as nib
-        import numpy as np
 
         nii: nib.Nifti1Image = nib.load(self.fname)
         assert len(nii.shape) == 2
-        data = nii.get_fdata()
+
+        dtype = nii.get_data_dtype()
+        value_range = DTYPE_MINMAX_DICT.get(str(dtype), (None, None))
 
         return md.ImageMetadata(image_type=md.IMAGE_TYPE_IMAGE,
                                 shape=nii.shape,
-                                value_range=(np.min(data), np.max(data)),
-                                dtype=nii.get_data_dtype(),
+                                value_range=value_range,
+                                dtype=dtype,
                                 file_path=self.fname)
 
     @classmethod
