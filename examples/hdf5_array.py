@@ -26,3 +26,16 @@ print(array.scale)
 array_pyramid = Array.create_arrays_for_scales(file_name=fname, pipeline=pipeline)
 print([array.scale for array in array_pyramid])
 print([array.shape for array in array_pyramid])
+
+pipeline = Pipeline(
+    image_transformers=[
+        GrayscaleTransformer(),
+    ]
+)
+array = Array(
+    file_name=fname,
+    pipeline=pipeline,
+    scale=1.0,
+)
+print(array.shape)
+print(array[:20, :20].shape)
