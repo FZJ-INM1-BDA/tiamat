@@ -73,8 +73,8 @@ class Pipeline:
         reader = self.reader_factory(file_name, **reader_kwargs)
         metadata = reader.read_metadata()
         # backwards pass through the transformers to transform the accessor
-        for transformer in self.transformers[::-1]:
-            if hasattr(transformer, "read_metadata"):
+        for transformer in self.transformers:
+            if hasattr(transformer, "transform_metadata"):
                 # check for transformers that do not implement transform_metadata
                 metadata = transformer.transform_metadata(metadata=metadata)
         return metadata
