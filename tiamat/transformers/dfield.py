@@ -85,8 +85,6 @@ class DeformationFieldTransformer(Transformer):
         sitk_image.SetOrigin(image_origin)
         sitk_image.SetDirection([1.0, 0.0, 0.0, 1.0])  # Identity matrix for 2D
 
-        print(image_spacing, image_origin)
-
         # Convert deformation field to SimpleITK format
         displacement_field = sitk.GetImageFromArray(dfield.astype(np.float64), isVector=True)
         displacement_field.SetSpacing((dfield_spacing, dfield_spacing))
@@ -94,8 +92,6 @@ class DeformationFieldTransformer(Transformer):
         displacement_field.SetDirection([1.0, 0.0, 0.0, 1.0])  # Identity matrix for 2D
 
         dfield_size = (int((dfield_spacing / image_spacing) * s) for s in displacement_field.GetSize())
-
-        print(dfield_spacing, dfield_origin, dfield[0, 0])
 
         displacement_transform = sitk.DisplacementFieldTransform(displacement_field)
 
