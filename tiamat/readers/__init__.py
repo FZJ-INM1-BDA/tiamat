@@ -16,3 +16,8 @@ register_reader(ZstackBigTiffReader)
 from .hdf5 import HDF5Reader
 
 register_reader(HDF5Reader)
+
+# nifti
+from .nifti import NiftiReader
+
+register_reader(NiftiReader)
