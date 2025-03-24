@@ -2,9 +2,10 @@
 Factory for readers.
 """
 
+from typing import List
 from ..readers.protocol import ImageReader
 
-_READER_REGISTRY = []
+_READER_REGISTRY: List[ImageReader] = []
 
 
 def register_reader(reader_class):
