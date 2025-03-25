@@ -1,18 +1,18 @@
-from .. import constants as const
-from .factory import get_reader, register_reader
+from .factory import register_reader, get_reader
 
-# Generic image formats
-from .generic import GenericReader
 
-register_reader(GenericReader)
+def register_all_readers():
+    # Generic image formats
+    from .generic import GenericReader
 
-# BigTiff
-from .bigtiff import BigTiffReader
-from .bigtiff_zstack import ZstackBigTiffReader
-register_reader(BigTiffReader)
-register_reader(ZstackBigTiffReader)
+    register_reader(GenericReader)
 
-# HDF5
-from .hdf5 import HDF5Reader
+    # NIFTI
+    from .nifti import NiftiReader
 
-register_reader(HDF5Reader)
+    register_reader(NiftiReader)
+
+    # In-memory arrays
+    from .memory import MemoryReader
+
+    register_reader(MemoryReader)
