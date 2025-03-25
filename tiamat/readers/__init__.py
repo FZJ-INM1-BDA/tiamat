@@ -1,4 +1,4 @@
-from .factory import register_reader
+from .factory import register_reader, get_reader
 
 # Generic image formats
 from .generic import GenericReader
