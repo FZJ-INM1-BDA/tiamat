@@ -20,6 +20,29 @@ CHANNEL_INTERPRETATION_COLOR = "color"
 CHANNEL_INTERPRETATION_STACK = "stack"
 
 
+def get_dtype_limits(dtype):
+    """Returns the min and max values for a given dtype.
+
+    Supports numpy dtypes (integer or float)
+
+    Args:
+        dtype: numpy dtype
+
+    Returns:
+        tuple: min and max value of the dtype.
+    """
+
+    dtype = np.dtype(dtype)
+
+    if issubclass(dtype.type, np.integer):
+        info = np.iinfo(dtype)
+    elif issubclass(dtype.type, np.floating):
+        info = np.finfo(dtype)
+    else:
+        raise RuntimeError(f"{dtype} is not a valid dtype")
+    return info.min, info.max
+
+
 @dataclass
 class ImageMetadata:
     """
@@ -30,11 +53,11 @@ class ImageMetadata:
     shape: tuple
     value_range: tuple
     dtype: np.dtype
-    file_path: str = None
-    spacing: float | tuple[float, ...] = None
-    channel_dimension: int = None  # None means no channel dimension
+    file_path: str | None = None
+    spacing: float | tuple[float, ...] | None = None
+    channel_dimension: int | None = None  # None means no channel dimension
     channel_interpretation: str = CHANNEL_INTERPRETATION_COLOR
-    additional_metadata: dict = None
+    additional_metadata: dict | None = None
     scales: float | int | Iterable[float | int] | None = None
 
     @property
