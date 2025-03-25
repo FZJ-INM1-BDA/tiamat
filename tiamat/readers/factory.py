@@ -2,14 +2,16 @@
 Factory for readers.
 """
 
+from typing import List
 from ..readers.protocol import ImageReader
 
-_READER_REGISTRY = []
+_READER_REGISTRY: List[ImageReader] = []
 
 
-def register_reader(reader_class):
-    if reader_class not in _READER_REGISTRY:
-        _READER_REGISTRY.append(reader_class)
+def register_reader(*reader_classes):
+    for reader_class in reader_classes:
+        if reader_class not in _READER_REGISTRY:
+            _READER_REGISTRY.append(reader_class)
 
 
 def get_reader_for_file_type(file_type):
@@ -21,8 +23,13 @@ def get_reader_for_file_type(file_type):
         raise UnknownFileError(f"Could not find reader for file type {file_type}")
 
 
-def get_reader(fname: str, **kwargs) -> ImageReader:
+def get_reader(fname: str, auto_register_default_readers=True, **kwargs) -> ImageReader:
     from tiamat.errors import UnknownFileError
+
+    if auto_register_default_readers:
+        from . import register_all_readers
+
+        register_all_readers()
 
     reader_by_priority = []
     for reader in _READER_REGISTRY:
