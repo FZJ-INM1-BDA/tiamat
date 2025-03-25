@@ -48,8 +48,8 @@ dev = ["autopep8", "flake8", "pytest"]
 
 [project.urls]
 homepage = "https://www.fz-juelich.de/de/inm/inm-1"
-documentation = "https://jugit.fz-juelich.de/inm-1/bda/tiamat/tiamat/-/blob/master/README.md?ref_type=heads"
-repository = "https://jugit.fz-juelich.de/inm-1/bda/tiamat/tiamat"
+documentation = "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/blob/master/README.md?ref_type=heads"
+repository = "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
