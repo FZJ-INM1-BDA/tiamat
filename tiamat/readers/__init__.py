@@ -11,3 +11,8 @@ def register_all_readers():
     from .nifti import NiftiReader
 
     register_reader(NiftiReader)
+
+    # In-memory arrays
+    from .memory import MemoryReader
+
+    register_reader(MemoryReader)
