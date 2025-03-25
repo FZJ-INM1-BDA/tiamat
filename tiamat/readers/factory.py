@@ -8,9 +8,10 @@ from ..readers.protocol import ImageReader
 _READER_REGISTRY: List[ImageReader] = []
 
 
-def register_reader(reader_class):
-    if reader_class not in _READER_REGISTRY:
-        _READER_REGISTRY.append(reader_class)
+def register_reader(*reader_classes):
+    for reader_class in reader_classes:
+        if reader_class not in _READER_REGISTRY:
+            _READER_REGISTRY.append(reader_class)
 
 
 def get_reader_for_file_type(file_type):
