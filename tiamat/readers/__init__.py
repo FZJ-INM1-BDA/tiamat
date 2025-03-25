@@ -1,11 +1,13 @@
 from .factory import register_reader, get_reader
 
-# Generic image formats
-from .generic import GenericReader
 
-register_reader(GenericReader)
+def register_all_readers():
+    # Generic image formats
+    from .generic import GenericReader
 
-# nifti
-from .nifti import NiftiReader
+    register_reader(GenericReader)
 
-register_reader(NiftiReader)
+    # NIFTI
+    from .nifti import NiftiReader
+
+    register_reader(NiftiReader)
