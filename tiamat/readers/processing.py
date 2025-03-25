@@ -125,8 +125,8 @@ def _prepare_coordinates(
 ):
     prepared = []
     for i, coord in enumerate((x, y, z, c)):
-        c_scale = coordinate_scale[i] if i < len(image_scale) else 1.0
-        i_scale = image_scale[i] if i < len(coordinate_scale) else 1.0
+        c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
+        i_scale = image_scale[i] if i < len(image_scale) else 1.0
         factor = i_scale / c_scale
 
         if isinstance(coord, int):
@@ -144,6 +144,17 @@ def _prepare_coordinates(
             )
         prepared.append(prepared_coord)
     return prepared
+
+def _resolve_coordinate(coordinate, image_dimension):
+
+    if coordinate is None:
+        return image_dimension
+    elif isinstance(coordinate, (np.integer, int)):
+        return coordinate
+    elif isinstance(coordinate, (np.floating, float)):
+        raise RuntimeError(f"Encountered fractional value of {coordinate} as coordinate, which is not supported.")
+    else:
+        return tuple(_resolve_coordinate(coordinate_i, image_dimension) for coordinate_i in coordinate)
 
 
 def _zero_clip(values):

@@ -1,7 +1,7 @@
 """
 Affine transformers.
 """
-from typing import Tuple
+from typing import Tuple, List
 from dataclasses import asdict
 from itertools import repeat, product
 
@@ -16,35 +16,23 @@ import numpy as np
 class AffineTransformer(Transformer):
     def __init__(
             self,
-            affine_matrix,
+            affine_matrix: np.array | List[List[float]],
             request_margin: int = 0,
         ):
-        self.affine_matrix = affine_matrix
+        self.affine_matrix = np.array(affine_matrix)
 
-        # Margin around image data requested by this transform to avoid resampling artifacts
-        # TODO: Debug affine transform with margin > 0
+        # Pixel margin around requested image to avoid resampling artifacts
         self.request_margin = request_margin
 
     def _make_corner_px_affine(self, affine):
         # Make input affine matrix corner pixel aligned by shifted half a pixel value and reverse
         input_offset = np.eye(3)
-        input_offset[:2, -1] = (0.5, 0.5)  
+        input_offset[:2, -1] = (0.5, 0.5)
 
         target_offset = np.eye(3)
         target_offset[:2, -1] = (-0.5, -0.5)
 
         return target_offset @ affine @ input_offset
-
-    def _resolve_coordinate(self, coordinate, image_dimension):
-
-        if coordinate is None:
-            return image_dimension
-        elif isinstance(coordinate, (np.integer, int)):
-            return coordinate
-        elif isinstance(coordinate, (np.floating, float)):
-            raise RuntimeError(f"AffineTransformer encountered fractional value {coordinate}, which is not supported at the moment.")
-        else:
-            return tuple(self._resolve_coordinate(coordinate_i, image_dimension) for coordinate_i in coordinate)
 
     def _transform_point(self, x: int | float, y: int | float, affine: np.ndarray) -> Tuple[int | float, int | float]:
         return affine[:2, :2] @ (x, y) + affine[:2, -1]
@@ -52,11 +40,10 @@ class AffineTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         import math
         from dataclasses import replace
-        from tiamat.readers.processing import _prepare_coordinates
+        from tiamat.readers.processing import _prepare_coordinates, _expand_to_image_shape, _resolve_coordinate
 
         assert accessor.metadata is not None, f"AffineTransformer requires metadata."
 
-        # TODO: Take care of spacing and/or scale.
         # TODO: Handle 3D.
 
         # Invert affine to find which coordinates we need to read
@@ -64,8 +51,8 @@ class AffineTransformer(Transformer):
 
         # Read coordinates for requested frame
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        x_from, x_to = self._resolve_coordinate(x, accessor.metadata.shape[1])
-        y_from, y_to = self._resolve_coordinate(y, accessor.metadata.shape[0])
+        x_from, x_to = _resolve_coordinate(x, accessor.metadata.shape[1])
+        y_from, y_to = _resolve_coordinate(y, accessor.metadata.shape[0])
 
         # Transform all four corners of the requested frame by the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)
@@ -73,11 +60,14 @@ class AffineTransformer(Transformer):
         x3, y3 = self._transform_point(x_to, y_to, affine)
         x4, y4 = self._transform_point(x_from, y_to, affine)
 
+        # Scale the margin by self.request_margin to obtain physical extent
+        scaled_margin = self.request_margin / accessor.scale
+
         # Request outer bounds of the transformed view
-        x_from_t = min(x1, x2, x3, x4) - self.request_margin
-        y_from_t = min(y1, y2, y3, y4) - self.request_margin
-        x_to_t = max(x1, x2, x3, x4) + self.request_margin
-        y_to_t = max(y1, y2, y3, y4) + self.request_margin
+        x_from_t = min(x1, x2, x3, x4) - scaled_margin
+        y_from_t = min(y1, y2, y3, y4) - scaled_margin
+        x_to_t = max(x1, x2, x3, x4) + scaled_margin
+        y_to_t = max(y1, y2, y3, y4) + scaled_margin
 
         # Calculate offsets of the requested frame due to integer rounding
         offset_x_input = math.floor(x_from_t) - x_from_t
@@ -87,6 +77,9 @@ class AffineTransformer(Transformer):
         accessor = replace(accessor)
         accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
         accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
+
+        # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
+        # We need to scale the coordinates to obtain pixel coordinates
         accessor.history[id(self)] = (x_from, x_to, offset_x_input, y_from, y_to, offset_y_input)
 
         return accessor
@@ -118,16 +111,22 @@ class AffineTransformer(Transformer):
         return new_metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
+        import math
         import cv2
         import numpy as np
         from ..readers.processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
+
+        target_scale = image_result.accessor.scale
 
         # Restore extent from requested frame
         try:
             x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = image_result.accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
-        target_size = (x_to - x_from, y_to - y_from)
+        target_size = (
+            int(target_scale * (x_to - x_from)),
+            int(target_scale * (y_to - y_from)),
+        )
 
         accessor = image_result.accessor
         (x_from_input, x_to_input), (y_from_input, y_to_input), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
@@ -140,19 +139,45 @@ class AffineTransformer(Transformer):
         # 2. Apply our actual affine matrix.
         # 3. Specify an affine matrix shifting towards the origin of the target image.
 
+        # Transform affine to pixel coordinates and make it corner pixel aligned
+        px_affine = self.affine_matrix.copy()
+        px_affine[:2, -1] = px_affine[:2, -1] * target_scale
+        px_affine = self._make_corner_px_affine(px_affine)
+
         # Step 1: Shift towards input.
         input_origin_affine = np.eye(3)
-        input_origin_affine[:2, -1] = (x_from_input + offset_x_input, y_from_input + offset_y_input )
+        input_origin_affine[:2, -1] = (x_from_input + offset_x_input, y_from_input + offset_y_input)
+        input_origin_affine[:2, -1] = input_origin_affine[:2, -1] * target_scale
 
         # Step 3: Shift towards target.
         target_origin_affine = np.eye(3)
         target_origin_affine[:2, -1] = (-x_from, -y_from)
+        target_origin_affine[:2, -1] = target_origin_affine[:2, -1] * target_scale
 
         # Step 1., 2., and 3.
-        affine = target_origin_affine @ self._make_corner_px_affine(self.affine_matrix) @ input_origin_affine
+        affine = target_origin_affine @ px_affine @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
 
-        # CV2 
-        image_result.image = cv2.warpAffine(src=image_result.image, M=affine[:2], dsize=target_size, flags=OPENCV_INTERPOLATION_CODES[interpolation])
+        def _apply_affine(image):
+            return cv2.warpAffine(
+                src=image,
+                M=affine[:2],
+                dsize=target_size,
+                flags=OPENCV_INTERPOLATION_CODES[interpolation],
+                borderValue=accessor.fill_value,
+            )
+
+        # Apply to image or loop over stack of images if 3 spatial dims
+        spatial_dimensions = accessor.metadata.spatial_dimensions
+        if len(spatial_dimensions) > 2:
+            result_imgs = []
+            # Loop over first spatial dimension
+            for i in range(image_result.image.shape[spatial_dimensions[0]]):
+                result_imgs.append(_apply_affine(image_result.image[i]))
+            result_image = np.stack(result_imgs, axis=0)
+            image_result.image = result_image
+        else:
+            # CV2
+            image_result.image = _apply_affine(image_result.image)
 
         return image_result
