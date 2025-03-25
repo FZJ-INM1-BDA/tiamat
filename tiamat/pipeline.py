@@ -7,6 +7,7 @@ from .transformers.protocol import Transformer
 from .readers.protocol import ImageReader
 from .readers.factory import get_reader
 from .io import ImageAccessor, ImageResult
+from .metadata import ImageMetadata
 
 
 class Pipeline:
@@ -17,10 +18,10 @@ class Pipeline:
 
     def __init__(
         self,
-        transformers: Iterable[Transformer] = None,
-        access_transformers: Iterable[Transformer] = None,
-        image_transformers: Iterable[Transformer] = None,
-        reader_factory: Callable[[str], ImageReader] = None,
+        transformers: Iterable[Transformer] | None = None,
+        access_transformers: Iterable[Transformer] | None = None,
+        image_transformers: Iterable[Transformer] | None = None,
+        reader_factory: Callable[[str], ImageReader] | None = None,
         auto_register_default_readers: bool = True,
     ):
         """
@@ -37,12 +38,13 @@ class Pipeline:
             assert (
                 not access_transformers and not image_transformers
             ), "access_transformers and image_transformers may ne be used together with transformers argument."
-        self.transformers = transformers or []
+        self.transformers = list(transformers or [])
 
         # For convenience, access transformers and image transformers can be specified separately.
         # This saves users from thinking about the (maybe) unintuitive order of coordinate transformers.
         if access_transformers:
-            # Access transformers are applied first, but in reverse order.
+            # Access transformers are applied first, but in reverse order. Make sure that access_transformers is reversable first.
+            access_transformers = list(access_transformers)
             self.transformers.extend(access_transformers[::-1])
         if image_transformers:
             self.transformers.extend(image_transformers)
@@ -73,3 +75,13 @@ class Pipeline:
             image_result = transformer.transform_image(image_result=image_result)
 
         return image_result
+
+    def read_metadata(self, file_name, **reader_kwargs) -> ImageMetadata:
+        reader = self.reader_factory(file_name, **reader_kwargs)
+        metadata = reader.read_metadata()
+        # backwards pass through the transformers to transform the accessor
+        for transformer in self.transformers:
+            if hasattr(transformer, "transform_metadata"):
+                # check for transformers that do not implement transform_metadata
+                metadata = transformer.transform_metadata(metadata=metadata)
+        return metadata
