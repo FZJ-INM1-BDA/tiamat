@@ -14,9 +14,6 @@ class LUTTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         return accessor
 
-    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        return metadata
-
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         assert image_result.metadata, f"LUTTransformer requires metadata."
         assert (
@@ -49,6 +46,15 @@ class LUTTransformer(Transformer):
         else:
             raise RuntimeError(f"Unknown type for color map: {type(self.color_map)}")
 
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        metadata.shape = tuple(
+            list(metadata.shape)
+            + [
+                3,
+            ]
+        )
+        return metadata
+
 
 class GrayscaleTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
@@ -62,6 +68,11 @@ class GrayscaleTransformer(Transformer):
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
 
         return image_result
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        if len(metadata.shape) > 2:
+            metadata.shape = metadata.shape[:2]
+        return metadata
 
 
 class GrayscaleToRGBTransformer(Transformer):
@@ -77,6 +88,16 @@ class GrayscaleToRGBTransformer(Transformer):
 
         return image_result
 
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        if len(metadata.shape) == 2:
+            metadata.shape = tuple(
+                list(metadata.shape)
+                + [
+                    3,
+                ]
+            )
+        return metadata
+
 
 class FloatToByteTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
@@ -89,3 +110,7 @@ class FloatToByteTransformer(Transformer):
             image_result.image = (image_result.image * 255).astype(np.uint8)
 
         return image_result
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        metadata.value_range = (0, 255)
+        return metadata
