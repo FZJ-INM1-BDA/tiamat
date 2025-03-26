@@ -123,6 +123,8 @@ def resize(
 def _prepare_coordinates(
     x, y, z, c, image_scale=(1.0, 1.0), coordinate_scale=(1.0, 1.0)
 ):
+    import math
+
     prepared = []
     for i, coord in enumerate((x, y, z, c)):
         c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
@@ -131,7 +133,7 @@ def _prepare_coordinates(
 
         if isinstance(coord, int):
             # A single element in the given dimension
-            coord = np.ceil(coord * factor).astype(int)
+            coord = math.floor(coord * factor)
             prepared_coord = (coord, coord + 1)
         elif coord is None:
             # All elements in the given dimension
@@ -139,7 +141,7 @@ def _prepare_coordinates(
         else:
             # tuple of values
             prepared_coord = tuple(
-                np.ceil(c * factor).astype(int) if c is not None else None
+                math.floor(c * factor) if c is not None else None
                 for c in coord
             )
         prepared.append(prepared_coord)
