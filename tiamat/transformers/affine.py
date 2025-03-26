@@ -75,6 +75,7 @@ class AffineTransformer(Transformer):
 
         # Replace accessor with new requested input
         accessor = replace(accessor)
+        # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
         accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
         accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
 

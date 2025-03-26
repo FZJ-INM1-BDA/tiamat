@@ -52,16 +52,21 @@ class DeformationFieldTransformer(Transformer):
     @cached_property
     def spacing(self) -> float:
         x_range = self.file_handle["xrange"][:2]
-        # y_range = self.file_handle["yrange"][:2]
+        y_range = self.file_handle["yrange"][:2]
 
-        return float(x_range[1] - x_range[0])
+        x_spacing = float(x_range[1] - x_range[0])
+        y_spacing = float(y_range[1] - y_range[0])
+
+        assert x_spacing == y_spacing, "DeformationFieldTransformer only supports isotropic spacing"
+
+        return x_spacing
     
     @cached_property
-    def offset(self) -> float:
-        x_range = self.file_handle["xrange"][:2]
-        # y_range = self.file_handle["yrange"][:2]
+    def offset(self) -> Tuple[float, float]:
+        x_offset = self.file_handle["xrange"][0]
+        y_offset = self.file_handle["yrange"][0]
 
-        return float(x_range[0])
+        return (x_offset, y_offset)
     
     @cached_property
     def shape(self) -> tuple:
@@ -75,6 +80,7 @@ class DeformationFieldTransformer(Transformer):
         dfield: np.ndarray,
         dfield_spacing: float,
         dfield_origin: Tuple[float, float],
+        out_origin: Tuple[float, float],
         fill_value = 0,
     ):
         import SimpleITK as sitk
@@ -99,13 +105,13 @@ class DeformationFieldTransformer(Transformer):
         resampler = sitk.ResampleImageFilter()
         resampler.SetSize(dfield_size)  # Match the deformation field size
         resampler.SetOutputSpacing((image_spacing, image_spacing))  # Keep the image resolution
-        resampler.SetOutputOrigin(dfield_origin)  # Match the deformation field's origin
+        resampler.SetOutputOrigin(out_origin)  # Match the deformation field's origin
         resampler.SetOutputDirection(displacement_field.GetDirection())  # Ensure correct spatial alignment
         # TODO: Get interpolator from acessor
         resampler.SetInterpolator(sitk.sitkLinear)
         resampler.SetTransform(displacement_transform)
         # TODO: Get fill value from accessor
-        resampler.SetDefaultPixelValue(0)
+        resampler.SetDefaultPixelValue(fill_value)
 
         # Execute deformation
         deformed_image = resampler.Execute(sitk_image)
@@ -129,31 +135,35 @@ class DeformationFieldTransformer(Transformer):
         # Change to dfield metadata for access
         tmp_accessor = replace(accessor)
         tmp_accessor.metadata = self.read_metadata()
+        tmp_accessor.x = (x_from, x_to)
+        tmp_accessor.y = (y_from, y_to)
+
+        # TODO: If x_from is not a multiple of the deformation field scale,
+        # this probably also induces an offset through rounding
 
         dfield_crop = access_image(image=self.file_handle["deformation"], accessor=tmp_accessor, image_scale=(1 / self.spacing, 1 / self.spacing))
 
         # TODO: Implement later
-        # scaled_margin = request_margin / accessor.scale
-        scaled_margin = 0
+        scaled_margin = request_margin / accessor.scale
 
         # Determine frame for request
         locations_x = np.arange(0, dfield_crop.shape[1], 1) * self.spacing + x_from
-        locations_x = dfield_crop[..., 1] + locations_x[None]
+        locations_x = dfield_crop[..., 1] + locations_x[None] + self.offset[0]
         locations_y = np.arange(0, dfield_crop.shape[0], 1) * self.spacing + y_from
-        locations_y = dfield_crop[..., 0] + locations_y[:, None]
+        locations_y = dfield_crop[..., 0] + locations_y[:, None] + self.offset[1]
         min_x = np.min(locations_x) - scaled_margin
         max_x = np.max(locations_x) + scaled_margin
         min_y = np.min(locations_y) - scaled_margin
         max_y = np.max(locations_y) + scaled_margin
 
         # Calculate offsets of the requested frame due to integer rounding
-        # TODO: Handle offset in transform_image
+        # TODO: Probably not needed, we set origin to new x, y anyways
         offset_x_input = math.floor(min_x) - min_x
         offset_y_input = math.floor(min_y) - min_y
 
         accessor = replace(accessor)
-        accessor.x = (math.floor(min_x), math.ceil(max_x))
-        accessor.y = (math.floor(min_y), math.ceil(max_y))
+        accessor.x = (math.floor(min_x), math.ceil(max_x) + 1)
+        accessor.y = (math.floor(min_y), math.ceil(max_y) + 1)
 
         accessor.history[id(self)] = (x_from, x_to, offset_x_input, y_from, y_to, offset_y_input, dfield_crop)
 
@@ -174,13 +184,27 @@ class DeformationFieldTransformer(Transformer):
         accessor = image_result.accessor
         (x_from_input, _), (y_from_input, _), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
 
+        image_origin = (
+            float(x_from_input), # + 2.5,
+            float(y_from_input) # + 2.5
+        )
+        dfield_origin = (
+            float(x_from) + self.offset[0],
+            float(y_from) + self.offset[1]
+        )
+        out_origin = (
+            float(x_from),
+            float(y_from)
+        )
+
         image_result.image = DeformationFieldTransformer.apply_deformation(
             image=image_result.image,
             image_spacing=(1 / image_result.accessor.scale),
-            image_origin=(float(x_from_input), float(y_from_input)),
+            image_origin=image_origin,
             dfield=dfield_crop[..., ::-1], # Mirror dfield, ITK requires (x, y)
             dfield_spacing=self.spacing,
-            dfield_origin=(float(x_from), float(y_from))
+            dfield_origin=dfield_origin,
+            out_origin=out_origin,
         )
 
         return image_result
