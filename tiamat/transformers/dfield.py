@@ -143,7 +143,6 @@ class DeformationFieldTransformer(Transformer):
 
         dfield_crop = access_image(image=self.file_handle["deformation"], accessor=tmp_accessor, image_scale=(1 / self.spacing, 1 / self.spacing))
 
-        # TODO: Implement later
         scaled_margin = self.request_margin / accessor.scale
 
         # Determine frame for request
@@ -156,16 +155,11 @@ class DeformationFieldTransformer(Transformer):
         min_y = np.min(locations_y) - scaled_margin
         max_y = np.max(locations_y) + scaled_margin
 
-        # Calculate offsets of the requested frame due to integer rounding
-        # TODO: Probably not needed, we set origin to new x, y anyways
-        offset_x_input = math.floor(min_x) - min_x
-        offset_y_input = math.floor(min_y) - min_y
-
         accessor = replace(accessor)
         accessor.x = (math.floor(min_x), math.ceil(max_x) + 1)
         accessor.y = (math.floor(min_y), math.ceil(max_y) + 1)
 
-        accessor.history[id(self)] = (x_from, x_to, offset_x_input, y_from, y_to, offset_y_input, dfield_crop)
+        accessor.history[id(self)] = (x_from, y_from, dfield_crop)
 
         return accessor
 
@@ -177,7 +171,7 @@ class DeformationFieldTransformer(Transformer):
         from tiamat.readers.processing import get_interpolation_for_accessor, _prepare_coordinates
 
         try:
-            x_from, x_to, offset_x_input, y_from, y_to, offset_y_input, dfield_crop = image_result.accessor.history[id(self)]
+            x_from, y_from, dfield_crop = image_result.accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
@@ -185,8 +179,8 @@ class DeformationFieldTransformer(Transformer):
         (x_from_input, _), (y_from_input, _), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
 
         image_origin = (
-            float(x_from_input), # + 2.5,
-            float(y_from_input) # + 2.5
+            float(x_from_input),
+            float(y_from_input)
         )
         dfield_origin = (
             float(x_from) + self.offset[0],
