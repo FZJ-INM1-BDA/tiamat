@@ -82,8 +82,10 @@ class DeformationFieldTransformer(Transformer):
         dfield_origin: Tuple[float, float],
         out_origin: Tuple[float, float],
         fill_value = 0,
+        interpolation = "nearest",
     ):
         import SimpleITK as sitk
+        from tiamat.readers.processing import SITK_INTERPOLATION_CODES
 
         # Convert image to SimpleITK format
         sitk_image = sitk.GetImageFromArray(image)
@@ -107,10 +109,8 @@ class DeformationFieldTransformer(Transformer):
         resampler.SetOutputSpacing((image_spacing, image_spacing))  # Keep the image resolution
         resampler.SetOutputOrigin(out_origin)  # Match the deformation field's origin
         resampler.SetOutputDirection(displacement_field.GetDirection())  # Ensure correct spatial alignment
-        # TODO: Get interpolator from acessor
-        resampler.SetInterpolator(sitk.sitkLinear)
+        resampler.SetInterpolator(SITK_INTERPOLATION_CODES[interpolation])
         resampler.SetTransform(displacement_transform)
-        # TODO: Get fill value from accessor
         resampler.SetDefaultPixelValue(fill_value)
 
         # Execute deformation
@@ -144,7 +144,7 @@ class DeformationFieldTransformer(Transformer):
         dfield_crop = access_image(image=self.file_handle["deformation"], accessor=tmp_accessor, image_scale=(1 / self.spacing, 1 / self.spacing))
 
         # TODO: Implement later
-        scaled_margin = request_margin / accessor.scale
+        scaled_margin = self.request_margin / accessor.scale
 
         # Determine frame for request
         locations_x = np.arange(0, dfield_crop.shape[1], 1) * self.spacing + x_from
@@ -174,7 +174,7 @@ class DeformationFieldTransformer(Transformer):
         raise NotImplementedError
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
-        from tiamat.readers.processing import _prepare_coordinates
+        from tiamat.readers.processing import get_interpolation_for_accessor, _prepare_coordinates
 
         try:
             x_from, x_to, offset_x_input, y_from, y_to, offset_y_input, dfield_crop = image_result.accessor.history[id(self)]
@@ -197,6 +197,8 @@ class DeformationFieldTransformer(Transformer):
             float(y_from)
         )
 
+        interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
+
         image_result.image = DeformationFieldTransformer.apply_deformation(
             image=image_result.image,
             image_spacing=(1 / image_result.accessor.scale),
@@ -205,6 +207,8 @@ class DeformationFieldTransformer(Transformer):
             dfield_spacing=self.spacing,
             dfield_origin=dfield_origin,
             out_origin=out_origin,
+            fill_value=accessor.fill_value,
+            interpolation=interpolation,
         )
 
         return image_result

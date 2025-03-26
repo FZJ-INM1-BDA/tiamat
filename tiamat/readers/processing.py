@@ -7,17 +7,6 @@ import warnings
 
 import numpy as np
 
-try:
-    # noinspection PyUnresolvedReferences
-    import cv2
-
-    CV2_AVAILABLE = True
-except ImportError:
-    warnings.warn(
-        "image: Module cv2 is not available, using scikit-image as a fallback"
-    )
-    CV2_AVAILABLE = False
-
 from ..io import (
     ImageAccessor,
     INTERPOLATION_TYPE_NEAREST,
@@ -27,13 +16,40 @@ from ..io import (
     INTERPOLATION_TYPE_LANCZOS4,
 )
 
-OPENCV_INTERPOLATION_CODES = {
-    INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
-    INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
-    INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
-    INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
-    INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
-}
+try:
+    # noinspection PyUnresolvedReferences
+    import cv2
+
+    CV2_AVAILABLE = True
+
+    OPENCV_INTERPOLATION_CODES = {
+        INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
+        INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
+        INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
+        INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
+        INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
+    }
+except ImportError:
+    warnings.warn(
+        "image: Module cv2 is not available, using scikit-image as a fallback"
+    )
+    CV2_AVAILABLE = False
+
+try:
+    # noinspection PyUnresolvedReferences
+    import SimpleITK as sitk
+
+    SITK_AVAILABLE = True
+    SITK_INTERPOLATION_CODES = {
+        INTERPOLATION_TYPE_NEAREST: sitk.sitkNearestNeighbor,
+        INTERPOLATION_TYPE_LINEAR: sitk.sitkLinear,
+        INTERPOLATION_TYPE_CUBIC: sitk.sitkBSpline4,
+    }
+except ImportError:
+    warnings.warn(
+        "image: Module SimpleITK is not available, some transformers might not work"
+    )
+    SITK_AVAILABLE = False
 
 
 def _expand_to_image_shape(value, image_shape):
