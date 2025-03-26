@@ -1,5 +1,5 @@
 """
-Affine transformers.
+Deformation field transformers.
 """
 from functools import cached_property, cache
 from typing import Tuple
