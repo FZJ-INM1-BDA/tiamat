@@ -14,6 +14,9 @@ IMAGE_TYPE_SEGMENTATION = (
 IMAGE_TYPE_IMAGE = (
     "image"  # an image with continuous values (e.g., a microscopy image).
 )
+IMAGE_TYPE_VECTOR = (
+    "vector"  # an image with continuous vector values (e.g., a deformation field).
+)
 
 # Meaning of channel dimension
 CHANNEL_INTERPRETATION_COLOR = "color"

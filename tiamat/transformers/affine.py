@@ -51,6 +51,7 @@ class AffineTransformer(Transformer):
 
         # Read coordinates for requested frame
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        # TODO: Account for spacing and coordinate scale
         x_from, x_to = _resolve_coordinate(x, accessor.metadata.shape[1])
         y_from, y_to = _resolve_coordinate(y, accessor.metadata.shape[0])
 
@@ -78,6 +79,7 @@ class AffineTransformer(Transformer):
         # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
         accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
         accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
+        accessor.fill_value = 0 if accessor.fill_value is None else accessor.fill_value
 
         # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
         # We need to scale the coordinates to obtain pixel coordinates
