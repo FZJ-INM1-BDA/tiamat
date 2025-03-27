@@ -15,7 +15,7 @@ This project has received funding from the Helmholtz Association’s Initiative 
 
 `tiamat` uses a pipeline to model the flow of reading images and transformations.
 A pipeline consists of `readers` for reading images and their metadata, and `transformers`, which apply transformations to images or the access (e.g., coordinates).
-`readers` are implemented in `timat.readers`, according to a protocl defined in `timat.readers.protocol`.
+`readers` are implemented in `tiamat.readers`, according to a protocl defined in `tiamat.readers.protocol`.
 `transformers` are implemented in `tiamat.transformers`, according to a protocol defined in `tiamat.transformers.protocl`.
 
 ## Examples

@@ -3,6 +3,7 @@ Metadata on images.
 """
 
 from dataclasses import dataclass
+from typing import Iterable
 import numpy as np
 from itertools import repeat, product
 
@@ -57,6 +58,7 @@ class ImageMetadata:
     channel_dimension: int | None = None  # None means no channel dimension
     channel_interpretation: str = CHANNEL_INTERPRETATION_COLOR
     additional_metadata: dict | None = None
+    scales: float | int | Iterable[float | int] | None = None
 
     @property
     def spatial_dimensions(self):
