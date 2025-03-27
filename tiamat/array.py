@@ -1,14 +1,3 @@
-"""
-Array interface for any tiamat pipeline, providing compatibility with code that uses numpy-style arrays.
-By creating together, we bind together:
-1. a pipeline
-2. A file
-3. A scale
-
-Things to keep in mind:
-- When accessing an array, all operations (e.g., slice, shape) opereate at the given scale. 
-"""
-
 from typing import Iterable, Tuple
 from functools import cached_property
 
@@ -19,6 +8,17 @@ from tiamat import metadata
 
 
 class Array(object):
+    """
+    Array interface for any tiamat pipeline, providing compatibility with code that uses numpy-style arrays.
+    By creating together, we bind together:
+    1. a pipeline
+    2. A file
+    3. A scale
+
+    Things to keep in mind:
+    - When accessing an array, all operations (e.g., slice, shape) opereate at the given scale.
+    """
+
     def __init__(
         self,
         file_name,
@@ -109,14 +109,15 @@ class Array(object):
                     array_slice.insert(i, slice(None))
                 break
 
-        # matching from slice to dimension names. Mind that we swap x and y
-        dim_names = ["y", "x", "z", "c"]
-        if (
-            self.metadata.channel_interpretation
-            in (metadata.CHANNEL_INTERPRETATION_COLOR,)
-            and self.ndim < 4
-        ):
-            dim_names.remove("z")
+        # matching from slice to dimension names. We assume fixed (z, y, x) indexing
+        ch_dim = self.metadata.channel_dimension
+        if ch_dim is None:
+            n_image_dims = self.ndim
+            dim_names = ["z", "y", "x"][-n_image_dims:]
+        else:
+            n_image_dims = self.ndim - 1
+            dim_names = ["z", "y", "x"][-n_image_dims:]
+            dim_names = dim_names[:ch_dim] + ["c"] + dim_names[ch_dim:]
 
         # handle special indeices
         array_slice_cleaned = []
