@@ -14,7 +14,7 @@ class NiftiReader(ImageReader):
         return nib.load(self.fname)
 
     def read_image(self, accessor):
-        from ._processing import access_and_rescale_image
+        from .processing import access_and_rescale_image
         from ..io import ImageResult
 
         data = self.handle.get_fdata()

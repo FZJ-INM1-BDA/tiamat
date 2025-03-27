@@ -8,9 +8,10 @@ from ..readers.protocol import ImageReader
 _READER_REGISTRY: List[ImageReader] = []
 
 
-def register_reader(reader_class):
-    if reader_class not in _READER_REGISTRY:
-        _READER_REGISTRY.append(reader_class)
+def register_reader(*reader_classes):
+    for reader_class in reader_classes:
+        if reader_class not in _READER_REGISTRY:
+            _READER_REGISTRY.append(reader_class)
 
 
 def get_reader_for_file_type(file_type):
@@ -22,12 +23,23 @@ def get_reader_for_file_type(file_type):
         raise UnknownFileError(f"Could not find reader for file type {file_type}")
 
 
-def get_reader(fname: str, **kwargs) -> ImageReader:
+def get_reader(fname: str, auto_register_default_readers=True, **kwargs) -> ImageReader:
     from tiamat.errors import UnknownFileError
 
+    if auto_register_default_readers:
+        from . import register_all_readers
+
+        register_all_readers()
+
     reader_by_priority = []
+    reader_errors = []
     for reader in _READER_REGISTRY:
-        reader_priority = reader.check_file(fname)
+        try:
+            reader_priority = reader.check_file(fname)
+        except Exception as ex:
+            # we don't want readers doing weird things while checking for compatibility to fail
+            reader_errors.append((reader, ex))
+            continue
         if isinstance(reader_priority, bool):
             if reader_priority:
                 reader_priority = 0
@@ -42,7 +54,9 @@ def get_reader(fname: str, **kwargs) -> ImageReader:
             raise RuntimeError("Reader must return bool or int from check_file")
         reader_by_priority.append((reader, reader_priority))
     if not reader_by_priority:
-        raise UnknownFileError(f"Could not find reader for file {fname}")
+        raise UnknownFileError(
+            f"Could not find reader for file {fname}. Reader errors: {reader_errors}"
+        )
 
     # sort by priority (descending)
     reader_by_priority.sort(key=lambda x: -x[1])
