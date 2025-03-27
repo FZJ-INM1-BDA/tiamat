@@ -34,7 +34,7 @@ class ImageAccessor:
     # anti_aliasing_sigma: float = None
     # Fill value for out-of-bounds request (padding)
     # Can be set to None for no padding
-    fill_value: int | float = 0
+    fill_value: int | float = None
     history: dict = field(default_factory=dict)
 
 
