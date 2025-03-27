@@ -58,6 +58,12 @@ def _expand_to_image_shape(value, image_shape):
     return value
 
 
+def expand_to_length(value, length):
+    if not isinstance(value, (list, tuple, np.ndarray)):
+        return [value] * length
+    return value
+
+
 def rescale(
     image: np.ndarray,
     scale: float | tuple[float, ...],
@@ -180,7 +186,7 @@ def _zero_clip(values):
 
 
 def access_image(
-    image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[float, ...]
+    image: np.ndarray, accessor: ImageAccessor, image_scale: float | tuple[float, ...]
 ) -> np.ndarray:
     """Access image content.
 
@@ -192,7 +198,7 @@ def access_image(
         Row-major image content as numpy array
     accessor : ImageAccessor
         Requested image coordinates
-    image_scale : tuple[float, ...]
+    image_scale : float | tuple[float, ...]
         Scaling of each image dimension
     default_value: float or int
         Fill value for out of bounds request
@@ -204,6 +210,7 @@ def access_image(
     """
 
     coordinate_scale = _expand_to_image_shape(accessor.coordinate_scale, image.shape)
+    image_scale = _expand_to_image_shape(image_scale, image.shape)
     x, y, z, c = _prepare_coordinates(
         x=accessor.x,
         y=accessor.y,
