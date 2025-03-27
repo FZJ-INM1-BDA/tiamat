@@ -1,8 +1,7 @@
 """
 Deformation field transformers.
 """
-from functools import cached_property, cache
-from typing import Tuple, Iterable, Callable
+from typing import Tuple, Callable
 
 from tiamat.readers.protocol import ImageReader
 from tiamat.transformers.protocol import Transformer
@@ -18,6 +17,7 @@ class DeformationFieldTransformer(Transformer):
             self,
             dfield_file: str,
             request_margin: int = 2,
+            interpolation = 'linear',
             reader_factory: Callable[[str], ImageReader] | None = None,
         ):
         """Creates an instance of DeformationFieldTransformer
@@ -28,6 +28,8 @@ class DeformationFieldTransformer(Transformer):
             Path to file storing the deformation field
         request_margin : int, optional
             Pixel margin around requested image to avoid resampling artifacts, by default 2
+        interpolation: str, optional
+            Interpolation to be used to scale the deformation field to the requested scale
         """
         from tiamat.readers.factory import get_reader
 
@@ -41,6 +43,7 @@ class DeformationFieldTransformer(Transformer):
                 self.dfield_origin = self.meta.additional_metadata['dfield_origin']
         
         self.request_margin = request_margin
+        self.interpolation = interpolation
 
     @staticmethod
     def get_coordinates(
@@ -61,55 +64,39 @@ class DeformationFieldTransformer(Transformer):
         locations_y = np.arange(0, dfield.shape[0]) / dfield_scale[0] + dfield_origin[0]
         locations_y = np.take(dfield, y_i, axis=coord_dim) + locations_y[:, None]
 
-        return np.stack((locations_y[None], locations_x[None]), axis=0)
-
+        return np.stack((locations_y, locations_x), axis=0)
+    
     @staticmethod
     def apply_deformation(
         image: np.ndarray,
-        image_scale: float,
+        image_scale: Tuple[float, float],
         image_origin: Tuple[float, float],
-        dfield: np.ndarray,
-        dfield_scale: float,
-        dfield_origin: Tuple[float, float],
-        out_origin: Tuple[float, float],
+        coordinates: np.ndarray,
         fill_value = 0,
         interpolation = "nearest",
     ):
-        import SimpleITK as sitk
-        from tiamat.readers.processing import SITK_INTERPOLATION_CODES
+        from scipy.ndimage import map_coordinates
+        from tiamat.readers.processing import SCIPY_INTERPOLATION_CODES
 
-        # Convert image to SimpleITK format
-        sitk_image = sitk.GetImageFromArray(image)
-        sitk_image.SetSpacing([1 / s for s in image_scale])
-        sitk_image.SetOrigin(image_origin)
-        sitk_image.SetDirection([1.0, 0.0, 0.0, 1.0])  # Identity matrix for 2D
+        coordinates = (coordinates - np.array(image_origin)[:, np.newaxis, np.newaxis]) * np.array(image_scale)[:, np.newaxis, np.newaxis]
 
-        # Convert deformation field to SimpleITK format
-        displacement_field = sitk.GetImageFromArray(dfield.astype(np.float64), isVector=True)
-        displacement_field.SetSpacing([1 / s for s in dfield_scale])
-        displacement_field.SetOrigin(dfield_origin)
-        displacement_field.SetDirection([1.0, 0.0, 0.0, 1.0])  # Identity matrix for 2D
-
-        dfield_size = (int((image_scale[i] / dfield_scale[i]) * s) for i, s in enumerate(displacement_field.GetSize()))
-
-        displacement_transform = sitk.DisplacementFieldTransform(displacement_field)
-
-        # Define resampler
-        resampler = sitk.ResampleImageFilter()
-        resampler.SetSize(dfield_size)  # Match the deformation field size
-        resampler.SetOutputSpacing([1 / s for s in image_scale])  # Keep the image resolution
-        resampler.SetOutputOrigin(out_origin)  # Match the deformation field's origin
-        resampler.SetOutputDirection(displacement_field.GetDirection())  # Ensure correct spatial alignment
-        resampler.SetInterpolator(SITK_INTERPOLATION_CODES[interpolation])
-        resampler.SetTransform(displacement_transform)
-        resampler.SetDefaultPixelValue(fill_value)
-
-        # Execute deformation
-        deformed_image = resampler.Execute(sitk_image)
-
-        out_image = sitk.GetArrayFromImage(deformed_image)
+        out_image = map_coordinates(
+            image,
+            coordinates,
+            order=SCIPY_INTERPOLATION_CODES[interpolation],
+            cval=fill_value,
+        )
 
         return out_image
+    
+    @property
+    def shape(self) -> tuple:
+        from tiamat.readers.processing import expand_to_length
+
+        dfield_scale = expand_to_length(self.meta.scales[0], 2)
+        shape = int((self.meta.shape[0] / dfield_scale[0])), int((self.meta.shape[1] / dfield_scale[1]))
+
+        return shape
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
@@ -119,18 +106,21 @@ class DeformationFieldTransformer(Transformer):
 
         # TODO: Account for spacing
         dfield_scale = expand_to_length(self.meta.scales[0], 2)
+        image_scale = expand_to_length(accessor.scale, 2)
         coord_scale = expand_to_length(accessor.coordinate_scale, 2)
 
         # Read coordinates for requested frame
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        x_from, x_to = _resolve_coordinate(x, int((self.meta.shape[1] / dfield_scale[1]) * coord_scale[1]))
-        y_from, y_to = _resolve_coordinate(y, int((self.meta.shape[0] / dfield_scale[0]) * coord_scale[0]))
+        dfield_shape = self.shape
+        x_from, x_to = _resolve_coordinate(x, dfield_shape[1] * coord_scale[1])
+        y_from, y_to = _resolve_coordinate(y, dfield_shape[0] * coord_scale[0])
 
         # Change access metadata to dfield
         tmp_accessor = replace(accessor)
         tmp_accessor.metadata = self.meta
         tmp_accessor.x = (x_from, x_to)
         tmp_accessor.y = (y_from, y_to)
+        tmp_accessor.interpolation = self.interpolation
 
         # Read the corresponding crop from dfield
         dfield_crop = self.reader.read_image(tmp_accessor)
@@ -138,7 +128,7 @@ class DeformationFieldTransformer(Transformer):
         # Determine requested coordinates from deformation vectors
         coordinates = DeformationFieldTransformer.get_coordinates(
             dfield=dfield_crop,
-            dfield_scale=dfield_scale,
+            dfield_scale=image_scale,
             dfield_origin=(y_from + self.dfield_origin[0], x_from + self.dfield_origin[1]),
             yx=True, # TODO: Read this somehow from file
         )
@@ -156,51 +146,40 @@ class DeformationFieldTransformer(Transformer):
         accessor.x = (math.floor(min_x), math.ceil(max_x) + 1)
         accessor.y = (math.floor(min_y), math.ceil(max_y) + 1)
         accessor.fill_value = 0 if accessor.fill_value is None else accessor.fill_value
-        accessor.history[id(self)] = (x_from, y_from, dfield_crop)
+        accessor.history[id(self)] = coordinates # Cache coordinates so we don't need to read twice
 
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        # TODO: Implement
-        raise NotImplementedError
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+        metadata.shape = self.shape
+
+        return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         from tiamat.readers.processing import get_interpolation_for_accessor, _prepare_coordinates, expand_to_length
 
         try:
-            x_from, y_from, dfield_crop = image_result.accessor.history[id(self)]
+            coordinates = image_result.accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
-        dfield_scale = expand_to_length(self.meta.scales[0], 2)
         image_scale = expand_to_length(image_result.accessor.scale, 2)
-
         accessor = image_result.accessor
         (x_from_input, _), (y_from_input, _), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-
         image_origin = (
-            float(x_from_input),
-            float(y_from_input)
+            float(y_from_input),
+            float(x_from_input)
         )
-        dfield_origin = (
-            float(x_from) + self.dfield_origin[1],
-            float(y_from) + self.dfield_origin[0]
-        )
-        out_origin = (
-            float(x_from),
-            float(y_from)
-        )
-
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
 
         image_result.image = DeformationFieldTransformer.apply_deformation(
             image=image_result.image,
             image_scale=image_scale,
             image_origin=image_origin,
-            dfield=dfield_crop[..., ::-1], # Mirror dfield, ITK requires (x, y)
-            dfield_scale=dfield_scale,
-            dfield_origin=dfield_origin,
-            out_origin=out_origin,
+            coordinates=coordinates,
             fill_value=accessor.fill_value,
             interpolation=interpolation,
         )

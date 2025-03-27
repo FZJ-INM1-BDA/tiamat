@@ -16,6 +16,12 @@ from ..io import (
     INTERPOLATION_TYPE_LANCZOS4,
 )
 
+SCIPY_INTERPOLATION_CODES = {
+    INTERPOLATION_TYPE_NEAREST: 0,
+    INTERPOLATION_TYPE_LINEAR: 1,
+    INTERPOLATION_TYPE_CUBIC: 3,
+}
+
 try:
     # noinspection PyUnresolvedReferences
     import cv2
@@ -34,22 +40,6 @@ except ImportError:
         "image: Module cv2 is not available, using scikit-image as a fallback"
     )
     CV2_AVAILABLE = False
-
-try:
-    # noinspection PyUnresolvedReferences
-    import SimpleITK as sitk
-
-    SITK_AVAILABLE = True
-    SITK_INTERPOLATION_CODES = {
-        INTERPOLATION_TYPE_NEAREST: sitk.sitkNearestNeighbor,
-        INTERPOLATION_TYPE_LINEAR: sitk.sitkLinear,
-        INTERPOLATION_TYPE_CUBIC: sitk.sitkBSpline4,
-    }
-except ImportError:
-    warnings.warn(
-        "image: Module SimpleITK is not available, some transformers might not work"
-    )
-    SITK_AVAILABLE = False
 
 
 def _expand_to_image_shape(value, image_shape):
