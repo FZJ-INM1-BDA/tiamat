@@ -47,22 +47,29 @@ class DeformationFieldTransformer(Transformer):
         dfield: np.ndarray,
         dfield_scale: Tuple[int, int],
         dfield_origin: Tuple[float, float],
+        coord_dim: int = 2,
+        yx: bool = True,
     ):
+        # Determine if deformation vectors are xy or yx order
+        if yx:
+            x_i, y_i = 1, 0
+        else:
+            x_i, y_i = 0, 1
         locations_x = np.arange(0, dfield.shape[1]) / dfield_scale[1] + dfield_origin[1]
-        locations_x = dfield[..., 1] + locations_x[None]
+        locations_x = np.take(dfield, x_i, axis=coord_dim) + locations_x[None]
 
         locations_y = np.arange(0, dfield.shape[0]) / dfield_scale[0] + dfield_origin[0]
-        locations_y = dfield[..., 0] + locations_y[:, None]
+        locations_y = np.take(dfield, y_i, axis=coord_dim) + locations_y[:, None]
 
         return np.stack((locations_y[None], locations_x[None]), axis=0)
 
     @staticmethod
     def apply_deformation(
         image: np.ndarray,
-        image_spacing: float,
+        image_scale: float,
         image_origin: Tuple[float, float],
         dfield: np.ndarray,
-        dfield_spacing: float,
+        dfield_scale: float,
         dfield_origin: Tuple[float, float],
         out_origin: Tuple[float, float],
         fill_value = 0,
@@ -73,24 +80,24 @@ class DeformationFieldTransformer(Transformer):
 
         # Convert image to SimpleITK format
         sitk_image = sitk.GetImageFromArray(image)
-        sitk_image.SetSpacing((image_spacing, image_spacing))
+        sitk_image.SetSpacing([1 / s for s in image_scale])
         sitk_image.SetOrigin(image_origin)
         sitk_image.SetDirection([1.0, 0.0, 0.0, 1.0])  # Identity matrix for 2D
 
         # Convert deformation field to SimpleITK format
         displacement_field = sitk.GetImageFromArray(dfield.astype(np.float64), isVector=True)
-        displacement_field.SetSpacing(dfield_spacing)
+        displacement_field.SetSpacing([1 / s for s in dfield_scale])
         displacement_field.SetOrigin(dfield_origin)
         displacement_field.SetDirection([1.0, 0.0, 0.0, 1.0])  # Identity matrix for 2D
 
-        dfield_size = (int((dfield_spacing[i] / image_spacing) * s) for i, s in enumerate(displacement_field.GetSize()))
+        dfield_size = (int((image_scale[i] / dfield_scale[i]) * s) for i, s in enumerate(displacement_field.GetSize()))
 
         displacement_transform = sitk.DisplacementFieldTransform(displacement_field)
 
         # Define resampler
         resampler = sitk.ResampleImageFilter()
         resampler.SetSize(dfield_size)  # Match the deformation field size
-        resampler.SetOutputSpacing((image_spacing, image_spacing))  # Keep the image resolution
+        resampler.SetOutputSpacing([1 / s for s in image_scale])  # Keep the image resolution
         resampler.SetOutputOrigin(out_origin)  # Match the deformation field's origin
         resampler.SetOutputDirection(displacement_field.GetDirection())  # Ensure correct spatial alignment
         resampler.SetInterpolator(SITK_INTERPOLATION_CODES[interpolation])
@@ -133,6 +140,7 @@ class DeformationFieldTransformer(Transformer):
             dfield=dfield_crop,
             dfield_scale=dfield_scale,
             dfield_origin=(y_from + self.dfield_origin[0], x_from + self.dfield_origin[1]),
+            yx=True, # TODO: Read this somehow from file
         )
 
         # Build requested frame from coordinates with margin
@@ -148,7 +156,6 @@ class DeformationFieldTransformer(Transformer):
         accessor.x = (math.floor(min_x), math.ceil(max_x) + 1)
         accessor.y = (math.floor(min_y), math.ceil(max_y) + 1)
         accessor.fill_value = 0 if accessor.fill_value is None else accessor.fill_value
-        # accessor.history[id(self)] = (x_from, y_from, coordinates)
         accessor.history[id(self)] = (x_from, y_from, dfield_crop)
 
         return accessor
@@ -166,6 +173,7 @@ class DeformationFieldTransformer(Transformer):
             raise Exception("transform_access has to be called once before transform_image")
 
         dfield_scale = expand_to_length(self.meta.scales[0], 2)
+        image_scale = expand_to_length(image_result.accessor.scale, 2)
 
         accessor = image_result.accessor
         (x_from_input, _), (y_from_input, _), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
@@ -187,10 +195,10 @@ class DeformationFieldTransformer(Transformer):
 
         image_result.image = DeformationFieldTransformer.apply_deformation(
             image=image_result.image,
-            image_spacing=(1 / image_result.accessor.scale),
+            image_scale=image_scale,
             image_origin=image_origin,
             dfield=dfield_crop[..., ::-1], # Mirror dfield, ITK requires (x, y)
-            dfield_spacing=[1 / s for s in dfield_scale],
+            dfield_scale=dfield_scale,
             dfield_origin=dfield_origin,
             out_origin=out_origin,
             fill_value=accessor.fill_value,
