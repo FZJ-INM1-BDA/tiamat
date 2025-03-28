@@ -18,11 +18,6 @@ IMAGE_TYPE_VECTOR = (
     "vector"  # an image with continuous vector values (e.g., a deformation field).
 )
 
-# Meaning of channel dimension
-CHANNEL_INTERPRETATION_COLOR = "color"
-CHANNEL_INTERPRETATION_STACK = "stack"
-
-
 def get_dtype_limits(dtype):
     """Returns the min and max values for a given dtype.
 
@@ -59,7 +54,6 @@ class ImageMetadata:
     file_path: str | None = None
     spacing: float | tuple[float, ...] | None = None
     channel_dimension: int | None = None  # None means no channel dimension
-    channel_interpretation: str = CHANNEL_INTERPRETATION_COLOR
     additional_metadata: dict | None = None
     scales: float | int | Iterable[float | int] | None = None
 

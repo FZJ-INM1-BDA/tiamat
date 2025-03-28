@@ -51,7 +51,6 @@ class GenericReader(ImageReader):
             value_range=(0, 255),
             spacing=self.image_spacing,
             channel_dimension=channel_dimension,
-            channel_interpretation=md.CHANNEL_INTERPRETATION_COLOR,
         )
 
     @classmethod
