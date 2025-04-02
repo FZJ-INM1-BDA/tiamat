@@ -186,3 +186,21 @@ class DeformationFieldTransformer(Transformer):
         )
 
         return image_result
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+
+        import tiamat.serialization
+
+        reader = args.get("reader")
+
+        if reader is not None:
+            class_registry
+
+        return cls(
+            dfield_file=args["dfield_file"],
+            request_margin=args.get("request_margin", 2),
+            interpolation=args.get("interpolation", 'linear'),
+            reader_factory=reader,
+        )
+
