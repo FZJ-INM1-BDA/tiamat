@@ -23,6 +23,10 @@ def get_reader_for_file_type(file_type):
         raise UnknownFileError(f"Could not find reader for file type {file_type}")
 
 
+def get_reader_from_registry(reader_name):
+    return _READER_REGISTRY[reader_name]
+
+
 def get_reader(fname: str, auto_register_default_readers=True, **kwargs) -> ImageReader:
     from tiamat.errors import UnknownFileError
 
