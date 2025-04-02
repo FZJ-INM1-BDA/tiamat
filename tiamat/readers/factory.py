@@ -24,7 +24,10 @@ def get_reader_for_file_type(file_type):
 
 
 def get_reader_from_registry(reader_name):
-    return _READER_REGISTRY[reader_name]
+    for cls in _READER_REGISTRY:
+        if cls.__name__ == reader_name:
+            return cls
+    raise KeyError(f"No reader found with name {reader_name}")
 
 
 def get_reader(fname: str, auto_register_default_readers=True, **kwargs) -> ImageReader:
