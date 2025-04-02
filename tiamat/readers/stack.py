@@ -33,7 +33,7 @@ class StackReader(ImageReader):
         ----------
         fnames : str | Iterable[str]
             Can be a Unix shell compatible file pattern or an iterable object providing filenames
-        reader_factory : Callable[[str], ImageReader], optional
+        reader_factory : Callable[[str], ImageReader] | Iterable[Callable[[str], ImageReader]], optional
             A reader factory function or specific image reader. By default search for registered readers
         slice_spacing : float, optional
             Slice spacing if volume spacing is not isotropic. By default assume same z spacing as for x, y
@@ -44,10 +44,6 @@ class StackReader(ImageReader):
         self.reader_factory = reader_factory or get_reader
         self.slice_spacing = slice_spacing
         self.reader_kwargs = reader_kwargs
-
-    @cache
-    def _get_handle_for_slice(self, slice_fname, **reader_kwargs):
-        return self.reader_factory(slice_fname, **reader_kwargs)
 
     @cache
     def _get_ordered_slice_handles(self):
