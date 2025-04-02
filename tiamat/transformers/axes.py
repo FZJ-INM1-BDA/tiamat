@@ -2,6 +2,7 @@
 Transforms manipulating individual axes of images
 """
 
+from typing import Any, Dict
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
@@ -52,6 +53,12 @@ class TransposeTransformer(Transformer):
         # image_result.image = np.transpose(image_result.image, axes=self.reorder_axes[1:])
 
         return image_result
+    
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        return cls(
+            axes=args.get("axes", (0, 1, 2)),
+        )
 
 
 class MirrorTransformer(Transformer):
@@ -100,3 +107,11 @@ class MirrorTransformer(Transformer):
         image_result.image = np.flip(image_result.image, axis=flip_axes)
 
         return image_result
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        return cls(
+            mirror_x=bool(args.get("mirror_x", False)),
+            mirror_y=bool(args.get("mirror_y", False)),
+            mirror_z=bool(args.get("mirror_z", False)),
+        )
