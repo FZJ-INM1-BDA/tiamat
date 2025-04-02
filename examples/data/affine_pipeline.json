@@ -1,0 +1,11 @@
+{
+  "reader": "GenericReader",
+  "image_transformers": [
+    { "class": "MinMaxNormalizationTransformer", "args": {} },
+    { "class": "AffineTransformer", "args": { "affine_matrix": [
+      [-1.060660, -1.060660, 4351.0],
+      [-1.060660,  1.060660, 1600.0],
+      [ 0.0,       0.0     , 1.0   ]
+    ] } }
+  ]
+}
