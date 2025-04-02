@@ -2,8 +2,8 @@
 Reader for Stacks.
 """
 
-from functools import cached_property, cache
-from typing import Callable, Iterable, List
+from functools import cached_property, cache, partial
+from typing import Any, Callable, Dict, Iterable, List
 
 from tiamat.readers.protocol import ImageReader
 from tiamat.readers.factory import get_reader
@@ -147,3 +147,27 @@ class StackReader(ImageReader):
         # TODO: Maybe check if fname refers to a list of files. Check if any readers
         # exists for this filetype and return this one
         return False
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any], reader_factory=None):
+        from tiamat.serialization import get_reader_from_config
+
+        if reader_factory is None:
+            reader = args.get("reader_factory")
+
+            if isinstance(reader, list):
+                reader = [get_reader_from_config(r) for r in reader]
+            else:
+                reader = get_reader_from_config(reader)
+
+            return partial(
+                cls,
+                reader_factory=reader,
+                slice_spacing=args.get("request_margin")
+            )
+        else:
+            return partial(
+                cls,
+                reader_factory=reader_factory,
+                slice_spacing=args.get("request_margin")
+            )
