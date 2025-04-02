@@ -5,7 +5,7 @@ Transforms manipulating individual axes of images
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
-from .coordinates import resolve_coordinate_slice
+from tiamat.transformers.coordinates import resolve_coordinate_slice
 
 
 class TransposeTransformer(Transformer):
@@ -64,18 +64,21 @@ class MirrorTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
 
-        # TODO: Only support 2D for now, leave 3D for later
-        height, width = accessor.metadata.shape[:2]
+        spatial_shape = accessor.metadata.spatial_shape
 
         accessor = replace(accessor)
 
         if self.mirror_x:
-            x_from, x_to = resolve_coordinate_slice(accessor.x, width)
-            accessor.x = (width - x_to, width - x_from)
+            x_from, x_to = resolve_coordinate_slice(accessor.x, spatial_shape[-1])
+            accessor.x = (spatial_shape[-1] - x_to, spatial_shape[-1] - x_from)
 
         if self.mirror_y:
-            y_from, y_to = resolve_coordinate_slice(accessor.y, height)
-            accessor.y = (height - y_to, height - y_from)
+            y_from, y_to = resolve_coordinate_slice(accessor.y, spatial_shape[-2])
+            accessor.y = (spatial_shape[-2] - y_to, spatial_shape[-2] - y_from)
+
+        if len(spatial_shape) > 2 and self.mirror_z:
+            z_from, z_to = resolve_coordinate_slice(accessor.z, spatial_shape[-3])
+            accessor.z = (spatial_shape[-3] - z_to, spatial_shape[-3] - z_from)
 
         return accessor
 
@@ -88,8 +91,11 @@ class MirrorTransformer(Transformer):
         metadata = image_result.accessor.metadata
         assert metadata is not None, "CPNTransformer requires metadata."
 
-        # TODO: Only support 2D for now, use spatial_dimensions[0]] for z later
-        flip_axes = self.mirror_y * [metadata.spatial_dimensions[0]] + self.mirror_x * [metadata.spatial_dimensions[1]]
+        s_dim = metadata.spatial_dimensions
+        if len(s_dim) == 2:
+            flip_axes = self.mirror_y * [s_dim[0]] + self.mirror_x * [s_dim[1]]
+        else :
+            flip_axes = self.mirror_z * [s_dim[0]] + self.mirror_y * [s_dim[1]] + self.mirror_x * [s_dim[2]]
 
         image_result.image = np.flip(image_result.image, axis=flip_axes)
 
