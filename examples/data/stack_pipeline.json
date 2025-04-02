@@ -1,0 +1,58 @@
+{
+  "out_a":
+  {
+    "reader": {
+      "class": "StackReader", "args":
+      {
+        "reader_factory": {
+          "class": "GenericReader"
+        },
+        "slice_spacing": 1.0
+      }
+    }
+  },
+  "out_b":
+  {
+    "reader": {
+      "class": "StackReader", "args":
+      {
+        "slice_spacing": 1.0
+      }
+    },
+    "input": 
+    [
+      "pipeline_a",
+      "pipeline_b"
+    ],
+    "image_transformers": [
+      {
+        "class": "MirrorTransformer", "args":
+        {
+          "mirror_z": true
+        }
+      }
+    ]
+  },
+  "pipeline_a":
+  {
+    "image_transformers": [
+      {
+        "class": "MirrorTransformer", "args":
+        {
+          "mirror_x": true
+        }
+      }
+    ]
+  },
+  "pipeline_b":
+  {
+    "image_transformers": [
+      {
+        "class": "MirrorTransformer", "args":
+        {
+          "mirror_y": true
+        }
+      }
+    ]
+  }
+}

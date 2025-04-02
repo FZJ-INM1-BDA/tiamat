@@ -5,7 +5,6 @@ from functools import partial
 import shutil
 import os
 
-from tiamat.transformers.color import GrayscaleTransformer, GrayscaleToRGBTransformer
 from tiamat.transformers.axes import MirrorTransformer
 from tiamat.pipeline import Pipeline
 from tiamat.io import ImageAccessor
