@@ -26,7 +26,7 @@ with open("./data/stack_pipeline.json", "r") as f:
 
 # Stack file content without transforms
 file_name = ["./data/Koala.jpg"] * 3
-pipeline = pipeline = connect_pipelines_from_config(pipeline_config, out_pipeline="out_a")
+pipeline = connect_pipelines_from_config(pipeline_config, out_pipeline="out_a")
 
 result = pipeline(
     file_name=file_name, accessor=ImageAccessor()
@@ -35,7 +35,7 @@ print(result.image.shape)
 
 # Stack the output of multiple pipelines
 file_name = ["./data/Koala.jpg", "./data/Koala_2.jpg"]
-pipeline = pipeline = connect_pipelines_from_config(pipeline_config, out_pipeline="out_b")
+pipeline = connect_pipelines_from_config(pipeline_config, out_pipeline="out_b")
 
 result = pipeline(
     file_name=file_name, accessor=ImageAccessor()

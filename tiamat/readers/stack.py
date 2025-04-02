@@ -59,12 +59,23 @@ class StackReader(ImageReader):
     @cache
     def read_metadata(self) -> ImageMetadata:
         from dataclasses import replace
+        from tiamat.readers.processing import expand_to_length
 
         metadata = replace(self.prototype_slice_handle.read_metadata())
 
         # Expand metadata for stack by simply expanding the shape
         metadata.shape = tuple([self.num_slices, *metadata.shape])
-        metadata.channel_dimension = metadata.channel_dimension + 1
+
+        # Set spacing
+        if self.slice_spacing is None:
+            spacing_2d = expand_to_length(metadata.spacing, 2)
+            assert spacing_2d[0] == spacing_2d[1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
+            metadata.spacing = (*spacing_2d, spacing_2d[0])
+        else:
+            metadata.spacing = (*expand_to_length(metadata.spacing, 2), self.slice_spacing)
+
+        if metadata.channel_dimension is not None:
+            metadata.channel_dimension = metadata.channel_dimension + 1
 
         return metadata
 
@@ -79,7 +90,8 @@ class StackReader(ImageReader):
         accessor = replace(accessor)
         accessor.z = None
         accessor.metadata.shape = accessor.metadata.shape[1:]
-        accessor.metadata.channel_dimension = accessor.metadata.channel_dimension - 1
+        if accessor.metadata.channel_dimension is not None:
+            accessor.metadata.channel_dimension = accessor.metadata.channel_dimension - 1
         
         # TODO: Read only requested images based on spacing and the scale of the accessor
         slice_handles = self._get_ordered_slice_handles()[:]
@@ -101,34 +113,6 @@ class StackReader(ImageReader):
     @cached_property
     def file_handle(self) -> ImageReader:
         return self.prototype_slice_handle
-    
-    @cached_property
-    def scales(self) -> list[float]:
-        return self.prototype_slice_handle.scales
-
-    @cached_property
-    def shape(self) -> tuple:
-        return (self.num_slices, *self.prototype_slice_handle.shape)
-
-    @cached_property
-    def dtype(self):
-        return self.prototype_slice_handle.dtype
-
-    @property
-    def image_spacing(self) -> tuple[float, float]:
-        from tiamat.readers.processing import expand_to_length
-
-        # x, y, z
-        if self.slice_spacing is None:
-            spacing_2d = expand_to_length(self.prototype_slice_handle.image_spacing, 2)
-            assert spacing_2d[0] == spacing_2d[1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
-            return (*spacing_2d, spacing_2d[0])
-        else:
-            return (*expand_to_length(self.prototype_slice_handle.image_spacing, 2), self.slice_spacing)
-
-    @cached_property
-    def value_range(self) -> tuple[float | int, float | int]:
-        return self.prototype_slice_handle.value_range
 
     @cached_property
     def slices(self) -> List[str]:
@@ -163,11 +147,11 @@ class StackReader(ImageReader):
             return partial(
                 cls,
                 reader_factory=reader,
-                slice_spacing=args.get("request_margin")
+                slice_spacing=args.get("slice_spacing")
             )
         else:
             return partial(
                 cls,
                 reader_factory=reader_factory,
-                slice_spacing=args.get("request_margin")
+                slice_spacing=args.get("slice_spacing")
             )
