@@ -7,17 +7,6 @@ import warnings
 
 import numpy as np
 
-try:
-    # noinspection PyUnresolvedReferences
-    import cv2
-
-    CV2_AVAILABLE = True
-except ImportError:
-    warnings.warn(
-        "image: Module cv2 is not available, using scikit-image as a fallback"
-    )
-    CV2_AVAILABLE = False
-
 from ..io import (
     ImageAccessor,
     INTERPOLATION_TYPE_NEAREST,
@@ -27,18 +16,41 @@ from ..io import (
     INTERPOLATION_TYPE_LANCZOS4,
 )
 
-OPENCV_INTERPOLATION_CODES = {
-    INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
-    INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
-    INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
-    INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
-    INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
+SCIPY_INTERPOLATION_CODES = {
+    INTERPOLATION_TYPE_NEAREST: 0,
+    INTERPOLATION_TYPE_LINEAR: 1,
+    INTERPOLATION_TYPE_CUBIC: 3,
 }
+
+try:
+    # noinspection PyUnresolvedReferences
+    import cv2
+
+    CV2_AVAILABLE = True
+
+    OPENCV_INTERPOLATION_CODES = {
+        INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
+        INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
+        INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
+        INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
+        INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
+    }
+except ImportError:
+    warnings.warn(
+        "image: Module cv2 is not available, using scikit-image as a fallback"
+    )
+    CV2_AVAILABLE = False
 
 
 def _expand_to_image_shape(value, image_shape):
     if not isinstance(value, (list, tuple, np.ndarray)):
         return [value for _ in image_shape]
+    return value
+
+
+def expand_to_length(value, length):
+    if not isinstance(value, (list, tuple, np.ndarray)):
+        return [value] * length
     return value
 
 
@@ -164,7 +176,7 @@ def _zero_clip(values):
 
 
 def access_image(
-    image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[float, ...]
+    image: np.ndarray, accessor: ImageAccessor, image_scale: float | tuple[float, ...]
 ) -> np.ndarray:
     """Access image content.
 
@@ -176,7 +188,7 @@ def access_image(
         Row-major image content as numpy array
     accessor : ImageAccessor
         Requested image coordinates
-    image_scale : tuple[float, ...]
+    image_scale : float | tuple[float, ...]
         Scaling of each image dimension
     default_value: float or int
         Fill value for out of bounds request
@@ -188,6 +200,7 @@ def access_image(
     """
 
     coordinate_scale = _expand_to_image_shape(accessor.coordinate_scale, image.shape)
+    image_scale = _expand_to_image_shape(image_scale, image.shape)
     x, y, z, c = _prepare_coordinates(
         x=accessor.x,
         y=accessor.y,

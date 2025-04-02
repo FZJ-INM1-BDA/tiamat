@@ -33,9 +33,6 @@ class MemoryReader(ImageReader):
             channel_dimension=self.metadata_kwargs.get(
                 "channel_dimension", None if len(self.image.shape) == 2 else 2
             ),
-            channel_interpretation=self.metadata_kwargs.get(
-                "channel_interpretation", md.CHANNEL_INTERPRETATION_COLOR
-            ),
         )
 
     @classmethod
