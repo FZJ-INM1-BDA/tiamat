@@ -1,7 +1,7 @@
 """
 Affine transformers.
 """
-from typing import Tuple, List
+from typing import Any, Dict, Tuple, List
 from dataclasses import asdict
 from itertools import repeat, product
 
@@ -16,7 +16,7 @@ class AffineTransformer(Transformer):
     def __init__(
             self,
             affine_matrix: np.array | List[List[float]],
-            request_margin: int = 0,
+            request_margin: int = 2,
         ):
         self.affine_matrix = np.array(affine_matrix)
 
@@ -184,3 +184,10 @@ class AffineTransformer(Transformer):
             image_result.image = _apply_affine(image_result.image)
 
         return image_result
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        return cls(
+            affine_matrix=np.array(args["affine_matrix"]),
+            request_margin=args.get("request_margin", 2),
+        )
