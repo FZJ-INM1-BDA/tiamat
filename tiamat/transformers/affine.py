@@ -8,7 +8,6 @@ from itertools import repeat, product
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
-from .coordinates import resolve_coordinate_slice
 
 import numpy as np
 
@@ -40,7 +39,8 @@ class AffineTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         import math
         from dataclasses import replace
-        from tiamat.readers.processing import _prepare_coordinates, _expand_to_image_shape, _resolve_coordinate
+        from tiamat.readers.processing import _prepare_coordinates
+        from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         assert accessor.metadata is not None, f"AffineTransformer requires metadata."
 
@@ -52,8 +52,8 @@ class AffineTransformer(Transformer):
         # Read coordinates for requested frame
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
         # TODO: Account for spacing and coordinate scale
-        x_from, x_to = _resolve_coordinate(x, accessor.metadata.shape[1])
-        y_from, y_to = _resolve_coordinate(y, accessor.metadata.shape[0])
+        x_from, x_to = resolve_coordinate_slice(x, accessor.metadata.shape[1])
+        y_from, y_to = resolve_coordinate_slice(y, accessor.metadata.shape[0])
 
         # Transform all four corners of the requested frame by the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)

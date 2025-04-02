@@ -64,6 +64,10 @@ class ImageMetadata:
         """
         ch_dims = [self.channel_dimension] if self.channel_dimension is not None else []
         return sorted(list(set(range(len(self.shape))) - set(ch_dims)))
+    
+    @property
+    def spatial_shape(self):
+        return tuple(self.shape[i] for i in self.spatial_dimensions)
 
     @property
     def extents(self):
