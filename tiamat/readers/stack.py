@@ -2,26 +2,48 @@
 Reader for Stacks.
 """
 
-import glob
-import os.path
 from functools import cached_property, cache
+from typing import Callable, Iterable, List
 
 from tiamat.readers.protocol import ImageReader
+from tiamat.readers.factory import get_reader
 
 from tiamat.io import ImageAccessor, ImageResult
 from tiamat.metadata import ImageMetadata
 
 
-def _find_slices(fnames: str) -> tuple[str, ...]:
-    # TODO: Implement
-    return fnames
+def _find_slices(fnames: str) -> List[str]:
+    import glob
+
+    return sorted(glob.glob(fnames))
 
 
 class StackReader(ImageReader):
-    def __init__(self, fnames, reader_factory):
-        # TODO: Allow Glob or Regex as fnames
+    
+    def __init__(
+            self,
+            fnames: str | Iterable[str],
+            reader_factory: Callable[[str], ImageReader] | Iterable[Callable[[str], ImageReader]] = None,
+            slice_spacing: float = None,
+            **reader_kwargs
+        ):
+        """_summary_
+
+        Parameters
+        ----------
+        fnames : str | Iterable[str]
+            Can be a Unix shell compatible file pattern or an iterable object providing filenames
+        reader_factory : Callable[[str], ImageReader], optional
+            A reader factory function or specific image reader. By default search for registered readers
+        slice_spacing : float, optional
+            Slice spacing if volume spacing is not isotropic. By default assume same z spacing as for x, y
+        reader_kwargs:
+            Arguments passed to each reader from reader_factory
+        """
         self.fnames = fnames
-        self.reader_factory = reader_factory
+        self.reader_factory = reader_factory or get_reader
+        self.slice_spacing = slice_spacing
+        self.reader_kwargs = reader_kwargs
 
     @cache
     def _get_handle_for_slice(self, slice_fname, **reader_kwargs):
@@ -29,7 +51,10 @@ class StackReader(ImageReader):
 
     @cache
     def _get_ordered_slice_handles(self):
-        return [self._get_handle_for_slice(fname) for fname in self.fnames]
+        if hasattr(self.reader_factory, '__iter__'):
+            return [factory(fname) for fname, factory in zip(self.slices, self.reader_factory)]
+        else:
+            return [self.reader_factory(fname) for fname in self.slices]
 
     @cached_property
     def prototype_slice_handle(self):
@@ -56,7 +81,7 @@ class StackReader(ImageReader):
         dtype = first_result.image.dtype
         image = np.zeros(shape=shape, dtype=dtype)
         image[0] = first_result.image
-        # write remaining images
+        # TODO: Read only requested images, probably subsample based on scale of accessor
         for i, handle in enumerate(slice_handles[1:], 1):
             image[i] = handle.read_image(accessor=accessor).image
         return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
@@ -67,12 +92,11 @@ class StackReader(ImageReader):
     
     @cached_property
     def scales(self) -> list[float]:
-        # TODO: Implement
-        raise NotImplementedError
+        return self.prototype_slice_handle.scales
 
     @cached_property
     def shape(self) -> tuple:
-        return tuple([*self.prototype_slice_handle.shape, self.num_slices])
+        return (self.num_slices, *self.prototype_slice_handle.shape)
 
     @cached_property
     def dtype(self):
@@ -80,21 +104,34 @@ class StackReader(ImageReader):
 
     @property
     def image_spacing(self) -> tuple[float, float]:
-        return self.prototype_slice_handle.image_spacing
+        from tiamat.readers.processing import expand_to_length
+
+        # x, y, z
+        if self.slice_spacing is None:
+            spacing_2d = expand_to_length(self.prototype_slice_handle.image_spacing, 2)
+            assert spacing_2d[0] == spacing_2d[1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
+            return (*spacing_2d, spacing_2d[0])
+        else:
+            return (*expand_to_length(self.prototype_slice_handle.image_spacing, 2), self.slice_spacing)
 
     @cached_property
     def value_range(self) -> tuple[float | int, float | int]:
         return self.prototype_slice_handle.value_range
 
     @cached_property
-    def slices(self) -> tuple[str, ...]:
-        return _find_slices(fnames=self.fnames)
+    def slices(self) -> List[str]:
+        if hasattr(self.fnames, '__iter__') and not isinstance(self.fnames, str):
+            return [fname for fname in self.fnames]
+        else:
+            return _find_slices(fnames=self.fnames)
 
     @cached_property
     def num_slices(self) -> int:
         return len(self.slices)
 
     @classmethod
-    def check_file(cls, fname: str) -> bool | int | float:
-        # TODO: Implement
-        raise NotImplementedError
+    def check_file(cls, fname: str | List[str]) -> bool | int | float:
+        # StackReader requires initialization before being able to check the files
+        # TODO: Maybe check if fname refers to a list of files. Check if any readers
+        # exists for this filetype and return this one
+        return False
