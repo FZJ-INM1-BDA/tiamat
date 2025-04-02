@@ -102,7 +102,8 @@ class DeformationFieldTransformer(Transformer):
         from dataclasses import replace
         import math
 
-        from tiamat.readers.processing import _prepare_coordinates, _resolve_coordinate, expand_to_length
+        from tiamat.readers.processing import _prepare_coordinates, expand_to_length
+        from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         # TODO: Account for spacing
         dfield_scale = expand_to_length(self.meta.scales[0], 2)
@@ -112,8 +113,8 @@ class DeformationFieldTransformer(Transformer):
         # Read coordinates for requested frame
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
         dfield_shape = self.shape
-        x_from, x_to = _resolve_coordinate(x, dfield_shape[1] * coord_scale[1])
-        y_from, y_to = _resolve_coordinate(y, dfield_shape[0] * coord_scale[0])
+        x_from, x_to = resolve_coordinate_slice(x, dfield_shape[1] * coord_scale[1])
+        y_from, y_to = resolve_coordinate_slice(y, dfield_shape[0] * coord_scale[0])
 
         # Change access metadata to dfield
         tmp_accessor = replace(accessor)

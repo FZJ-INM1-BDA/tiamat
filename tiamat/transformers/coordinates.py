@@ -25,7 +25,7 @@ def resolve_coordinate_slice(
         _description_
     """
     if coordinate_slice is None:
-        return image_dimension
+        return (0, image_dimension)
     elif isinstance(coordinate_slice, (np.integer, int)) or isinstance(coordinate_slice, (np.floating, float)):
         return coordinate_slice
     else:
