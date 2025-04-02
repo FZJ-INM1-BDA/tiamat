@@ -1,4 +1,5 @@
 {
+  "reader": "GenericReader",
   "image_transformers": [
     { "class": "GrayscaleTransformer", "args": {} },
     { "class": "LUTTransformer", "args": { "color_map": "plasma" } }

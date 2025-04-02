@@ -52,7 +52,7 @@ def load_pipeline_from_config(config: dict, auto_register_default_readers=True, 
     from .pipeline import Pipeline
 
     if auto_register_default_readers:
-        from tiamat.readers.factory import register_all_readers
+        from tiamat.readers import register_all_readers
 
         register_all_readers()
 
