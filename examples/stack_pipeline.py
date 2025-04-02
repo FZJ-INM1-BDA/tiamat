@@ -6,6 +6,7 @@ import shutil
 import os
 
 from tiamat.transformers.color import GrayscaleTransformer, GrayscaleToRGBTransformer
+from tiamat.transformers.axes import MirrorTransformer
 from tiamat.pipeline import Pipeline
 from tiamat.io import ImageAccessor
 from tiamat.readers.pipeline import PipelineReader
@@ -18,13 +19,13 @@ def _cleanup():
     os.remove("./data/Koala_2.jpg")
 
 try:
-    pipeline_a = Pipeline(transformers=[])
+    pipeline_a = Pipeline(transformers=[MirrorTransformer(mirror_x=True)])
     result_a = pipeline_a(
         file_name="./data/Koala.jpg", accessor=ImageAccessor()
     )
     print(result_a.image.shape)
 
-    pipeline_b = Pipeline(transformers=[])
+    pipeline_b = Pipeline(transformers=[MirrorTransformer(mirror_y=True)])
     result_b = pipeline_b(
         file_name="./data/Koala_2.jpg", accessor=ImageAccessor()
     )
@@ -37,7 +38,7 @@ try:
     reader_factory = partial(StackReader, reader_factory=partial(PipelineReader, pipeline=pipeline_a))
 
     pipeline = Pipeline(
-        transformers=[],
+        transformers=[MirrorTransformer(mirror_z=True)],
         reader_factory=reader_factory,
     )
     result = pipeline(file_name=file_name, accessor=ImageAccessor())
@@ -48,7 +49,7 @@ try:
     reader_factory = partial(StackReader, reader_factory=partial(PipelineReader, pipeline=pipeline_a))
 
     pipeline = Pipeline(
-        transformers=[],
+        transformers=[MirrorTransformer(mirror_z=True)],
         reader_factory=reader_factory,
     )
     result = pipeline(file_name=file_name, accessor=ImageAccessor())
@@ -62,7 +63,7 @@ try:
     reader_factory = partial(StackReader, reader_factory=lambda filename: PipelineReader(filename, pipeline=pipeline_dict[filename]))
 
     pipeline = Pipeline(
-        transformers=[],
+        transformers=[MirrorTransformer(mirror_z=True)],
         reader_factory=reader_factory,
     )
     result = pipeline(file_name=file_name, accessor=ImageAccessor())
@@ -76,7 +77,7 @@ try:
     ])
 
     pipeline = Pipeline(
-        transformers=[],
+        transformers=[MirrorTransformer(mirror_z=True)],
         reader_factory=reader_factory,
     )
     result = pipeline(file_name=file_name, accessor=ImageAccessor())

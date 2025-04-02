@@ -58,26 +58,42 @@ class StackReader(ImageReader):
 
     @cache
     def read_metadata(self) -> ImageMetadata:
-        metadata = self.prototype_slice_handle.read_metadata()
+        from dataclasses import replace
+
+        metadata = replace(self.prototype_slice_handle.read_metadata())
 
         # Expand metadata for stack by simply expanding the shape
-        shape = metadata.shape
-        shape = tuple([self.num_slices, *shape])
-        metadata.shape = shape
+        metadata.shape = tuple([self.num_slices, *metadata.shape])
+        metadata.channel_dimension = metadata.channel_dimension + 1
 
         return metadata
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
+        from dataclasses import replace
         import numpy as np
 
-        # Read and stack all images. For efficiency, create empty array first, then write remaining data into arrays.
-        slice_handles = self._get_ordered_slice_handles()
+        # Store for slice access
+        z_access = accessor.z
+
+        # Revert added axis for 2D access
+        accessor = replace(accessor)
+        accessor.z = None
+        accessor.metadata.shape = accessor.metadata.shape[1:]
+        accessor.metadata.channel_dimension = accessor.metadata.channel_dimension - 1
+        
+        # TODO: Read only requested images based on spacing and the scale of the accessor
+        slice_handles = self._get_ordered_slice_handles()[:]
+
         first_result = slice_handles[0].read_image(accessor=accessor)
-        shape = tuple([self.num_slices, *first_result.image.shape])
-        dtype = first_result.image.dtype
-        image = np.zeros(shape=shape, dtype=dtype)
+        # For efficiency, create empty array first, then write remaining data into arrays.
+        image = np.zeros(
+            shape=([len(slice_handles), *first_result.image.shape]),
+            dtype=first_result.image.dtype
+        )
+
+        # Reuse first result
         image[0] = first_result.image
-        # TODO: Read only requested images, probably subsample based on scale of accessor
+        # Read and stack all remaining images. 
         for i, handle in enumerate(slice_handles[1:], 1):
             image[i] = handle.read_image(accessor=accessor).image
         return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
