@@ -25,7 +25,7 @@ with open("./data/stack_pipeline.json", "r") as f:
     pipeline_config = json.load(f)
 
 # Stack the output of multiple pipelines
-file_name = ["./data/Koala.jpg", "./data/Koala_2.jpg"]
+file_name = ["./data/Koala.jpg", "./data/Koala.jpg"]
 pipeline = load_pipeline_from_config(pipeline_config)
 
 result = pipeline(
