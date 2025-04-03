@@ -138,7 +138,7 @@ class StackReader(ImageReader):
 
         reader_factory = args.get("reader_factory")
 
-        if isinstance(reader, list):
+        if isinstance(reader_factory, list):
             reader = [get_reader_from_config(r) for r in reader_factory]
         else:
             reader = get_reader_from_config(reader_factory)
