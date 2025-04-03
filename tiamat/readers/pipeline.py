@@ -2,6 +2,8 @@
 Reader for pipelines.
 """
 
+from functools import cached_property, cache, partial
+from typing import Any, Dict
 from .protocol import ImageReader
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -24,3 +26,15 @@ class PipelineReader(ImageReader):
     @classmethod
     def check_file(cls, fname) -> bool | int | float:
         return False
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        from tiamat.serialization import load_pipeline_from_config
+
+        pipeline = load_pipeline_from_config(args["pipeline"])
+
+        #TODO: Handle kwargs
+        return partial(
+            cls,
+            pipeline=pipeline,
+        )
