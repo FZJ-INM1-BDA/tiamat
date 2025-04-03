@@ -84,34 +84,3 @@ def load_pipeline_from_config(config: dict, auto_register_default_readers=True):
         reader_factory=get_reader_from_config(config.get("reader", None)),
         auto_register_default_readers=False,
     )
-
-
-# def connect_pipelines_from_config(config: dict, auto_register_default_readers=True, out_pipeline="out"):
-#     """Connect pipelines defined in a config. Each entry in the config is a pipeline"""
-#     from tiamat.readers.pipeline import PipelineReader
-
-#     pipeline_config = config[out_pipeline]
-#     pipeline_input = pipeline_config.get("input")
-
-#     def _setup_pipeline(name):
-#         pipeline = connect_pipelines_from_config(config, out_pipeline=name)
-#         return partial(PipelineReader, pipeline=pipeline)
-
-#     if pipeline_input is None:
-#         return load_pipeline_from_config(
-#             pipeline_config,
-#             auto_register_default_readers=auto_register_default_readers,
-#         )
-#     else:
-#         input_pipelines = []
-#         if type(pipeline_input) is str:
-#             input_pipelines = [_setup_pipeline(pipeline_input)]
-#         elif hasattr(pipeline_input, "__iter__"):
-#             for name in pipeline_input:
-#                 input_pipelines.append(_setup_pipeline(name))
-
-#         return load_pipeline_from_config(
-#             pipeline_config,
-#             auto_register_default_readers=auto_register_default_readers,
-#             input_pipelines=input_pipelines,
-#         )
