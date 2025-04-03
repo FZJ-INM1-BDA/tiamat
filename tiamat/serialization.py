@@ -2,6 +2,7 @@
 Pipeline serialization.
 """
 
+from functools import partial
 import json
 from typing import Dict, Any, Type
 
@@ -39,15 +40,27 @@ def make_object_from_config(config_entry: dict):
     return create_instance(config_entry["class"], config_entry.get("args", {}))
 
 
-def get_reader_from_config(reader):
-    from tiamat.readers.factory import get_reader_from_registry
-    if reader is None:
+def get_reader_from_config(config_reader: dict):
+    from tiamat.readers.factory import get_reader_from_registry#
+
+    if config_reader is None:
         return None
-    else:
-        return get_reader_from_registry(reader)
+
+    cls = get_reader_from_registry(config_reader["class"])
+    args = config_reader.get("args", {})
+
+    if hasattr(cls, "from_json"):
+        return cls.from_json(args)
+    else:        
+        # Validate provided arguments
+        allowed_args = cls.__init__.__code__.co_varnames[
+            1 : cls.__init__.__code__.co_argcount
+        ]
+        filtered_args = {k: v for k, v in args.items() if k in allowed_args}
+        return partial(cls, **filtered_args)
 
 
-def load_pipeline_from_config(config: dict, auto_register_default_readers=True, **kwargs):
+def load_pipeline_from_config(config: dict, auto_register_default_readers=True):
     """Make a pipeline from a config dict."""
     from .pipeline import Pipeline
 

@@ -1,7 +1,7 @@
 """
 Deformation field transformers.
 """
-from typing import Tuple, Callable
+from typing import Any, Dict, Tuple, Callable
 
 from tiamat.readers.protocol import ImageReader
 from tiamat.transformers.protocol import Transformer
@@ -189,18 +189,11 @@ class DeformationFieldTransformer(Transformer):
 
     @classmethod
     def from_json(cls, args: Dict[str, Any]):
-
-        import tiamat.serialization
-
-        reader = args.get("reader")
-
-        if reader is not None:
-            class_registry
+        from tiamat.serialization import get_reader_from_config
 
         return cls(
             dfield_file=args["dfield_file"],
             request_margin=args.get("request_margin", 2),
             interpolation=args.get("interpolation", 'linear'),
-            reader_factory=reader,
+            reader_factory=get_reader_from_config(args.get("reader")),
         )
-
