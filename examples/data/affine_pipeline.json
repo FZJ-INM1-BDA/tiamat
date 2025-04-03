@@ -1,5 +1,5 @@
 {
-  "reader": "GenericReader",
+  "reader": { "class": "GenericReader" },
   "image_transformers": [
     { "class": "MinMaxNormalizationTransformer", "args": {} },
     { "class": "AffineTransformer", "args": { "affine_matrix": [

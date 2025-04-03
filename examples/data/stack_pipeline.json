@@ -1,0 +1,29 @@
+{
+  "reader": {
+    "class": "StackReader", "args":
+    {
+      "slice_spacing": 1.0,
+      "reader_factory": [
+        { "class": "PipelineReader", "args":
+          {
+            "pipeline": {
+              "image_transformers": [
+                { "class": "MirrorTransformer", "args": { "mirror_x": true } }
+              ]
+            }
+          }
+        },
+        { "class": "PipelineReader", "args":
+          {
+            "pipeline": {
+              "image_transformers": [
+                { "class": "MirrorTransformer", "args": { "mirror_y": true } }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "image_transformers": []
+}
