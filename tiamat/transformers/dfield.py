@@ -121,7 +121,6 @@ class DeformationFieldTransformer(Transformer):
         tmp_accessor.metadata = self.meta
         tmp_accessor.x = (x_from, x_to)
         tmp_accessor.y = (y_from, y_to)
-        tmp_accessor.interpolation = self.interpolation
 
         # Read the corresponding crop from dfield
         dfield_crop = self.reader.read_image(tmp_accessor)
@@ -174,15 +173,13 @@ class DeformationFieldTransformer(Transformer):
             float(y_from_input),
             float(x_from_input)
         )
-        interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
-
         image_result.image = DeformationFieldTransformer.apply_deformation(
             image=image_result.image,
             image_scale=image_scale,
             image_origin=image_origin,
             coordinates=coordinates,
             fill_value=accessor.fill_value,
-            interpolation=interpolation,
+            interpolation=self.interpolation,
         )
 
         return image_result
