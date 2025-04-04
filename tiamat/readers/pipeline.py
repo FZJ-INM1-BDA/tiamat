@@ -28,10 +28,10 @@ class PipelineReader(ImageReader):
         return False
 
     @classmethod
-    def from_json(cls, args: Dict[str, Any]):
+    def from_json(cls, args: Dict[str, Any], reader_post_creation_hook=None):
         from tiamat.serialization import load_pipeline_from_config
 
-        pipeline = load_pipeline_from_config(args["pipeline"])
+        pipeline = load_pipeline_from_config(args["pipeline"], reader_post_creation_hook=reader_post_creation_hook)
 
         #TODO: Handle kwargs
         return partial(
