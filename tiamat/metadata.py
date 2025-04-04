@@ -68,6 +68,12 @@ class ImageMetadata:
     @property
     def spatial_shape(self):
         return tuple(self.shape[i] for i in self.spatial_dimensions)
+    
+    @property
+    def num_channels(self):
+        if self.channel_dimension is None:
+            return 0
+        return self.shape[self.channel_dimension]
 
     @property
     def extents(self):
