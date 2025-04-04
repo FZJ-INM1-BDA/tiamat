@@ -133,18 +133,26 @@ class StackReader(ImageReader):
         return False
 
     @classmethod
-    def from_json(cls, args: Dict[str, Any]):
+    def from_json(cls, args: Dict[str, Any], reader_post_creation_hook=None):
         from tiamat.serialization import get_reader_from_config
 
         reader_factory = args.get("reader_factory")
 
         if isinstance(reader_factory, list):
-            reader = [get_reader_from_config(r) for r in reader_factory]
+            reader = [get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory]
         else:
-            reader = get_reader_from_config(reader_factory)
+            reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
 
-        return partial(
-            cls,
-            reader_factory=reader,
-            slice_spacing=args.get("slice_spacing")
-        )
+        if reader_post_creation_hook is None:
+            return partial(
+                cls,
+                reader_factory=reader,
+                slice_spacing=args.get("slice_spacing")
+            )
+        else:
+            return partial(
+                reader_post_creation_hook,
+                cls,
+                reader_factory=reader,
+                slice_spacing=args.get("slice_spacing"),
+            )
