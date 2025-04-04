@@ -25,11 +25,14 @@ class ImageToVolumeTransformer(Transformer):
 
         metadata = replace(metadata)
 
+        
         if metadata.channel_dimension == 0:
             # Make sure spatial dimensions are aligned
             metadata.shape = (metadata.shape[0], 1, *metadata.shape[1:])
         else:
             metadata.shape = (1, *metadata.shape)
+            if metadata.channel_dimension is not None:
+                metadata.channel_dimension = metadata.channel_dimension + 1
 
         if self.z_spacing is None:
             if hasattr(metadata.spacing, '__len__'):
@@ -101,10 +104,14 @@ class ReorderCoordinatesTransformer(Transformer):
         metadata = replace(metadata)
 
         sp_dims = metadata.spatial_dimensions
-        
+
         assert len(sp_dims) == len(self.reorder_axes)
 
-        metadata.shape = tuple(metadata.shape[sp_dims[ix]] for ix in self.from_indices)
+        new_shape = list(metadata.shape)
+        for i, ix in enumerate(self.from_indices):
+            new_shape[sp_dims[i]] = metadata.shape[sp_dims[ix]]
+        metadata.shape = tuple(new_shape)
+
         if hasattr(metadata.spacing, '__len__'):
             assert len(metadata.spacing) == len(sp_dims)
             metadata.spacing = tuple(metadata.spacing[ix] for ix in self.from_indices[::-1])

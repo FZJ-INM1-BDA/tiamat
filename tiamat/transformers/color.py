@@ -47,12 +47,12 @@ class LUTTransformer(Transformer):
             raise RuntimeError(f"Unknown type for color map: {type(self.color_map)}")
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        metadata.shape = tuple(
-            list(metadata.shape)
-            + [
-                3,
-            ]
-        )
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
+        metadata.shape = (*metadata.shape, 3)
+        
         return metadata
 
 
@@ -64,38 +64,48 @@ class GrayscaleTransformer(Transformer):
         import cv2
 
         # Only do something if the image is not already grayscale.
-        if image_result.image.ndim > 2:
+        if image_result.metadata.channel_dimension is not None:
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
 
         return image_result
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        if len(metadata.shape) > 2:
-            metadata.shape = metadata.shape[:2]
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
+        ch_dim = metadata.channel_dimension
+        if ch_dim is not None:
+            metadata.shape = (*metadata.shape[:ch_dim], *metadata.shape[(ch_dim + 1):])
+            metadata.channel_dimension = None
+           
         return metadata
 
 
 class GrayscaleToRGBTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+        accessor.metadata.channel_dimension = None
+
         return accessor
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
 
-        # Only do something if the image is not already grayscale.
-        if image_result.image.ndim == 2:
+        # Only do something if the image is not already RGB.
+        if image_result.metadata.channel_dimension is None:
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_GRAY2RGB)
 
         return image_result
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        if len(metadata.shape) == 2:
-            metadata.shape = tuple(
-                list(metadata.shape)
-                + [
-                    3,
-                ]
-            )
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
+        if metadata.channel_dimension is None:
+            metadata.channel_dimension = len(metadata.shape)
+            metadata.shape = (*metadata.shape, 3)
+        
         return metadata
 
 
