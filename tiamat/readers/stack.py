@@ -63,8 +63,6 @@ class ImageStackReader(ImageReader):
         image_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
         z_slice = prepare_coordinate(accessor.z)
 
-        print(image_scale, z_slice)
-
         min_ix = math.floor(z_slice[0] / self.slice_spacing)
         max_ix = math.ceil(z_slice[1] / self.slice_spacing)
         step = 1 / image_scale
@@ -76,8 +74,6 @@ class ImageStackReader(ImageReader):
         while ix < max_ix:
             selected_ix.append(min(ix, self.num_slices - 1))
             ix = int(ix + step)
-
-        print(selected_ix)
 
         slice_handles = [self._get_ordered_slice_handles()[i] for i in selected_ix]
 
