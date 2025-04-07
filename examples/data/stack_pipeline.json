@@ -1,6 +1,6 @@
 {
   "reader": {
-    "class": "StackReader", "args":
+    "class": "ImageStackReader", "args":
     {
       "slice_spacing": 1.0,
       "reader_factory": [

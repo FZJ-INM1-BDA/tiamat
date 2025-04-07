@@ -9,7 +9,7 @@ from tiamat.transformers.axes import MirrorTransformer
 from tiamat.pipeline import Pipeline
 from tiamat.io import ImageAccessor
 from tiamat.readers.pipeline import PipelineReader
-from tiamat.readers.stack import StackReader
+from tiamat.readers.stack import ImageStackReader
 
 shutil.copy("./data/Koala.jpg", "./data/Koala_2.jpg")
 
@@ -34,7 +34,7 @@ try:
 
     # Stack single pipeline for single file
     file_name = "./data/Koala.jpg"
-    reader_factory = partial(StackReader, reader_factory=partial(PipelineReader, pipeline=pipeline_a))
+    reader_factory = partial(ImageStackReader, reader_factory=partial(PipelineReader, pipeline=pipeline_a))
 
     pipeline = Pipeline(
         transformers=[MirrorTransformer(mirror_z=True)],
@@ -45,7 +45,7 @@ try:
 
     # Stack single pipeline from multiple files
     file_name = "./data/Koala*.jpg"
-    reader_factory = partial(StackReader, reader_factory=partial(PipelineReader, pipeline=pipeline_a))
+    reader_factory = partial(ImageStackReader, reader_factory=partial(PipelineReader, pipeline=pipeline_a))
 
     pipeline = Pipeline(
         transformers=[MirrorTransformer(mirror_z=True)],
@@ -59,7 +59,7 @@ try:
     pipeline_dict = dict(
         (fname, pipelines[i % 2]) for i, fname in enumerate(file_name)
     )
-    reader_factory = partial(StackReader, reader_factory=lambda filename: PipelineReader(filename, pipeline=pipeline_dict[filename]))
+    reader_factory = partial(ImageStackReader, reader_factory=lambda filename: PipelineReader(filename, pipeline=pipeline_dict[filename]))
 
     pipeline = Pipeline(
         transformers=[MirrorTransformer(mirror_z=True)],
@@ -70,7 +70,7 @@ try:
 
     # Multiple pipelines for single file
     file_name = ["./data/Koala.jpg"] * 2
-    reader_factory =  partial(StackReader, reader_factory=[
+    reader_factory =  partial(ImageStackReader, reader_factory=[
         partial(PipelineReader, pipeline=pipeline_a),
         partial(PipelineReader, pipeline=pipeline_b)
     ])

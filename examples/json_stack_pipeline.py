@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 
 from tiamat.transformers.axes import MirrorTransformer
 from tiamat.readers.pipeline import PipelineReader
-from tiamat.readers.stack import StackReader
+from tiamat.readers.stack import ImageStackReader
 from tiamat.io import ImageAccessor
 from tiamat.serialization import load_pipeline_from_config, register_class
 from tiamat.readers import register_reader
 
 # register some classes as valid transformers and readers
 register_class(MirrorTransformer)
-register_reader(StackReader)
+register_reader(ImageStackReader)
 register_reader(PipelineReader)
 
 
