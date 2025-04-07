@@ -88,10 +88,12 @@ class StackReader(ImageReader):
 
         # Revert added axis for 2D access
         accessor = replace(accessor)
+        metadata = replace(accessor.metadata)
         accessor.z = None
-        accessor.metadata.shape = accessor.metadata.shape[1:]
-        if accessor.metadata.channel_dimension is not None:
-            accessor.metadata.channel_dimension = accessor.metadata.channel_dimension - 1
+
+        metadata.shape = metadata.shape[1:]
+        if metadata.channel_dimension is not None:
+            metadata.channel_dimension = metadata.channel_dimension - 1
         
         # TODO: Read only requested images based on spacing and the scale of the accessor
         slice_handles = self._get_ordered_slice_handles()[:]
@@ -105,10 +107,10 @@ class StackReader(ImageReader):
 
         # Reuse first result
         image[0] = first_result.image
-        # Read and stack all remaining images. 
+        # Read and stack all remaining images.
         for i, handle in enumerate(slice_handles[1:], 1):
             image[i] = handle.read_image(accessor=accessor).image
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=image, accessor=accessor, metadata=metadata)
 
     @cached_property
     def file_handle(self) -> ImageReader:
@@ -139,7 +141,7 @@ class StackReader(ImageReader):
         reader_factory = args.get("reader_factory")
 
         if isinstance(reader_factory, list):
-            reader = [get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory]
+            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         else:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
 
@@ -147,12 +149,12 @@ class StackReader(ImageReader):
             return partial(
                 cls,
                 reader_factory=reader,
-                slice_spacing=args.get("slice_spacing")
+                slice_spacing=float(args.get("slice_spacing")),
             )
         else:
             return partial(
                 reader_post_creation_hook,
                 cls,
                 reader_factory=reader,
-                slice_spacing=args.get("slice_spacing"),
+                slice_spacing=float(args.get("slice_spacing")),
             )
