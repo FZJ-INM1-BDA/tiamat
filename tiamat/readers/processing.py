@@ -132,31 +132,36 @@ def resize(
     return res.astype(img.dtype)
 
 
+def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
+    import math
+
+    factor = image_scale / coordinate_scale
+
+    if isinstance(coord, int):
+        # A single element in the given dimension
+        coord = math.floor(coord * factor)
+        prepared_coord = (coord, coord + 1)
+    elif coord is None:
+        # All elements in the given dimension
+        prepared_coord = (0, None)
+    else:
+        # tuple of values
+        prepared_coord = tuple(
+            math.floor(c * factor) if c is not None else None
+            for c in coord
+        )
+    return prepared_coord
+
+
 def _prepare_coordinates(
     x, y, z, c, image_scale=(1.0, 1.0), coordinate_scale=(1.0, 1.0)
 ):
-    import math
-
     prepared = []
     for i, coord in enumerate((x, y, z, c)):
-        c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
         i_scale = image_scale[i] if i < len(image_scale) else 1.0
-        factor = i_scale / c_scale
+        c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
+        prepared.append(prepare_coordinate(coord, i_scale, c_scale))
 
-        if isinstance(coord, int):
-            # A single element in the given dimension
-            coord = math.floor(coord * factor)
-            prepared_coord = (coord, coord + 1)
-        elif coord is None:
-            # All elements in the given dimension
-            prepared_coord = (0, None)
-        else:
-            # tuple of values
-            prepared_coord = tuple(
-                math.floor(c * factor) if c is not None else None
-                for c in coord
-            )
-        prepared.append(prepared_coord)
     return prepared
 
 
