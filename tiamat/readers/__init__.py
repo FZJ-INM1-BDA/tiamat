@@ -16,3 +16,11 @@ def register_all_readers():
     from .memory import MemoryReader
 
     register_reader(MemoryReader)
+
+    from .stack import ImageStackReader
+
+    register_reader(ImageStackReader)
+
+    from .pipeline import PipelineReader
+
+    register_reader(PipelineReader)
