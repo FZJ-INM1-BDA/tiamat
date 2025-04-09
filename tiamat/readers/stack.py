@@ -56,15 +56,37 @@ class ImageStackReader(ImageReader):
     def prototype_slice_handle(self):
         return self._get_ordered_slice_handles()[0]
 
+    @staticmethod
+    def fill_spacing(slice_spacing, spacing):
+        from tiamat.readers.processing import expand_to_length
+
+        if slice_spacing is None:
+            spacing_2d = expand_to_length(spacing, 2)
+            assert spacing_2d[0] == spacing_2d[1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
+            return (*spacing_2d, spacing_2d[0])
+        else:
+            return (*expand_to_length(spacing, 2), slice_spacing)
+
     def _access_slices(self, accessor):
         import math
         from tiamat.readers.processing import prepare_coordinate, expand_to_length
+        from tiamat.transformers.coordinates import resolve_coordinate_slice
+
+        spatial_dims = accessor.metadata.spatial_dimensions
+
+        assert len(spatial_dims) == 3, "Only able to perform stack slicing for 3D images"
 
         image_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
         z_slice = prepare_coordinate(accessor.z)
+        z_shape = accessor.metadata.shape[spatial_dims[0]]
+        z_from, z_to = resolve_coordinate_slice(z_slice, z_shape)
 
-        min_ix = math.floor(z_slice[0] / self.slice_spacing)
-        max_ix = math.ceil(z_slice[1] / self.slice_spacing)
+        # Set spacing
+        spacing = ImageStackReader.fill_spacing(self.slice_spacing, accessor.metadata.spacing)
+        slice_spacing = spacing[-1]
+
+        min_ix = math.floor(z_from / slice_spacing)
+        max_ix = math.ceil(z_to / slice_spacing)
         step = 1 / image_scale
 
         start_ix = min_ix + math.ceil(min(self.num_slices, step) / 2) - 1
@@ -82,20 +104,16 @@ class ImageStackReader(ImageReader):
     @cache
     def read_metadata(self) -> ImageMetadata:
         from dataclasses import replace
-        from tiamat.readers.processing import expand_to_length
 
         metadata = replace(self.prototype_slice_handle.read_metadata())
+
+        metadata.file_path = self.fnames
 
         # Expand metadata for stack by simply expanding the shape
         metadata.shape = tuple([self.num_slices, *metadata.shape])
 
         # Set spacing
-        if self.slice_spacing is None:
-            spacing_2d = expand_to_length(metadata.spacing, 2)
-            assert spacing_2d[0] == spacing_2d[1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
-            metadata.spacing = (*spacing_2d, spacing_2d[0])
-        else:
-            metadata.spacing = (*expand_to_length(metadata.spacing, 2), self.slice_spacing)
+        metadata.spacing = ImageStackReader.fill_spacing(self.slice_spacing, metadata.spacing)
 
         if metadata.channel_dimension is not None:
             metadata.channel_dimension = metadata.channel_dimension + 1
