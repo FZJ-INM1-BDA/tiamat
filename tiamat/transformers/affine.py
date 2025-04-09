@@ -51,9 +51,11 @@ class AffineTransformer(Transformer):
 
         # Read coordinates for requested frame
         x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+
         # TODO: Account for spacing and coordinate scale
-        x_from, x_to = resolve_coordinate_slice(x, accessor.metadata.shape[1])
-        y_from, y_to = resolve_coordinate_slice(y, accessor.metadata.shape[0])
+        spatial_dims = accessor.metadata.spatial_dimensions
+        x_from, x_to = resolve_coordinate_slice(x, accessor.metadata.shape[spatial_dims[-1]])
+        y_from, y_to = resolve_coordinate_slice(y, accessor.metadata.shape[spatial_dims[-2]])
 
         # Transform all four corners of the requested frame by the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)
