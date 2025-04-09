@@ -51,7 +51,7 @@ class ImageMetadata:
     shape: tuple
     value_range: tuple
     dtype: np.dtype
-    file_path: str | None = None
+    file_path: Iterable[str] | str | None = None
     spacing: float | tuple[float, ...] | None = None
     channel_dimension: int | None = None  # None means no channel dimension
     additional_metadata: dict | None = None
