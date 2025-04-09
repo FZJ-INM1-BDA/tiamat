@@ -29,4 +29,9 @@ def resolve_coordinate_slice(
     elif isinstance(coordinate_slice, (np.integer, int)) or isinstance(coordinate_slice, (np.floating, float)):
         return coordinate_slice
     else:
-        return tuple(resolve_coordinate_slice(c, image_dimension) for c in coordinate_slice)
+        slice_0, slice_1 = coordinate_slice
+        if slice_0 is None:
+            slice_0 = 0
+        if slice_1 is None:
+            slice_1 = image_dimension
+        return (slice_0, slice_1)
