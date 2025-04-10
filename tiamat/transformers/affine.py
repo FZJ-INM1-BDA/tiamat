@@ -93,22 +93,15 @@ class AffineTransformer(Transformer):
         import numpy as np
         from dataclasses import replace
 
-        metadata_dict = asdict(metadata)
-        shape_tuple = metadata_dict.pop("shape")
+        shape_tuple = metadata.spatial_shape[-2:]
 
-        # converts shape to extends
+        # converts shape to extents
         # e.g. shape of 10, 20
         # extents = ((0, 10), (0, 20))
         extents = list(zip(repeat(0), shape_tuple[::-1]))
         extent_coords = list(product(*extents))
-        
-        # shape is ONLY affected by rotation component of 3x3 matrix
-        transformed_coords = (self.affine_matrix[:2, :2] @ np.array(extent_coords).T).T
-        
-        xmax = np.max(transformed_coords[:,0])
-        ymax = np.max(transformed_coords[:,1])
-        
-        new_metadata = replace(metadata, shape=(ymax, xmax))
+
+        new_metadata = replace(metadata)
 
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
         new_metadata.extents = transformed_coords.tolist()
