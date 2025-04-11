@@ -25,4 +25,3 @@ class MinMaxNormalizationTransformer(Transformer):
         image_result.image = (image_result.image.astype(self.target_dtype) - vmin) / (vmax - vmin)
 
         return image_result
-
