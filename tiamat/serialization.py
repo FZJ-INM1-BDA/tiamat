@@ -66,7 +66,7 @@ def get_reader_from_config(config_reader: dict, reader_post_creation_hook=None):
         if reader_post_creation_hook is None:
             return partial(cls, **filtered_args)
         else:
-            return partial(reader_post_creation_hook, cls=cls, **filtered_args)
+            return partial(reader_post_creation_hook, cls, **filtered_args)
 
 
 def load_pipeline_from_config(config: dict, auto_register_default_readers=True, reader_post_creation_hook=None):
