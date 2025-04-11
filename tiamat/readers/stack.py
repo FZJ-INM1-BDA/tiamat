@@ -12,10 +12,18 @@ from tiamat.io import ImageAccessor, ImageResult
 from tiamat.metadata import ImageMetadata
 
 
-def _find_slices(fnames: str) -> List[str]:
+def find_slices(fnames: str) -> List[str]:
     import glob
 
     return sorted(glob.glob(fnames))
+
+
+def get_reader_identifier(fname, identifier):
+    import re
+
+    match = re.search(identifier, fname)
+
+    return match.group(1)
 
 
 def _select_slice_ix(accessor, num_slices):
@@ -58,7 +66,8 @@ class ImageStackReader(ImageReader):
     def __init__(
             self,
             fnames: str | Iterable[str],
-            reader_factory: Callable[[str], ImageReader] | Iterable[Callable[[str], ImageReader]] = None,
+            reader_identifier: str = None,
+            reader_factory: Callable[[str], ImageReader] | Iterable[Callable[[str], ImageReader]] | Dict[str, Callable[[str], ImageReader]] = None,
             slice_spacing: float = None,
             **reader_kwargs
         ):
@@ -77,19 +86,34 @@ class ImageStackReader(ImageReader):
         """
         self.fnames = fnames
         self.reader_factory = reader_factory or get_reader
+
+        if isinstance(self.reader_factory, dict):
+            assert reader_identifier is not None
+        self.reader_identifier = reader_identifier
+
         self.slice_spacing = slice_spacing
         self.reader_kwargs = reader_kwargs
 
-    @cache
-    def _get_ordered_slice_handles(self):
-        if hasattr(self.reader_factory, '__iter__'):
+    @cached_property
+    def ordered_slice_handles(self):
+        if isinstance(self.reader_factory, dict):
+            reader_list = []
+            for k, factory in self.reader_factory.items():
+                # Find all files that match k
+                file_matches = [fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k]
+                reader_list.append(factory(file_matches))
+            return reader_list
+        
+        elif isinstance(self.reader_factory, list):
             return [factory(fname) for fname, factory in zip(self.slices, self.reader_factory)]
+        
         else:
             return [self.reader_factory(fname) for fname in self.slices]
 
+
     @cached_property
     def prototype_slice_handle(self):
-        return self._get_ordered_slice_handles()[0]
+        return self.ordered_slice_handles[0]
 
     @staticmethod
     def fill_spacing(slice_spacing, spacing):
@@ -126,7 +150,7 @@ class ImageStackReader(ImageReader):
         import numpy as np
 
         # Use only slice handles for the requested scale
-        slice_handles = [self._get_ordered_slice_handles()[i] for i in _select_slice_ix(accessor, self.num_slices)]
+        slice_handles = [self.ordered_slice_handles[i] for i in _select_slice_ix(accessor, self.num_slices)]
 
         # Remove z axis for 2D access from metadata
         tmp_accessor = replace(accessor, z = None)
@@ -161,7 +185,7 @@ class ImageStackReader(ImageReader):
         if hasattr(self.fnames, '__iter__') and not isinstance(self.fnames, str):
             return [fname for fname in self.fnames]
         else:
-            return _find_slices(fnames=self.fnames)
+            return find_slices(fnames=self.fnames)
 
     @cached_property
     def num_slices(self) -> int:
@@ -182,6 +206,8 @@ class ImageStackReader(ImageReader):
 
         if isinstance(reader_factory, list):
             reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
+        elif isinstance(reader_factory, dict):
+            reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
         else:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
 
@@ -219,31 +245,24 @@ class VolumeStackReader(ImageReader):
 
         self.reader_kwargs = reader_kwargs
 
-    def get_reader_identifier(self, fname):
-        import re
-
-        match = re.search(self.reader_identifier, fname)
-
-        return match.group(1)
-
     @cached_property
     def slices(self) -> List[str]:
         if hasattr(self.fnames, '__iter__') and not isinstance(self.fnames, str):
             return [fname for fname in self.fnames]
         else:
-            return _find_slices(fnames=self.fnames)
+            return find_slices(fnames=self.fnames)
 
     @cached_property
     def num_slices(self) -> int:
         return len(self.slices)
 
     @cached_property
-    def subvolume_handles(self):
+    def ordered_subvolume_handles(self):
         if isinstance(self.reader_factory, dict):
             reader_list = []
             for k, factory in self.reader_factory.items():
                 # Find all files that match k
-                file_matches = [fname for fname in self.slices if self.get_reader_identifier(fname) == k]
+                file_matches = [fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k]
                 reader_list.append(factory(file_matches))
             return reader_list
         
@@ -255,15 +274,15 @@ class VolumeStackReader(ImageReader):
 
     @cached_property
     def prototype_subvolume_handle(self):
-        return self.subvolume_handles[0]
+        return self.ordered_subvolume_handles[0]
     
     @cached_property
     def subvolume_shapes(self):
-        return [handle.read_metadata().shape.copy() for handle in self.subvolume_handles]
+        return [handle.read_metadata().shape.copy() for handle in self.ordered_subvolume_handles]
 
     @cached_property
     def shape(self):
-        metadata = self.subvolume_handles[0].read_metadata()
+        metadata = self.ordered_subvolume_handles[0].read_metadata()
         z_dim = metadata.spatial_dimensions[0]
 
         shape = list(self.subvolume_shapes[0])
@@ -276,7 +295,7 @@ class VolumeStackReader(ImageReader):
     def read_metadata(self) -> ImageMetadata:
         from dataclasses import replace
 
-        metadata = replace(self.subvolume_handles[0].read_metadata())
+        metadata = replace(self.ordered_subvolume_handles[0].read_metadata())
 
         metadata.file_path = self.fnames
 
@@ -285,8 +304,6 @@ class VolumeStackReader(ImageReader):
         return metadata
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
-        import math
-
         from dataclasses import replace
         import numpy as np
         
@@ -303,11 +320,12 @@ class VolumeStackReader(ImageReader):
 
         # TODO: We might also filter subvolumes based on the requested scale
         # When scale is larger than shape of a subvolume we might skip some
+        # selected_ix = _select_slice_ix(accessor, image_scale)
 
         # Build volume stack
         cur_z = 0
         volume_stack = []
-        for handle, shape in zip(self.subvolume_handles, self.subvolume_shapes):
+        for handle, shape in zip(self.ordered_subvolume_handles, self.subvolume_shapes):
             z_size = shape[z_dim]
 
             if cur_z < z_to and cur_z + z_size > z_from:
