@@ -60,7 +60,6 @@ def _select_slice_ix(accessor, num_slices):
     return selected_ix
 
 
-
 class ImageStackReader(ImageReader):
     
     def __init__(
@@ -262,7 +261,7 @@ class VolumeStackReader(ImageReader):
             reader_list = []
             for k, factory in self.reader_factory.items():
                 # Find all files that match k
-                file_matches = [fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k]
+                file_matches = tuple(fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k)
                 reader_list.append(factory(file_matches))
             return reader_list
         
@@ -278,7 +277,7 @@ class VolumeStackReader(ImageReader):
     
     @cached_property
     def subvolume_shapes(self):
-        return [handle.read_metadata().shape.copy() for handle in self.ordered_subvolume_handles]
+        return [handle.read_metadata().shape for handle in self.ordered_subvolume_handles]
 
     @cached_property
     def shape(self):
