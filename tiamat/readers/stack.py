@@ -330,7 +330,7 @@ class VolumeStackReader(ImageReader):
 
             if out_image is None:
                 out_shape = list(array.shape)
-                out_shape[z_dim] = math.ceil((z_to - z_from) / image_scales[-1])
+                out_shape[z_dim] = math.ceil((z_to - z_from) * image_scales[-1])
 
                 out_image = np.zeros(
                     shape=out_shape,
@@ -340,15 +340,13 @@ class VolumeStackReader(ImageReader):
             index = [slice(None)] * len(out_image.shape)
             index[z_dim] = slice(offset, offset + array.shape[z_dim])
 
-            print(index)
-
-            out_image[index] = array
+            out_image[tuple(index)] = array
 
         # Build volume stack
         cur_z_offset = 0
         for handle, shape in zip(self.ordered_subvolume_handles, self.subvolume_shapes):
             z_size = shape[z_dim]
-            scaled_z_offset = math.floor(cur_z_offset / image_scales[-1])
+            scaled_z_offset = math.floor(cur_z_offset * image_scales[-1])
 
             # Use only slice handles with z slice overlap
             if cur_z_offset < z_to and cur_z_offset + z_size > z_from:
@@ -360,7 +358,7 @@ class VolumeStackReader(ImageReader):
                 insert_array(tmp_image, scaled_z_offset)
 
                 # Output image might cover more than z_size
-                cur_z_offset += tmp_image.shape[z_dim] * image_scales[-1]
+                cur_z_offset += tmp_image.shape[z_dim] / image_scales[-1]
             else:
                 cur_z_offset += z_size
 
