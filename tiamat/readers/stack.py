@@ -103,7 +103,7 @@ class ImageStackReader(ImageReader):
                 reader_list.append(factory(file_matches))
             return reader_list
         
-        elif isinstance(self.reader_factory, list):
+        elif hasattr(self.reader_factory, '__iter__'):
             return [factory(fname) for fname, factory in zip(self.slices, self.reader_factory)]
         
         else:
@@ -203,10 +203,10 @@ class ImageStackReader(ImageReader):
 
         reader_factory = args.get("reader_factory")
 
-        if isinstance(reader_factory, list):
-            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
-        elif isinstance(reader_factory, dict):
+        if isinstance(reader_factory, dict):
             reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+        elif hasattr(reader_factory, '__iter__'):
+            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         else:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
 
@@ -265,7 +265,7 @@ class VolumeStackReader(ImageReader):
                 reader_list.append(factory(file_matches))
             return reader_list
         
-        elif isinstance(self.reader_factory, list):
+        elif hasattr(self.reader_factory, '__iter__'):
             return [factory(fname) for fname, factory in zip(self.slices, self.reader_factory)]
         
         else:
@@ -303,41 +303,68 @@ class VolumeStackReader(ImageReader):
         return metadata
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
+        import math
         from dataclasses import replace
         import numpy as np
         
-        from tiamat.readers.processing import prepare_coordinate, expand_to_length
+        from tiamat.readers.processing import _prepare_coordinates, prepare_coordinate, expand_to_length
         from tiamat.transformers.coordinates import resolve_coordinate_slice
         
-        z_dim = accessor.metadata.spatial_dimensions[0]
+        z_dim, y_dim, x_dim = accessor.metadata.spatial_dimensions
+        ch_dim = accessor.metadata.channel_dimension
 
         image_z_size = self.shape[z_dim]
-        image_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
+        image_scales = expand_to_length(accessor.scale, 3)  # x, y, z
+
+        # TODO: Probably also account for coordinate_scale
+        coordinate_scales = expand_to_length(accessor.coordinate_scale, 3)  # x, y, z
 
         z_slice = prepare_coordinate(accessor.z)
         z_from, z_to = resolve_coordinate_slice(z_slice, image_z_size)
 
-        # TODO: We might also filter subvolumes based on the requested scale
-        # When scale is larger than shape of a subvolume we might skip some
-        # selected_ix = _select_slice_ix(accessor, image_scale)
+        out_image = None
+
+        # TODO: We might want to support padding in the future
+        def insert_array(array, offset):
+            nonlocal out_image
+
+            if out_image is None:
+                out_shape = list(array.shape)
+                out_shape[z_dim] = math.ceil((z_to - z_from) / image_scales[-1])
+
+                out_image = np.zeros(
+                    shape=out_shape,
+                    dtype=array.dtype,
+                )
+
+            index = [slice(None)] * len(out_image.shape)
+            index[z_dim] = slice(offset, offset + array.shape[z_dim])
+
+            print(index)
+
+            out_image[index] = array
 
         # Build volume stack
-        cur_z = 0
-        volume_stack = []
+        cur_z_offset = 0
         for handle, shape in zip(self.ordered_subvolume_handles, self.subvolume_shapes):
             z_size = shape[z_dim]
+            scaled_z_offset = math.floor(cur_z_offset / image_scales[-1])
 
-            if cur_z < z_to and cur_z + z_size > z_from:
-                # Use only slice handles with z slice overlap
-                tmp_accessor = replace(accessor, z=(z_from - cur_z, z_to - cur_z))
-                volume_stack.append(handle.read_image(accessor=tmp_accessor).image)
+            # Use only slice handles with z slice overlap
+            if cur_z_offset < z_to and cur_z_offset + z_size > z_from:
+                # Access subvolume and read from it
+                tmp_accessor = replace(accessor, z=(z_from - cur_z_offset, z_to - cur_z_offset))
+                tmp_image = handle.read_image(accessor=tmp_accessor).image
 
-            cur_z += z_size
+                # Insert the result in the array at specific offfset
+                insert_array(tmp_image, scaled_z_offset)
 
-        # TODO: This might be slow. Replace with fixed array initialization and write to this
-        image = np.stack(volume_stack, axis=z_dim)
+                # Output image might cover more than z_size
+                cur_z_offset += tmp_image.shape[z_dim] * image_scales[-1]
+            else:
+                cur_z_offset += z_size
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=out_image, accessor=accessor, metadata=accessor.metadata)
 
     @classmethod
     def check_file(cls, fname: str | List[str]) -> bool | int | float:
@@ -352,10 +379,10 @@ class VolumeStackReader(ImageReader):
 
         reader_factory = args.get("reader_factory")
 
-        if isinstance(reader_factory, list):
-            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
-        elif isinstance(reader_factory, dict):
+        if isinstance(reader_factory, dict):
             reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+        elif hasattr(reader_factory, '__iter__'):
+            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         else:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
 
