@@ -37,8 +37,6 @@ class BoundingBoxTransformer(Transformer):
         res_from = max(-coord_from, 0)
         res_to = max(coord_to + bounds_from - bounds_to, 0)
 
-        print(res_to, coord_to, bounds_from, bounds_to)
-
         return (out_from, out_to), (res_from, res_to)
 
     @staticmethod
@@ -92,7 +90,7 @@ class BoundingBoxTransformer(Transformer):
             accessor.z, residual_z = BoundingBoxTransformer.crop_coordinate(
                 accessor.z,
                 self.bounds_z,
-                spatial_shape,
+                spatial_shape[-3],
                 coord_scale=accessor.scale,
             )
             residuals.append(residual_z)
