@@ -112,7 +112,10 @@ class ImageStackReader(ImageReader):
 
     @cached_property
     def prototype_slice_handle(self):
-        return self.ordered_slice_handles[0]
+        if len(self.ordered_slice_handles) > 0:
+            return self.ordered_slice_handles[0]
+        else:
+            return None
 
     @staticmethod
     def fill_spacing(slice_spacing, spacing):
@@ -259,10 +262,12 @@ class VolumeStackReader(ImageReader):
     def ordered_subvolume_handles(self):
         if isinstance(self.reader_factory, dict):
             reader_list = []
-            for k, factory in self.reader_factory.items():
+            for k in sorted(self.reader_factory.keys()):
+                factory = self.reader_factory[k]
                 # Find all files that match k
                 file_matches = tuple(fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k)
-                reader_list.append(factory(file_matches))
+                if len(file_matches) > 0:
+                    reader_list.append(factory(file_matches))
             return reader_list
         
         elif hasattr(self.reader_factory, '__iter__'):
@@ -337,21 +342,25 @@ class VolumeStackReader(ImageReader):
                     dtype=array.dtype,
                 )
 
-            index = [slice(None)] * len(out_image.shape)
-            index[z_dim] = slice(offset, offset + array.shape[z_dim])
+            index_to = [slice(None)] * len(out_image.shape)
+            index_to[z_dim] = slice(offset, min(offset + array.shape[z_dim], out_image.shape[z_dim]))
 
-            out_image[tuple(index)] = array
+            index_from = [slice(None)] * len(out_image.shape)
+            index_from[z_dim] = slice(0, out_image.shape[z_dim] - offset)
+
+            out_image[tuple(index_to)] = array[tuple(index_from)]
 
         # Build volume stack
         cur_z_offset = 0
         for handle, shape in zip(self.ordered_subvolume_handles, self.subvolume_shapes):
             z_size = shape[z_dim]
+            remaining_z_size = min(z_to - z_from + cur_z_offset, z_size)
             scaled_z_offset = math.floor(cur_z_offset * image_scales[-1])
 
             # Use only slice handles with z slice overlap
             if cur_z_offset < z_to and cur_z_offset + z_size > z_from:
                 # Access subvolume and read from it
-                tmp_accessor = replace(accessor, z=(z_from - cur_z_offset, z_to - cur_z_offset))
+                tmp_accessor = replace(accessor, z=(0, remaining_z_size))
                 tmp_image = handle.read_image(accessor=tmp_accessor).image
 
                 # Insert the result in the array at specific offfset
