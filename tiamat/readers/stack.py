@@ -207,11 +207,19 @@ class ImageStackReader(ImageReader):
         reader_factory = args.get("reader_factory")
 
         if isinstance(reader_factory, dict):
-            reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+            if "class" in reader_factory.keys():
+                # Single reader
+                reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
+            else:
+                # Stack of readers
+                reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
         elif hasattr(reader_factory, '__iter__'):
             reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
+        elif reader_factory is None:
+            reader = None
         else:
-            reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
+            raise Exception(f"Can't parse reader {reader}")
+
 
         if reader_post_creation_hook is None:
             return partial(
@@ -387,12 +395,19 @@ class VolumeStackReader(ImageReader):
         reader_factory = args.get("reader_factory")
 
         if isinstance(reader_factory, dict):
-            reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+            if "class" in reader_factory.keys():
+                # Single reader
+                reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
+            else:
+                # Stack of readers
+                reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
         elif hasattr(reader_factory, '__iter__'):
             reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
+        elif reader_factory is None:
+            reader = None
         else:
-            reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
-
+            raise Exception(f"Can't parse reader {reader}")
+            
         if reader_post_creation_hook is None:
             return partial(
                 cls,
