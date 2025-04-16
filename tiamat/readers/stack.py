@@ -5,6 +5,8 @@ Reader for Stacks.
 from functools import cached_property, cache, partial
 from typing import Any, Callable, Dict, Iterable, List
 
+import numpy as np
+
 from tiamat.readers.protocol import ImageReader
 from tiamat.readers.factory import get_reader
 
@@ -45,16 +47,23 @@ def _select_slice_ix(accessor, num_slices):
     # slice_spacing = spacing[-1]
     slice_spacing = 1.0  # Ignore spacing for now
 
+    # Calculate minimum and maximum slice index to use
     min_ix = math.floor(z_from / slice_spacing)
     max_ix = math.ceil(z_to / slice_spacing)
+    
+    # Define step between slice indices to pick
     step = 1 / image_scale
 
-    start_ix = min_ix + math.ceil(min(num_slices, step) / 2) - 1
+    size = max_ix - min_ix
 
+    # Start index is the center of the size or step (depending on which is smaller)
+    start_ix = min_ix + math.ceil(min(size, step) / 2) - 1
+
+    # Select indices starting with start_ix and step size
     selected_ix = []
     ix = start_ix
-    while ix < max_ix:
-        selected_ix.append(min(ix, num_slices - 1))
+    while (ix - start_ix) < size:
+        selected_ix.append(min(ix, min(max_ix, num_slices) - 1))
         ix = int(ix + step)
 
     return selected_ix
@@ -149,10 +158,17 @@ class ImageStackReader(ImageReader):
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
         from dataclasses import replace
-        import numpy as np
 
         # Use only slice handles for the requested scale
-        slice_handles = [self.ordered_slice_handles[i] for i in _select_slice_ix(accessor, self.num_slices)]
+        try:
+            selected_slice_ix = _select_slice_ix(accessor, self.num_slices)
+            slice_handles = [self.ordered_slice_handles[i] for i in _select_slice_ix(accessor, self.num_slices)]
+        except:
+            print(accessor.z, selected_slice_ix)
+            raise
+
+        if len(slice_handles) == 0:
+            raise Exception("Requested empty stack")
 
         # Remove z axis for 2D access from metadata
         tmp_accessor = replace(accessor, z = None)
@@ -165,9 +181,10 @@ class ImageStackReader(ImageReader):
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
-        image = np.zeros(
+        image = np.full(
             shape=([len(slice_handles), *first_result.image.shape]),
-            dtype=first_result.image.dtype
+            fill_value=accessor.fill_value,
+            dtype=first_result.image.dtype,
         )
 
         # Reuse first result
@@ -318,7 +335,6 @@ class VolumeStackReader(ImageReader):
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
         import math
         from dataclasses import replace
-        import numpy as np
         
         from tiamat.readers.processing import _prepare_coordinates, prepare_coordinate, expand_to_length
         from tiamat.transformers.coordinates import resolve_coordinate_slice
@@ -343,39 +359,49 @@ class VolumeStackReader(ImageReader):
 
             if out_image is None:
                 out_shape = list(array.shape)
-                out_shape[z_dim] = math.ceil((z_to - z_from) * image_scales[-1])
+                out_shape[z_dim] = math.floor((z_to - z_from) * image_scales[-1])
 
                 out_image = np.zeros(
                     shape=out_shape,
                     dtype=array.dtype,
                 )
 
+            z_size = min(array.shape[z_dim], out_image.shape[z_dim] - offset)
+
             index_to = [slice(None)] * len(out_image.shape)
-            index_to[z_dim] = slice(offset, min(offset + array.shape[z_dim], out_image.shape[z_dim]))
+            index_to[z_dim] = slice(offset, offset + z_size)
 
             index_from = [slice(None)] * len(out_image.shape)
-            index_from[z_dim] = slice(0, out_image.shape[z_dim] - offset)
-
+            index_from[z_dim] = slice(0, z_size)
+ 
             out_image[tuple(index_to)] = array[tuple(index_from)]
+            
 
         # Build volume stack
         cur_z_offset = 0
         for handle, shape in zip(self.ordered_subvolume_handles, self.subvolume_shapes):
             z_size = shape[z_dim]
-            remaining_z_size = min(z_to - z_from + cur_z_offset, z_size)
-            scaled_z_offset = math.floor(cur_z_offset * image_scales[-1])
 
             # Use only slice handles with z slice overlap
-            if cur_z_offset < z_to and cur_z_offset + z_size > z_from:
+            if cur_z_offset + z_size > z_from and cur_z_offset < z_to:
+
+                # From, to slice for image access
+                from_ix = max(z_from - cur_z_offset, 0)
+                to_ix = min(z_to - cur_z_offset, z_size)
+
                 # Access subvolume and read from it
-                tmp_accessor = replace(accessor, z=(0, remaining_z_size))
+                tmp_accessor = replace(accessor, z=(from_ix, to_ix))
+
                 tmp_image = handle.read_image(accessor=tmp_accessor).image
 
-                # Insert the result in the array at specific offfset
+                # Position in the output array to place the image
+                scaled_z_offset = math.floor(max(cur_z_offset - z_from, 0) * image_scales[-1])
+
+                # Insert the result in the array at specific offfset                    
                 insert_array(tmp_image, scaled_z_offset)
 
                 # Output image might cover more than z_size
-                cur_z_offset += tmp_image.shape[z_dim] / image_scales[-1]
+                cur_z_offset += z_size # tmp_image.shape[z_dim] / image_scales[-1]
             else:
                 cur_z_offset += z_size
 
