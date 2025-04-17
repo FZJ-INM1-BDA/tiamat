@@ -20,6 +20,10 @@ class AffineTransformer(Transformer):
         ):
         self.affine_matrix = np.array(affine_matrix)
 
+        # If affine is of shape (2, 3), extent to its (3, 3) form
+        if self.affine_matrix.shape == (2, 3):
+            self.affine_matrix = np.vstack((self.affine_matrix, [0.0, 0.0, 1.0]))
+
         # Pixel margin around requested image to avoid resampling artifacts
         self.request_margin = request_margin
 
