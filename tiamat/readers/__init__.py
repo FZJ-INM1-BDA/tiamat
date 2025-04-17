@@ -17,9 +17,10 @@ def register_all_readers():
 
     register_reader(MemoryReader)
 
-    from .stack import ImageStackReader
+    from .stack import ImageStackReader, VolumeStackReader
 
     register_reader(ImageStackReader)
+    register_reader(VolumeStackReader)
 
     from .pipeline import PipelineReader
 

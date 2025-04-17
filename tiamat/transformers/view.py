@@ -31,13 +31,11 @@ class BoundingBoxTransformer(Transformer):
         bounds_from, bounds_to = get_coordinate_bounds(bounds_slice, math.ceil(image_dimension * coord_scale))
 
         coord_slice = prepare_coordinate(coord_slice)
-        coord_from, coord_to = get_coordinate_bounds(coord_slice, bounds_to - bounds_from)
+        coord_from, coord_to = get_coordinate_bounds(coord_slice, bounds_to)
 
         out_from, out_to = max(coord_from + bounds_from, bounds_from), min(coord_to + bounds_from, bounds_to)
         res_from = max(-coord_from, 0)
         res_to = max(coord_to + bounds_from - bounds_to, 0)
-
-        print(res_to, coord_to, bounds_from, bounds_to)
 
         return (out_from, out_to), (res_from, res_to)
 
@@ -79,21 +77,21 @@ class BoundingBoxTransformer(Transformer):
             accessor.x,
             self.bounds_x,
             spatial_shape[-1],
-            coord_scale=accessor.scale,
+            coord_scale=accessor.coordinate_scale,
         )
         accessor.y, residual_y = BoundingBoxTransformer.crop_coordinate(
             accessor.y,
             self.bounds_y,
             spatial_shape[-2],
-            coord_scale=accessor.scale,
+            coord_scale=accessor.coordinate_scale,
         )
         residuals = [residual_x, residual_y]
         if len(spatial_shape) > 2:
             accessor.z, residual_z = BoundingBoxTransformer.crop_coordinate(
                 accessor.z,
                 self.bounds_z,
-                spatial_shape,
-                coord_scale=accessor.scale,
+                spatial_shape[-3],
+                coord_scale=accessor.coordinate_scale,
             )
             residuals.append(residual_z)
 
