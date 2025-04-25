@@ -164,7 +164,6 @@ class ImageStackReader(ImageReader):
             selected_slice_ix = _select_slice_ix(accessor, self.num_slices)
             slice_handles = [self.ordered_slice_handles[i] for i in _select_slice_ix(accessor, self.num_slices)]
         except:
-            print(accessor.z, selected_slice_ix)
             raise
 
         if len(slice_handles) == 0:
@@ -233,7 +232,7 @@ class ImageStackReader(ImageReader):
         elif hasattr(reader_factory, '__iter__'):
             reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         elif reader_factory is None:
-            reader = None
+            reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
         else:
             raise Exception(f"Can't parse reader {reader}")
 
@@ -430,7 +429,7 @@ class VolumeStackReader(ImageReader):
         elif hasattr(reader_factory, '__iter__'):
             reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         elif reader_factory is None:
-            reader = None
+            reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
         else:
             raise Exception(f"Can't parse reader {reader}")
             
