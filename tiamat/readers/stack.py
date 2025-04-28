@@ -2,7 +2,7 @@
 Reader for Stacks.
 """
 
-from functools import cached_property, cache, partial
+from functools import cached_property, partial
 from typing import Any, Callable, Dict, Iterable, List
 
 import numpy as np
@@ -10,6 +10,7 @@ import numpy as np
 from tiamat.readers.protocol import ImageReader
 from tiamat.readers.factory import get_reader
 
+from tiamat.cache import instance_cache
 from tiamat.io import ImageAccessor, ImageResult
 from tiamat.metadata import ImageMetadata
 
@@ -102,7 +103,7 @@ class ImageStackReader(ImageReader):
         self.slice_spacing = slice_spacing
         self.reader_kwargs = reader_kwargs
 
-    @cached_property
+    @property
     def ordered_slice_handles(self):
         if isinstance(self.reader_factory, dict):
             reader_list = []
@@ -118,11 +119,11 @@ class ImageStackReader(ImageReader):
         else:
             return [self.reader_factory(fname) for fname in self.slices]
 
-
-    @cached_property
+    @property
     def prototype_slice_handle(self):
-        if len(self.ordered_slice_handles) > 0:
-            return self.ordered_slice_handles[0]
+        ordered_slice_handles = self.ordered_slice_handles
+        if len(ordered_slice_handles) > 0:
+            return ordered_slice_handles[0]
         else:
             return None
 
@@ -137,7 +138,7 @@ class ImageStackReader(ImageReader):
         else:
             return (*expand_to_length(spacing, 2), slice_spacing)
 
-    @cache
+    @instance_cache
     def read_metadata(self) -> ImageMetadata:
         from dataclasses import replace
 
@@ -162,7 +163,7 @@ class ImageStackReader(ImageReader):
         # Use only slice handles for the requested scale
         try:
             selected_slice_ix = _select_slice_ix(accessor, self.num_slices)
-            slice_handles = [self.ordered_slice_handles[i] for i in _select_slice_ix(accessor, self.num_slices)]
+            slice_handles = [self.ordered_slice_handles[i] for i in selected_slice_ix]
         except:
             raise
 
@@ -194,7 +195,7 @@ class ImageStackReader(ImageReader):
 
         return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
 
-    @cached_property
+    @property
     def file_handle(self) -> ImageReader:
         return self.prototype_slice_handle
 
@@ -282,7 +283,7 @@ class VolumeStackReader(ImageReader):
     def num_slices(self) -> int:
         return len(self.slices)
 
-    @cached_property
+    @property
     def ordered_subvolume_handles(self):
         if isinstance(self.reader_factory, dict):
             reader_list = []
@@ -300,7 +301,7 @@ class VolumeStackReader(ImageReader):
         else:
             return [self.reader_factory(fname) for fname in self.slices]
 
-    @cached_property
+    @property
     def prototype_subvolume_handle(self):
         return self.ordered_subvolume_handles[0]
     
@@ -319,7 +320,7 @@ class VolumeStackReader(ImageReader):
 
         return tuple(shape)
 
-    @cache
+    @instance_cache
     def read_metadata(self) -> ImageMetadata:
         from dataclasses import replace
 
