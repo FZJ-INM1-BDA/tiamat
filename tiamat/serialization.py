@@ -41,7 +41,7 @@ def make_object_from_config(config_entry: dict):
 
 
 def get_reader_from_config(config_reader: dict, reader_post_creation_hook=None):
-    from tiamat.readers.factory import get_reader_from_registry#
+    from tiamat.readers.factory import get_reader_from_registry
 
     if config_reader is None:
         from tiamat.readers.factory import get_reader
