@@ -103,27 +103,39 @@ class ImageStackReader(ImageReader):
         self.slice_spacing = slice_spacing
         self.reader_kwargs = reader_kwargs
 
-    @property
-    def ordered_slice_handles(self):
+    def _prepare_slices(self, slice_ix: Iterable[int]):
+        selected_slices = [self.slices[i] for i in slice_ix]
+
         if isinstance(self.reader_factory, dict):
             reader_list = []
             for k, factory in self.reader_factory.items():
                 # Find all files that match k
-                file_matches = [fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k]
-                reader_list.append(factory(file_matches))
+                file_matches = [fname for fname in selected_slices if get_reader_identifier(fname, self.reader_identifier) == k]
+                reader_list.append((factory, file_matches))
             return reader_list
         
         elif hasattr(self.reader_factory, '__iter__'):
-            return [factory(fname) for fname, factory in zip(self.slices, self.reader_factory)]
+            reader_list = [r for r in self.reader_factory]
+            selected_readers = [reader_list[i] for i in slice_ix]
+            return [(factory, fname) for factory, fname in zip(selected_readers, selected_slices)]
         
         else:
-            return [self.reader_factory(fname) for fname in self.slices]
+            return [(self.reader_factory, fname) for fname in selected_slices]
+
+    def access_slices(self, slice_ix: Iterable[int]):
+        selected_handles = self._prepare_slices(slice_ix)
+        return [reader(file) for reader, file in selected_handles]
 
     @property
+    def ordered_slice_handles(self):
+        return self.access_slices(range(len(self.slices)))
+        
+    @property
     def prototype_slice_handle(self):
-        ordered_slice_handles = self.ordered_slice_handles
-        if len(ordered_slice_handles) > 0:
-            return ordered_slice_handles[0]
+        selected_handles = self._prepare_slices(range(len(self.slices)))
+        if len(selected_handles) > 0:
+            reader, file = selected_handles[0]
+            return reader(file)
         else:
             return None
 
@@ -163,7 +175,8 @@ class ImageStackReader(ImageReader):
         # Use only slice handles for the requested scale
         try:
             selected_slice_ix = _select_slice_ix(accessor, self.num_slices)
-            slice_handles = [self.ordered_slice_handles[i] for i in selected_slice_ix]
+            # slice_handles = [self.ordered_slice_handles[i] for i in selected_slice_ix]
+            slice_handles = self.access_slices(selected_slice_ix)
         except:
             raise
 
