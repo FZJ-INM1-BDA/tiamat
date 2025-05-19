@@ -273,7 +273,7 @@ class VolumeStackReader(ImageReader):
             fnames: str | Iterable[str],
             reader_identifier: str = None,
             reader_factory: Callable[[str], ImageReader] | Iterable[Callable[[str], ImageReader]] | Dict[str, Callable[[str], ImageReader]] = None,
-            **reader_kwargs
+            reader_kwargs=None,
         ):
 
         self.fnames = fnames
@@ -283,7 +283,7 @@ class VolumeStackReader(ImageReader):
             assert reader_identifier is not None
         self.reader_identifier = reader_identifier
 
-        self.reader_kwargs = reader_kwargs
+        self.reader_kwargs = reader_kwargs or {}
 
     @cached_property
     def slices(self) -> List[str]:
@@ -309,10 +309,10 @@ class VolumeStackReader(ImageReader):
             return reader_list
         
         elif hasattr(self.reader_factory, '__iter__'):
-            return [factory(fname) for fname, factory in zip(self.slices, self.reader_factory)]
+            return [factory(fname, **self.reader_kwargs) for fname, factory in zip(self.slices, self.reader_factory)]
         
         else:
-            return [self.reader_factory(fname) for fname in self.slices]
+            return [self.reader_factory(fname, **self.reader_kwargs) for fname in self.slices]
 
     @property
     def prototype_subvolume_handle(self):
