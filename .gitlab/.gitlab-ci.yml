@@ -1,5 +1,6 @@
 stages:
   - docker
+  - format
   - build
   - tests
   - examples
@@ -51,6 +52,15 @@ docker:build-python3.11:
       ${IMAGE_NAME}:python3.11 -f .gitlab/dockerfile --build-arg
       CI_JOB_TOKEN=$CI_JOB_TOKEN --build-arg BASE_IMAGE=python:3.11-slim .
     - docker push $IMAGE_NAME:python3.11
+
+format:
+  stage: format
+  image: $IMAGE_NAME:python3.11
+  allow_failure: true
+  script:
+    - pip3 install pylint pre-commit
+    - pre-commit install
+    - pre-commit run --all-files
 
 .build:
   stage: build
