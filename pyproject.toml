@@ -44,7 +44,7 @@ include = ["tiamat*"]
 tiamat = "tiamat.cli:cli"
 
 [project.optional-dependencies]
-dev = ["autopep8", "flake8", "pytest"]
+dev = ["autopep8", "flake8", "pre-commit", "pytest"]
 
 [project.urls]
 homepage = "https://www.fz-juelich.de/de/inm/inm-1"
@@ -64,3 +64,9 @@ max-line-length = 120
 ignore = []
 max_line_length = 120
 style = "pep440"
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+profile = "black"
