@@ -292,7 +292,8 @@ def access_and_rescale_image(
     image_scale = _expand_to_image_shape(image_scale, image.shape)
     image = access_image(image=image, accessor=accessor, image_scale=image_scale)
 
-    scale = _expand_to_image_shape(accessor.scale, image.shape)
+    # TODO: Check channel dimension and expand only to shape dimensions that are not channel (also in rescale)
+    scale = _expand_to_image_shape(accessor.scale, image.shape[:2])
     assert len(scale) == len(
         image_scale
     ), f"Scale and image scale do not match: {len(scale)} vs. {len(image_scale)}"
