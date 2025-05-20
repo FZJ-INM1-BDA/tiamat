@@ -94,3 +94,20 @@ class ImageMetadata:
     @extents.deleter
     def extents(self):
         delattr(self, "_extents")
+
+    def __repr__(self):
+        return (
+            f"ImageMetadata(\n"
+            f"  image_type={self.image_type},\n"
+            f"  shape={self.shape},\n"
+            f"  value_range={self.value_range},\n"
+            f"  dtype={self.dtype},\n"
+            f"  spacing={self.spacing},\n"
+            f"  channel_dimension={self.channel_dimension},\n"
+            f"  additional_metadata={self.additional_metadata},\n"
+            f"  scales={self.scales}\n"
+            f")"
+        )
+
+    def __str__(self):
+        return self.__repr__()
