@@ -132,7 +132,7 @@ class ImageStackReader(ImageReader):
 
     @property
     def prototype_slice_handle(self):
-        selected_handles = self._prepare_slices(range(len(self.slices)))
+        selected_handles = self._prepare_slices([0])
         if len(selected_handles) > 0:
             reader, file = selected_handles[0]
             return reader(file)
@@ -279,7 +279,7 @@ class ImageStackReader(ImageReader):
         """
 
         # for now, assert scale is same for all slices
-        metadata_first_slice = self.ordered_slice_handles[0].read_metadata()
+        metadata_first_slice = self.prototype_slice_handle.read_metadata()
 
         if not hasattr(metadata_first_slice, "scales"):
             return None
@@ -357,7 +357,7 @@ class VolumeStackReader(ImageReader):
 
         if self.flag_const_shape:
             metadata = self.ordered_subvolume_handles[0].read_metadata()
-            logger.debug("VolumeStackReader subvolume_shapes: %s", metadata.shape)
+            # logger.debug("VolumeStackReader subvolume_shapes: %s", metadata.shape)
             return [(metadata.shape) for _ in range(self.num_slices)]
 
         return [handle.read_metadata().shape for handle in self.ordered_subvolume_handles]
