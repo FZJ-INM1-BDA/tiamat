@@ -1,15 +1,15 @@
 """
 Affine transformers.
 """
-from typing import Any, Dict, Tuple, List
 from dataclasses import asdict
-from itertools import repeat, product
-
-from .protocol import Transformer
-from ..io import ImageResult, ImageAccessor
-from ..metadata import ImageMetadata
+from itertools import product, repeat
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
+
+from ..io import ImageAccessor, ImageResult
+from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class AffineTransformer(Transformer):
@@ -43,6 +43,7 @@ class AffineTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         import math
         from dataclasses import replace
+
         from tiamat.readers.processing import _prepare_coordinates
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
@@ -67,14 +68,18 @@ class AffineTransformer(Transformer):
         x3, y3 = self._transform_point(x_to, y_to, affine)
         x4, y4 = self._transform_point(x_from, y_to, affine)
 
+        scale = np.array(accessor.scale)
+        if len(scale) == 1:
+            scale = np.array([scale[0], scale[0]])
+
         # Scale the margin by self.request_margin to obtain physical extent
-        scaled_margin = self.request_margin / accessor.scale
+        scaled_margin = self.request_margin / scale
 
         # Request outer bounds of the transformed view
-        x_from_t = min(x1, x2, x3, x4) - scaled_margin
-        y_from_t = min(y1, y2, y3, y4) - scaled_margin
-        x_to_t = max(x1, x2, x3, x4) + scaled_margin
-        y_to_t = max(y1, y2, y3, y4) + scaled_margin
+        x_from_t = min(x1, x2, x3, x4) - scaled_margin[0]
+        y_from_t = min(y1, y2, y3, y4) - scaled_margin[1]
+        x_to_t = max(x1, x2, x3, x4) + scaled_margin[0]
+        y_to_t = max(y1, y2, y3, y4) + scaled_margin[1]
 
         # Calculate offsets of the requested frame due to integer rounding
         offset_x_input = math.floor(x_from_t) - x_from_t
@@ -94,8 +99,9 @@ class AffineTransformer(Transformer):
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        import numpy as np
         from dataclasses import replace
+
+        import numpy as np
 
         shape_tuple = metadata.spatial_shape[-2:]
 
@@ -114,11 +120,19 @@ class AffineTransformer(Transformer):
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import math
+
         import cv2
         import numpy as np
-        from ..readers.processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
 
-        target_scale = image_result.accessor.scale
+        from ..readers.processing import (
+            OPENCV_INTERPOLATION_CODES,
+            _prepare_coordinates,
+            get_interpolation_for_accessor,
+        )
+
+        target_scale = np.array(image_result.accessor.scale)
+        if len(target_scale) == 1:
+            target_scale = np.array([target_scale[0], target_scale[0]])
 
         # Restore extent from requested frame
         try:
@@ -126,8 +140,8 @@ class AffineTransformer(Transformer):
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
         target_size = (
-            int(target_scale * (x_to - x_from)),
-            int(target_scale * (y_to - y_from)),
+            int(target_scale[0] * (x_to - x_from)),
+            int(target_scale[1] * (y_to - y_from)),
         )
 
         accessor = image_result.accessor
