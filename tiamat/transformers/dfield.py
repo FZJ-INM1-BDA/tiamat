@@ -127,7 +127,7 @@ class DeformationFieldTransformer(Transformer):
 
         # Determine requested coordinates from deformation vectors
         coordinates = DeformationFieldTransformer.get_coordinates(
-            dfield=dfield_crop,
+            dfield=dfield_crop.image,
             dfield_scale=image_scale,
             dfield_origin=(y_from + self.dfield_origin[0], x_from + self.dfield_origin[1]),
             yx=True, # TODO: Read this somehow from file

@@ -96,6 +96,7 @@ class ImageStackReader(ImageReader):
         self.fnames = fnames
         self.reader_factory = reader_factory or get_reader
 
+
         if isinstance(self.reader_factory, dict):
             assert reader_identifier is not None
         self.reader_identifier = reader_identifier
@@ -111,7 +112,12 @@ class ImageStackReader(ImageReader):
             for k, factory in self.reader_factory.items():
                 # Find all files that match k
                 file_matches = [fname for fname in selected_slices if get_reader_identifier(fname, self.reader_identifier) == k]
-                reader_list.append((factory, file_matches))
+                
+                if len(file_matches) == 1:
+                    reader_list.append((factory, file_matches[0]))
+                if len(file_matches) > 1:
+                    raise Exception(f"Found multiple matches {file_matches} for key {k}")
+            
             return reader_list
 
         elif hasattr(self.reader_factory, '__iter__'):
@@ -263,6 +269,7 @@ class ImageStackReader(ImageReader):
                 cls,
                 reader_factory=reader,
                 slice_spacing=float(args.get("slice_spacing")),
+                reader_identifier=args.get("reader_identifier"),
             )
         else:
             return partial(
@@ -270,6 +277,7 @@ class ImageStackReader(ImageReader):
                 cls,
                 reader_factory=reader,
                 slice_spacing=float(args.get("slice_spacing")),
+                reader_identifier=args.get("reader_identifier"),
             )
 
     @cached_property
