@@ -37,6 +37,26 @@ class ImageAccessor:
     fill_value: int | float = None
     history: dict = field(default_factory=dict)
 
+    def __repr__(self):
+        return (
+            f"ImageAccessor("
+            f"x={self.x}, "
+            f"y={self.y}, "
+            f"z={self.z}, "
+            f"c={self.c},\n"
+            f"  scale={self.scale}, "
+            f"spacing={self.spacing}, "
+            f"coordinate_scale={self.coordinate_scale}, "
+            f"coordinate_spacing={self.coordinate_spacing},\n"
+            f"  interpolation={self.interpolation}, "
+            f"anti_aliasing={self.anti_aliasing}, "
+            f"fill_value={self.fill_value}"
+            f")"
+        )
+
+    def __str__(self):
+        return self.__repr__()
+
 
 @dataclass
 class ImageResult:
