@@ -2,10 +2,12 @@
 Metadata on images.
 """
 
+import enum
 from dataclasses import dataclass
+from itertools import product, repeat
 from typing import Iterable
+
 import numpy as np
-from itertools import repeat, product
 
 # Image types
 IMAGE_TYPE_SEGMENTATION = (
@@ -17,6 +19,26 @@ IMAGE_TYPE_IMAGE = (
 IMAGE_TYPE_VECTOR = (
     "vector"  # an image with continuous vector values (e.g., a deformation field).
 )
+
+
+class Channel(enum.Enum):
+    X = "x"  # spatial x-axis
+    Y = "y"  # spatial y-axis
+    Z = "z"  # spatial z-axis (optional)
+    C = "c"  # channels (e.g., color channels)
+    T = "t"  # time
+    RGB = "rgb"  # color channels (e.g., red, green, blue)
+    RGBA = "rgba"  # color channels (e.g., red, green, blue, alpha)
+
+    # ??? not sure yet how to implement  (or if we need this)
+    # the user should still see "w" or Channel.WIDTH, but tiamat should work with "x" or Channel.X
+    # WIDTH = "w"  # alternative spatial axis x
+    # HEIGHT = "h"  # alternative spatial axis y
+    # DEPTH = "d"  # alternative spatial axis z
+
+    def __str__(self):
+        return self.value
+
 
 def get_dtype_limits(dtype):
     """Returns the min and max values for a given dtype.
@@ -64,11 +86,11 @@ class ImageMetadata:
         """
         ch_dims = [self.channel_dimension] if self.channel_dimension is not None else []
         return sorted(list(set(range(len(self.shape))) - set(ch_dims)))
-    
+
     @property
     def spatial_shape(self):
         return tuple(self.shape[i] for i in self.spatial_dimensions)
-    
+
     @property
     def num_channels(self):
         if self.channel_dimension is None:
