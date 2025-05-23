@@ -9,7 +9,7 @@ import numpy as np
 
 from tiamat.cache import instance_cache
 from tiamat.io import ImageAccessor, ImageResult
-from tiamat.metadata import ImageMetadata
+from tiamat.metadata import ImageMetadata, dimensions
 from tiamat.readers.factory import get_reader
 from tiamat.readers.protocol import ImageReader
 
@@ -78,6 +78,7 @@ class ImageStackReader(ImageReader):
             reader_identifier: str = None,
             reader_factory: Callable[[str], ImageReader] | Iterable[Callable[[str], ImageReader]] | Dict[str, Callable[[str], ImageReader]] = None,
             slice_spacing: float = None,
+            stack_dimension: str = dimensions.Z,
             **reader_kwargs
         ):
         """_summary_
@@ -90,6 +91,8 @@ class ImageStackReader(ImageReader):
             A reader factory function or specific image reader. By default search for registered readers
         slice_spacing : float, optional
             Slice spacing if volume spacing is not isotropic. By default assume same z spacing as for x, y
+        stack_dimension: str, optional
+            The type of dimension the stacking creates. Spatial Z by default.
         reader_kwargs:
             Arguments passed to each reader from reader_factory
         """
@@ -102,6 +105,7 @@ class ImageStackReader(ImageReader):
         self.reader_identifier = reader_identifier
 
         self.slice_spacing = slice_spacing
+        self.stack_dimension = stack_dimension
         self.reader_kwargs = reader_kwargs
 
     def _prepare_slices(self, slice_ix: Iterable[int]):
@@ -159,6 +163,7 @@ class ImageStackReader(ImageReader):
     @instance_cache
     def read_metadata(self) -> ImageMetadata:
         from dataclasses import replace
+        from tiamat.metadata import dimensions
 
         metadata = replace(self.prototype_slice_handle.read_metadata())
 
@@ -173,8 +178,7 @@ class ImageStackReader(ImageReader):
         # Set scales
         metadata.scales = self.scales
 
-        if metadata.channel_dimension is not None:
-            metadata.channel_dimension = metadata.channel_dimension + 1
+        metadata.dimensions = [self.stack_dimension, ] + list(metadata.dimensions)
 
         return metadata
 
@@ -201,16 +205,16 @@ class ImageStackReader(ImageReader):
 
         metadata = replace(tmp_accessor.metadata)
         metadata.shape = metadata.shape[1:]
-        if metadata.channel_dimension is not None:
-            metadata.channel_dimension = metadata.channel_dimension - 1
+        dimensions = list(metadata.dimensions)
+        dimensions.remove(self.stack_dimension)
+        metadata.dimensions = dimensions
         tmp_accessor.metadata = metadata
 
         # print("StackReader", tmp_accessor)
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
-        image = np.full(
+        image = np.empty(
             shape=([len(slice_handles), *first_result.image.shape]),
-            fill_value=accessor.fill_value,
             dtype=first_result.image.dtype,
         )
 
@@ -405,13 +409,9 @@ class VolumeStackReader(ImageReader):
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         z_dim, y_dim, x_dim = accessor.metadata.spatial_dimensions
-        ch_dim = accessor.metadata.channel_dimension
 
         image_z_size = self.shape[z_dim]
         image_scales = expand_to_length(accessor.scale, 3)  # x, y, z
-
-        # TODO: Probably also account for coordinate_scale
-        coordinate_scales = expand_to_length(accessor.coordinate_scale, 3)  # x, y, z
 
         z_slice = prepare_coordinate(accessor.z)
         z_from, z_to = resolve_coordinate_slice(z_slice, image_z_size)

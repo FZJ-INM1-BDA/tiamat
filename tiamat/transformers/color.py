@@ -62,49 +62,47 @@ class GrayscaleTransformer(Transformer):
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
+        from tiamat.metadata import dimensions
 
-        # Only do something if the image is not already grayscale.
-        if image_result.metadata.channel_dimension is not None:
+        # Only do this if the image contains RGB/RGBA channels
+        if dimensions.RGB in image_result.metadata.dimensions or dimensions.RGBA in image_result.metadata.dimensions:
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
 
         return image_result
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
+        from tiamat.metadata import dimensions
 
+        # remove all color dimensions
         metadata = replace(metadata)
-
-        ch_dim = metadata.channel_dimension
-        if ch_dim is not None:
-            metadata.shape = (*metadata.shape[:ch_dim], *metadata.shape[(ch_dim + 1):])
-            metadata.channel_dimension = None
+        metadata.dimensions = [dimension for dimension in metadata.dimensions if dimension not in (dimensions.RGB, dimensions.RGBA)]
            
         return metadata
 
 
 class GrayscaleToRGBTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
-        accessor.metadata.channel_dimension = None
-
         return accessor
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
 
         # Only do something if the image is not already RGB.
-        if image_result.metadata.channel_dimension is None:
+        metadata = image_result.metadata
+        if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_GRAY2RGB)
 
         return image_result
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
+        from tiamat.metadata import dimensions
 
         metadata = replace(metadata)
-
-        if metadata.channel_dimension is None:
-            metadata.channel_dimension = len(metadata.shape)
+        if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
             metadata.shape = (*metadata.shape, 3)
+            metadata.dimensions = list(metadata.dimensions) + [dimensions.RGB, ]
         
         return metadata
 

@@ -2,9 +2,8 @@ from typing import Iterable, Tuple
 from functools import cached_property
 
 from .pipeline import Pipeline
-from .metadata import ImageMetadata
+from .metadata import ImageMetadata, dimensions
 from .io import ImageAccessor
-from tiamat import metadata
 
 
 class Array(object):
@@ -110,14 +109,7 @@ class Array(object):
                 break
 
         # matching from slice to dimension names. We assume fixed (z, y, x) indexing
-        ch_dim = self.metadata.channel_dimension
-        if ch_dim is None:
-            n_image_dims = self.ndim
-            dim_names = ["z", "y", "x"][-n_image_dims:]
-        else:
-            n_image_dims = self.ndim - 1
-            dim_names = ["z", "y", "x"][-n_image_dims:]
-            dim_names = dim_names[:ch_dim] + ["c"] + dim_names[ch_dim:]
+        dim_names = self.metadata.dimensions
 
         # handle special indeices
         array_slice_cleaned = []
@@ -148,8 +140,14 @@ class Array(object):
         accessor_kwargs = {
             dim: (sl.start, sl.stop) for sl, dim in zip(array_slice, dim_names)
         }
+
+        # consolidate channel access into a named dictionary 
+        spatial_accessor_kwargs = {key: value for key, value in accessor_kwargs.items() if key in dimensions.SPATIAL_DIMENSIONS}
+        channel_accessor_kwargs = {key: value for key, value in accessor_kwargs.items() if key not in spatial_accessor_kwargs}
+
         accessor = ImageAccessor(
-            **accessor_kwargs,
+            **spatial_accessor_kwargs,
+            c=channel_accessor_kwargs,
             scale=self.scale,
             coordinate_scale=self.scale,
         )
