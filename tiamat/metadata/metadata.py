@@ -2,7 +2,6 @@
 Metadata on images.
 """
 
-import enum
 from dataclasses import dataclass
 from itertools import product, repeat
 from typing import Iterable
@@ -19,25 +18,6 @@ IMAGE_TYPE_IMAGE = (
 IMAGE_TYPE_VECTOR = (
     "vector"  # an image with continuous vector values (e.g., a deformation field).
 )
-
-
-class Channel(enum.Enum):
-    X = "x"  # spatial x-axis
-    Y = "y"  # spatial y-axis
-    Z = "z"  # spatial z-axis (optional)
-    C = "c"  # channels (e.g., color channels)
-    T = "t"  # time
-    RGB = "rgb"  # color channels (e.g., red, green, blue)
-    RGBA = "rgba"  # color channels (e.g., red, green, blue, alpha)
-
-    # ??? not sure yet how to implement  (or if we need this)
-    # the user should still see "w" or Channel.WIDTH, but tiamat should work with "x" or Channel.X
-    # WIDTH = "w"  # alternative spatial axis x
-    # HEIGHT = "h"  # alternative spatial axis y
-    # DEPTH = "d"  # alternative spatial axis z
-
-    def __str__(self):
-        return self.value
 
 
 def get_dtype_limits(dtype):
@@ -73,9 +53,9 @@ class ImageMetadata:
     shape: tuple
     value_range: tuple
     dtype: np.dtype
+    dimensions: list[str, ...] | tuple[str, ...]
     file_path: Iterable[str] | str | None = None
     spacing: float | tuple[float, ...] | None = None
-    channel_dimension: int | None = None  # None means no channel dimension
     additional_metadata: dict | None = None
     scales: float | int | Iterable[float | int] | None = None
 
@@ -84,18 +64,19 @@ class ImageMetadata:
         """
         Returns indices of spatial axes, excluding channels
         """
-        ch_dims = [self.channel_dimension] if self.channel_dimension is not None else []
-        return sorted(list(set(range(len(self.shape))) - set(ch_dims)))
+        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
+        return tuple(self.dimensions.index(dimension) for dimension in SPATIAL_DIMENSIONS if dimension in self.dimensions)
+
+    @property
+    def channel_dimensions(self):
+        """
+        Returns indices of channel axes, excluding channels
+        """
+        return tuple(index for index, _ in enumerate(self.shape) if index not in self.spatial_dimensions)
 
     @property
     def spatial_shape(self):
         return tuple(self.shape[i] for i in self.spatial_dimensions)
-
-    @property
-    def num_channels(self):
-        if self.channel_dimension is None:
-            return 0
-        return self.shape[self.channel_dimension]
 
     @property
     def extents(self):
@@ -125,7 +106,7 @@ class ImageMetadata:
             f"  value_range={self.value_range},\n"
             f"  dtype={self.dtype},\n"
             f"  spacing={self.spacing},\n"
-            f"  channel_dimension={self.channel_dimension},\n"
+            f"  dimensions=({','.join(self.dimensions)}),\n"
             f"  additional_metadata={self.additional_metadata},\n"
             f"  scales={self.scales}\n"
             f")"

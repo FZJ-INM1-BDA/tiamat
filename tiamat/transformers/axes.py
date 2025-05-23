@@ -22,17 +22,17 @@ class ImageToVolumeTransformer(Transformer):
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
+        from tiamat.metadata import dimensions
 
         metadata = replace(metadata)
 
-        
-        if metadata.channel_dimension == 0:
-            # Make sure spatial dimensions are aligned
-            metadata.shape = (metadata.shape[0], 1, *metadata.shape[1:])
-        else:
-            metadata.shape = (1, *metadata.shape)
-            if metadata.channel_dimension is not None:
-                metadata.channel_dimension = metadata.channel_dimension + 1
+        # this transformer always expands y, x to z,y,x
+        # we search for the position of y, then prepend a 1-dimension
+        y_index = metadata.dimensions.index(dimensions.Y)
+        new_axis = max(y_index - 1, 0)
+        new_shape = list(metadata.shape)
+        new_shape.insert(new_axis, 1)
+        metadata.shape = new_shape
 
         if self.z_spacing is None:
             if hasattr(metadata.spacing, '__len__'):
@@ -49,13 +49,14 @@ class ImageToVolumeTransformer(Transformer):
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         metadata = image_result.metadata
-        assert metadata is not None, "MirrorTransformer requires metadata."
-
-        if metadata.channel_dimension == 0:
-            # Make sure spatial dimensions are aligned
-            image_result.image = image_result.image[:, np.newaxis]
-        else:
-            image_result.image = image_result.image[np.newaxis]
+        assert metadata is not None, "ImageToVolumeTransformer requires metadata."
+        
+        # this transformer always expands y, x to z,y,x
+        # we search for the position of y, then prepend a 1-dimension
+        y_index = metadata.dimensions.index(dimensions.Y)
+        new_axis = max(y_index - 1, 0)
+        new_shape = list(metadata.shape)
+        image_result.image = image_result.image.reshape(new_shape)
 
         return image_result
 

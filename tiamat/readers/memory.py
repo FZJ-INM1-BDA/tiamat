@@ -2,6 +2,7 @@
 Reader for in-memory arrays.
 """
 
+from tiamat.metadata import dimensions
 from .protocol import ImageReader
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -24,14 +25,16 @@ class MemoryReader(ImageReader):
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 
+        fallback_dimensions = [md.dimensions.Y, md.dimensions.X, ] + [md.dimensions.C for _ in range(len(self.image.shape) - 2)]
+
         return md.ImageMetadata(
             image_type=self.metadata_kwargs.get("image_type", md.IMAGE_TYPE_IMAGE),
             shape=self.image.shape,
             dtype=self.image.dtype,
             value_range=self.metadata_kwargs.get("value_range", (0, 255)),
             spacing=self.metadata_kwargs.get("spacing", None),
-            channel_dimension=self.metadata_kwargs.get(
-                "channel_dimension", None if len(self.image.shape) == 2 else 2
+            dimensions=self.metadata_kwargs.get(
+                "dimenions", fallback_dimensions,
             ),
         )
 

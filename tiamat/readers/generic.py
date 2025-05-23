@@ -3,6 +3,7 @@ Reader for generic image formats.
 """
 
 from functools import cache, cached_property
+
 from .protocol import ImageReader
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -41,7 +42,19 @@ class GenericReader(ImageReader):
 
         # For generic images, we have to assume a lot and cannot derive much, even with reading the data.
         image = self._read_image()
-        channel_dimension = None if len(image.shape) == 2 else 2
+        # pad image with generic channels
+        dimensions = [md.dimensions.Y, md.dimensions.X, ] 
+        if len(image.shape) == 3:
+            # try to determine the colors
+            if image.shape[2] == 3:
+                dimensions.append(md.dimensions.RGB)
+            elif image.shape[2] == 4:
+                dimensions.append(md.dimensions.RGBA)
+            else:
+                dimensions.append(md.dimensions.C)
+        else:
+            # all generic channels
+            dimensions.extend([md.dimensions.C for _ in range(max(len(image.shape) - 2, 0))])
 
         return md.ImageMetadata(
             image_type=md.IMAGE_TYPE_IMAGE,
@@ -50,7 +63,7 @@ class GenericReader(ImageReader):
             file_path=self.fname,
             value_range=(0, 255),
             spacing=self.image_spacing,
-            channel_dimension=channel_dimension,
+            dimensions=dimensions,
         )
 
     @classmethod

@@ -3,6 +3,8 @@ Transformers that change the output view
 """
 
 from typing import Tuple
+
+from tiamat.metadata import dimensions
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -66,8 +68,8 @@ class BoundingBoxTransformer(Transformer):
         from dataclasses import replace
 
         metadata = accessor.metadata
-        assert metadata is not None, f"CropViewTransformer requires metadata."
-        assert metadata.shape is not None, f"CropViewTransformer requires metadata.shape."
+        assert metadata is not None, "BoundingBoxTransformer requires metadata."
+        assert metadata.shape is not None, "BoundingBoxTransformer requires metadata.shape."
 
         accessor = replace(accessor)
 
@@ -103,11 +105,12 @@ class BoundingBoxTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
 
-        shape = self.bounds_spatial_shape(metadata.spatial_shape)
+        spatial_shape = list(self.bounds_spatial_shape(metadata.spatial_shape))
 
-        ch_dim = metadata.channel_dimension
-        if metadata.channel_dimension is not None:
-            shape = shape[:ch_dim] + (metadata.shape[ch_dim],) + shape[(ch_dim + 1):]
+        # create the new shape by copying the new spatial shape, but keeping the channels
+        shape = list(metadata.shape)
+        for i, dimension in enumerate(metadata.spatial_dimensions): 
+            shape[dimension] = spatial_shape[i]
 
         metadata = replace(metadata, shape=shape)
 
@@ -124,11 +127,9 @@ class BoundingBoxTransformer(Transformer):
         # Revert cropping from crop_coordinate with fill value padding
         if accessor.fill_value is not None:
             if any(any(p > 0 for p in pad) for pad in residuals):
-                ch_dim = accessor.metadata.channel_dimension
-                if ch_dim is not None:
-                    padding = residuals[:ch_dim] + [(0, 0)] + residuals[(ch_dim + 1):]
-                else:
-                    padding = residuals
+                padding = [(0, 0) for _ in range(len(accessor.metadata.dimensions))]
+                for i, dimension in enumerate(accessor.metadata.spatial_dimensions):
+                    padding[dimension] = residuals[i]
                 image_result.image = np.pad(image_result.image, padding, constant_values=accessor.fill_value)
 
         return image_result
