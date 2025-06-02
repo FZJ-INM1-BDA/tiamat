@@ -122,13 +122,14 @@ class DeformationFieldTransformer(Transformer):
         tmp_accessor.metadata = self.meta
         tmp_accessor.x = (x_from, x_to)
         tmp_accessor.y = (y_from, y_to)
+        tmp_accessor.fill_value = 0  # TODO: Check
 
         # Read the corresponding crop from dfield
         dfield_crop = self.reader.read_image(tmp_accessor)
 
         # Determine requested coordinates from deformation vectors
         coordinates = DeformationFieldTransformer.get_coordinates(
-            dfield=dfield_crop,
+            dfield=dfield_crop.image,
             dfield_scale=image_scale,
             dfield_origin=(y_from + self.dfield_origin[0], x_from + self.dfield_origin[1]),
             yx=True, # TODO: Read this somehow from file
