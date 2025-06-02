@@ -306,7 +306,7 @@ class ImageStackReader(ImageReader):
         if isinstance(scales[0], Iterable):
             scales = [(*s[:2], 1.0, *s[2:]) for s in scales]
         elif isinstance(scales[0], (int, float)):
-            scales = [(scales[0], scales[1], 1.0)] * len(self.slices)
+            scales = [(s, s, 1.0) for s in scales]
 
         return scales
 
