@@ -303,7 +303,12 @@ class ImageStackReader(ImageReader):
         # TODO: make shure position of z is correct
         # TODO: future: zyxt(c)
         scales = metadata_first_slice.scales
-        return [(*s[:2], 1.0, *s[2:]) for s in scales]
+        if isinstance(scales[0], Iterable):
+            scales = [(*s[:2], 1.0, *s[2:]) for s in scales]
+        elif isinstance(scales[0], (int, float)):
+            scales = [(scales[0], scales[1], 1.0)] * len(self.slices)
+
+        return scales
 
 
 class VolumeStackReader(ImageReader):
