@@ -70,7 +70,7 @@ class ImageMetadata:
     @property
     def channel_dimensions(self):
         """
-        Returns indices of channel axes, excluding channels
+        Returns indices of channels, excluding spatial axes
         """
         return tuple(index for index, _ in enumerate(self.shape) if index not in self.spatial_dimensions)
 

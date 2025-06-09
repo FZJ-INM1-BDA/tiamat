@@ -66,6 +66,7 @@ class GrayscaleTransformer(Transformer):
 
         # Only do this if the image contains RGB/RGBA channels
         if dimensions.RGB in image_result.metadata.dimensions or dimensions.RGBA in image_result.metadata.dimensions:
+            # TODO: Check if COLOR_BGR2GRAY is correct or COLOR_RGB2GRAY should be used
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
 
         return image_result

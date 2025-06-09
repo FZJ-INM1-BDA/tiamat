@@ -55,7 +55,7 @@ class AffineTransformer(Transformer):
         affine = np.linalg.inv(self.affine_matrix)
 
         # Read coordinates for requested frame
-        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
 
         # TODO: Account for spacing and coordinate scale
@@ -146,7 +146,7 @@ class AffineTransformer(Transformer):
         )
 
         accessor = image_result.accessor
-        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         (x_from_input, _), (y_from_input, _) = prepared_coordinates["x"], prepared_coordinates["y"]
 
         # We have to take into account that our input image is not the actual origin of the image.
