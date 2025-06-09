@@ -111,7 +111,7 @@ class DeformationFieldTransformer(Transformer):
         coord_scale = expand_to_length(accessor.coordinate_scale, 2)
 
         # Read coordinates for requested frame
-        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
         dfield_shape = self.shape
         x_from, x_to = resolve_coordinate_slice(x, dfield_shape[1] * coord_scale[1])
@@ -170,7 +170,7 @@ class DeformationFieldTransformer(Transformer):
 
         image_scale = expand_to_length(image_result.accessor.scale, 2)
         accessor = image_result.accessor
-        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         (x_from_input, _), (y_from_input, _) = prepared_coordinates["x"], prepared_coordinates["y"]
         image_origin = (
             float(y_from_input),

@@ -154,10 +154,10 @@ def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
 
 
 def _prepare_coordinates(
-    image_scale=(1.0, 1.0), coordinate_scale=(1.0, 1.0), **kwargs
+    image_scale=(1.0, 1.0), coordinate_scale=(1.0, 1.0), **coordinates
 ):
     prepared = {}
-    for i, (key,coord) in enumerate(kwargs.items()):
+    for i, (key,coord) in enumerate(coordinates.items()):
         i_scale = image_scale[i] if i < len(image_scale) else 1.0
         c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
         prepared[key] = prepare_coordinate(coord, i_scale, c_scale)

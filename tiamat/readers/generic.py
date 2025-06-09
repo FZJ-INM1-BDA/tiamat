@@ -43,7 +43,7 @@ class GenericReader(ImageReader):
         # For generic images, we have to assume a lot and cannot derive much, even with reading the data.
         image = self._read_image()
         # pad image with generic channels
-        dimensions = [md.dimensions.Y, md.dimensions.X, ] 
+        dimensions = [md.dimensions.Y, md.dimensions.X]
         if len(image.shape) == 3:
             # try to determine the colors
             if image.shape[2] == 3:
