@@ -55,7 +55,8 @@ class AffineTransformer(Transformer):
         affine = np.linalg.inv(self.affine_matrix)
 
         # Read coordinates for requested frame
-        x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
+        x, y = prepared_coordinates["x"], prepared_coordinates["y"]
 
         # TODO: Account for spacing and coordinate scale
         spatial_dims = accessor.metadata.spatial_dimensions
@@ -69,8 +70,8 @@ class AffineTransformer(Transformer):
         x4, y4 = self._transform_point(x_from, y_to, affine)
 
         scale = np.array(accessor.scale)
-        if len(scale) == 1:
-            scale = np.array([scale[0], scale[0]])
+        if scale.size == 1:
+            scale = np.array([scale, scale])
 
         # Scale the margin by self.request_margin to obtain physical extent
         scaled_margin = self.request_margin / scale
@@ -131,8 +132,8 @@ class AffineTransformer(Transformer):
         )
 
         target_scale = np.array(image_result.accessor.scale)
-        if len(target_scale) == 1:
-            target_scale = np.array([target_scale[0], target_scale[0]])
+        if target_scale.size == 1:
+            target_scale = np.array([target_scale, target_scale])
 
         # Restore extent from requested frame
         try:
@@ -145,7 +146,8 @@ class AffineTransformer(Transformer):
         )
 
         accessor = image_result.accessor
-        (x_from_input, x_to_input), (y_from_input, y_to_input), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
+        (x_from_input, _), (y_from_input, _) = prepared_coordinates["x"], prepared_coordinates["y"]
 
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.
