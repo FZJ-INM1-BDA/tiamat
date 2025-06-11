@@ -6,6 +6,56 @@ from .metadata import ImageMetadata, dimensions
 from .io import ImageAccessor
 
 
+def slice_to_interval(array_slice, shape):
+    if array_slice is None:
+        # expand None slice
+        array_slice = tuple([slice(None) for _ in range(len(shape))])
+    elif not isinstance(array_slice, tuple):
+        # expand single integer slice
+        array_slice = (array_slice,)
+
+    if len(array_slice) > len(shape):
+        raise IndexError(
+            f"Encountered invalid slice with {len(array_slice)} dimensions, but array has dimension {len(shape)}"
+        )
+    
+    # expand ellipsis (array[...])
+    array_slice = list(array_slice)
+    for i, sl in enumerate(array_slice):
+        if sl is Ellipsis:
+            diff = len(shape) - len(array_slice) + 1
+            array_slice.remove(sl)
+            for _ in range(diff):
+                array_slice.insert(i, slice(None))
+            break
+
+    # handle special indices
+    array_intervals = []
+    squeeze_dims = []
+    for i, sl in enumerate(array_slice):
+        # integer/float indices
+        if isinstance(sl, int):
+            if sl < 0:
+                # negative indices
+                sl = slice(shape[i] + sl, shape[i] + sl + 1)
+            else:
+                sl = slice(sl, sl + 1)
+            squeeze_dims.append(i)
+        start, stop = sl.start, sl.stop
+        if not start:
+            start = 0
+        if not stop:
+            stop = shape[i]
+        # negative indices
+        if start and start < 0:
+            start = shape[i] + start
+        if stop and stop < 0:
+            stop = shape[i] + stop
+        array_intervals.append((start, stop))
+    
+    return array_intervals
+
+
 class Array(object):
     """
     Array interface for any tiamat pipeline, providing compatibility with code that uses numpy-style arrays.
@@ -84,61 +134,14 @@ class Array(object):
         return self.metadata.dtype
 
     def __getitem__(self, array_slice: slice | Tuple[slice] | None):
-        # expand None slice
-        if array_slice is None:
-            array_slice = tuple([slice(None) for _ in range(self.ndim)])
-        # expand single integer slice
-        elif not isinstance(array_slice, tuple):
-            array_slice = tuple(
-                [
-                    array_slice,
-                ],
-            )
-        if len(array_slice) > self.ndim:
-            raise IndexError(
-                f"Encountered invalid slice with {len(array_slice)} dimensions, but array has dimension {self.ndim}"
-            )
-        # expand ellipsis (array[...])
-        array_slice = list(array_slice)
-        for i, sl in enumerate(array_slice):
-            if sl is Ellipsis:
-                diff = self.ndim - len(array_slice) + 1
-                array_slice.remove(sl)
-                for _ in range(diff):
-                    array_slice.insert(i, slice(None))
-                break
+
+        array_intervals = slice_to_interval(array_slice, self.shape)
 
         # matching from slice to dimension names. We assume fixed (z, y, x) indexing
         dim_names = self.metadata.dimensions
 
-        # handle special indeices
-        array_slice_cleaned = []
-        squeeze_dims = []
-        for i, sl in enumerate(array_slice):
-            # integer/float indices
-            if isinstance(sl, int):
-                if sl < 0:
-                    # negative indices
-                    sl = slice(self.shape[i] + sl, self.shape[i] + sl + 1)
-                else:
-                    sl = slice(sl, sl + 1)
-                squeeze_dims.append(i)
-            start, stop = sl.start, sl.stop
-            if not start:
-                start = 0
-            if not stop:
-                stop = self.shape[i]
-            # negative indices
-            if start and start < 0:
-                start = self.shape[i] + start
-            if stop and stop < 0:
-                stop = self.shape[i] + stop
-            array_slice_cleaned.append(slice(start, stop))
-        array_slice = array_slice_cleaned
-        del array_slice_cleaned
-
         accessor_kwargs = {
-            dim: (sl.start, sl.stop) for sl, dim in zip(array_slice, dim_names)
+            dim: ai for ai, dim in zip(array_intervals, dim_names)
         }
 
         # consolidate channel access into a named dictionary 
