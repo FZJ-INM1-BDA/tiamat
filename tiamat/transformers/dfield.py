@@ -136,12 +136,12 @@ class DeformationFieldTransformer(Transformer):
         )
 
         # Build requested frame from coordinates with margin
-        scaled_margin = self.request_margin / accessor.scale
+        scaled_margin = np.divide(self.request_margin, accessor.scale)
 
-        min_x = np.min(coordinates[1]) - scaled_margin
-        max_x = np.max(coordinates[1]) + scaled_margin
-        min_y = np.min(coordinates[0]) - scaled_margin
-        max_y = np.max(coordinates[0]) + scaled_margin
+        min_xy = np.min(coordinates, axis=(1, 2)) - scaled_margin
+        max_xy = np.max(coordinates, axis=(1, 2)) + scaled_margin
+        min_x, max_x = min_xy[1], max_xy[1]
+        min_y, max_y = min_xy[0], max_xy[0]
 
         # Store requested frame and coordinates in accessor
         accessor = replace(accessor)
