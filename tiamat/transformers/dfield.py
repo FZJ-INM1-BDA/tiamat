@@ -195,5 +195,5 @@ class DeformationFieldTransformer(Transformer):
             dfield_file=args["dfield_file"],
             request_margin=args.get("request_margin", 2),
             interpolation=args.get("interpolation", 'linear'),
-            reader_factory=get_reader_from_config(args.get("reader")),
+            reader_factory=get_reader_from_config(args.get("reader_factory")),
         )
