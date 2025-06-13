@@ -1,6 +1,7 @@
 """
 Affine transformers.
 """
+import logging
 from dataclasses import asdict
 from itertools import product, repeat
 from typing import Any, Dict, List, Tuple
@@ -11,8 +12,10 @@ from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
 from .protocol import Transformer
 
+logger = logging.getLogger(__name__)
 
 class AffineTransformer(Transformer):
+    # TODO: define a unit of affine matrix, e.g. microns, mm, ...
     def __init__(
             self,
             affine_matrix: np.array | List[List[float]],
@@ -51,8 +54,14 @@ class AffineTransformer(Transformer):
 
         # TODO: Handle 3D.
 
+        target_spacing = np.array(accessor.metadata.spacing)
+        if target_spacing.size == 1:
+            target_spacing = np.array([target_spacing, target_spacing])
+        target_spacing = target_spacing[:2]  # TODO: general solution for 3D
+
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
+        affine[:2, -1] = affine[:2, -1] * target_spacing  # Convert translation to pixel coordinates
 
         # Read coordinates for requested frame
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
@@ -134,6 +143,12 @@ class AffineTransformer(Transformer):
         target_scale = np.array(image_result.accessor.scale)
         if target_scale.size == 1:
             target_scale = np.array([target_scale, target_scale])
+        target_scale = target_scale[:2]  # TODO: general solution for 3D
+
+        target_spacing = np.array(image_result.accessor.metadata.spacing)
+        if target_spacing.size == 1:
+            target_spacing = np.array([target_spacing, target_spacing])
+        target_spacing = target_spacing[:2]  # TODO: general solution for 3D
 
         # Restore extent from requested frame
         try:
@@ -157,8 +172,12 @@ class AffineTransformer(Transformer):
         # 2. Apply our actual affine matrix.
         # 3. Specify an affine matrix shifting towards the origin of the target image.
 
-        # Transform affine to pixel coordinates and make it corner pixel aligned
         px_affine = self.affine_matrix.copy()
+
+        # scale translation to pixel coordinates
+        px_affine[:2, -1] = px_affine[:2, -1] * target_spacing
+
+        # Transform affine to pixel coordinates and make it corner pixel aligned
         px_affine[:2, -1] = px_affine[:2, -1] * target_scale
         px_affine = self._make_corner_px_affine(px_affine)
 
@@ -171,7 +190,6 @@ class AffineTransformer(Transformer):
         target_origin_affine = np.eye(3)
         target_origin_affine[:2, -1] = (-x_from, -y_from)
         target_origin_affine[:2, -1] = target_origin_affine[:2, -1] * target_scale
-
         # Step 1., 2., and 3.
         affine = target_origin_affine @ px_affine @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
