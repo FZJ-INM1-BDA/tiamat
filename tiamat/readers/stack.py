@@ -134,7 +134,7 @@ class ImageStackReader(ImageReader):
             for fname in selected_slices:
                 if fname is None:
                     # Missing section
-                    reader_list += ConstantReader(self.missing_section_fill_value, self.prototype_metadata)
+                    reader_list.append(ConstantReader(self.missing_section_fill_value, self.prototype_metadata))
                 else:
                     # Existing section needs corresponding reader
                     identifier = get_reader_identifier(fname, self.reader_identifier)
@@ -151,7 +151,7 @@ class ImageStackReader(ImageReader):
             # Use same reader for all selected slices
             for fname in selected_slices:
                 if fname is None:
-                    reader_list += ConstantReader(self.missing_section_fill_value, self.prototype_metadata)
+                    reader_list.append(ConstantReader(self.missing_section_fill_value, self.prototype_metadata))
                 else:
                     print(reader_list, self.reader_factory, fname)
                     reader_list.append(self.reader_factory(fname))
@@ -331,7 +331,7 @@ class ImageStackReader(ImageReader):
                 reader_identifier=args.get("reader_identifier"),
                 stack_dimension=args.get("stack_dimension", dimensions.Z),
                 missing_section_interpolation=args.get("missing_section_interpolation"),
-                missing_section_fill_value=args.get("missing_section_fill_value"),
+                missing_section_fill_value=args.get("missing_section_fill_value", 0),
             )
         else:
             return partial(
@@ -342,7 +342,7 @@ class ImageStackReader(ImageReader):
                 reader_identifier=args.get("reader_identifier"),
                 stack_dimension=args.get("stack_dimension", dimensions.Z),
                 missing_section_interpolation=args.get("missing_section_interpolation"),
-                missing_section_fill_value=args.get("missing_section_fill_value"),
+                missing_section_fill_value=args.get("missing_section_fill_value", 0),
             )
 
     @cached_property
@@ -359,15 +359,16 @@ class ImageStackReader(ImageReader):
         if metadata_first_slice.scales is None:
             return None
 
-        # print("metadata_first_slice", metadata_first_slice)
+        spacing_3d = ImageStackReader.fill_spacing(self.slice_spacing, metadata_first_slice.spacing)
+        spacing = min(spacing_3d[0], spacing_3d[1])
+        slice_spacing = spacing_3d[2]
 
         # TODO: make shure position of z is correct
-        # TODO: future: zyxt(c)
         scales = metadata_first_slice.scales
         if isinstance(scales[0], Iterable):
-            scales = [(*s[:2], 1.0, *s[2:]) for s in scales]
+            scales = [(*s[:2], min((slice_spacing * s[0]) / spacing, 1.0), *s[2:]) for s in scales]
         elif isinstance(scales[0], (int, float)):
-            scales = [(s, s, 1.0) for s in scales]
+            scales = [(s, s, min((slice_spacing * s) / spacing, 1.0)) for s in scales]
 
         return scales
 
