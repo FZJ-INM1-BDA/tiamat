@@ -122,57 +122,56 @@ class ImageStackReader(ImageReader):
         else:
             return (*expand_to_length(spacing, 2), slice_spacing)
 
-    def _prepare_slices(self, slice_ix: Iterable[int]):
+    def _prepare_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
+        from tiamat.readers.memory import ConstantReader
+
         selected_slices = [self.slices[i] for i in slice_ix]
 
+        reader_list = []
         if isinstance(self.reader_factory, dict):
-            reader_list = []
+            # Loop over all selected files and assign corresponding reader via the identifier
             
             for fname in selected_slices:
                 if fname is None:
                     # Missing section
-                    factory = None
+                    reader_list += ConstantReader(self.missing_section_fill_value, self.prototype_metadata)
                 else:
                     # Existing section needs corresponding reader
                     identifier = get_reader_identifier(fname, self.reader_identifier)
                     factory = self.reader_factory[identifier]
-                reader_list.append((factory, fname))
-            
-            return reader_list
+                    reader_list += factory(fname)
 
         elif isinstance(self.reader_factory, list):
+            # Map each slice to reader at same slice index
             selected_readers = [self.reader_factory[i] for i in slice_ix]
-
-            return [(factory, fname) for factory, fname in zip(selected_readers, selected_slices)]
+            for reader, fname in zip(selected_readers, selected_slices):
+                reader_list += reader(fname)
 
         else:
-            return [(self.reader_factory, fname) for fname in selected_slices]
+            # Use same reader for all selected slices
+            reader_list = []
+            for fname in selected_slices:
+                if fname is None:
+                    reader_list += ConstantReader(self.missing_section_fill_value, self.prototype_metadata)
+                else:
+                    reader_list += self.reader_factory(fname)
 
-    def access_slices(self, slice_ix: Iterable[int]):
-        from tiamat.readers.memory import ConstantReader
+        return reader_list
 
-        selected_handles = self._prepare_slices(slice_ix)
-        out_slices = []
-        for reader, file in selected_handles:
-            if file is None:
-                out_slices.append(ConstantReader(self.missing_section_fill_value, self.prototype_metadata))
-            else:
-                out_slices.append(reader(file))
+    def access_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
+        selected_readers = self._prepare_slices(slice_ix)
 
-        return out_slices
+        return selected_readers
 
     @property
     def ordered_slice_handles(self):
         return self.access_slices(range(len(self.slices)))
 
     @property
-    def prototype_slice_handle(self):
+    def prototype_slice_handle(self) -> ImageReader:
         selected_handles = self._prepare_slices([0])
-        if len(selected_handles) > 0:
-            reader, file = selected_handles[0]
-            return reader(file)
-        else:
-            return None
+
+        return selected_handles[0]
         
     @instance_cached_property
     def prototype_metadata(self):
@@ -205,7 +204,6 @@ class ImageStackReader(ImageReader):
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
         from dataclasses import replace
-        from tiamat.readers.processing import _prepare_coordinates
 
         # Request only subset of slice handles neded for the requested scale
         selected_slice_ix = _select_slice_ix(accessor, self.num_slices)
