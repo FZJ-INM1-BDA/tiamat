@@ -139,22 +139,22 @@ class ImageStackReader(ImageReader):
                     # Existing section needs corresponding reader
                     identifier = get_reader_identifier(fname, self.reader_identifier)
                     factory = self.reader_factory[identifier]
-                    reader_list += factory(fname)
+                    reader_list.append(factory(fname))
 
         elif isinstance(self.reader_factory, list):
             # Map each slice to reader at same slice index
             selected_readers = [self.reader_factory[i] for i in slice_ix]
             for reader, fname in zip(selected_readers, selected_slices):
-                reader_list += reader(fname)
+                reader_list.append(reader(fname))
 
         else:
             # Use same reader for all selected slices
-            reader_list = []
             for fname in selected_slices:
                 if fname is None:
                     reader_list += ConstantReader(self.missing_section_fill_value, self.prototype_metadata)
                 else:
-                    reader_list += self.reader_factory(fname)
+                    print(reader_list, self.reader_factory, fname)
+                    reader_list.append(self.reader_factory(fname))
 
         return reader_list
 
