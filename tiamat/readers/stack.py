@@ -254,6 +254,8 @@ class ImageStackReader(ImageReader):
             available_slices = find_slices(fnames=self.fnames)
 
         if self.reader_identifier is None:
+            if isinstance(self.reader_factory, dict):
+                raise Exception("Using a dictionary as reader_factory requires a reader_identifier to be provided")
             if self.missing_section_interpolation is None:
                 # No ordering or section interpolation happening
                 return available_slices
@@ -262,6 +264,12 @@ class ImageStackReader(ImageReader):
                 raise Exception(f"{self.missing_section_interpolation} missing_section_interpolation requires reader_identifier to be provided")
         else:
             # Sort available slices by their reader_identifier
+            if isinstance(self.reader_factory, dict):
+                available_slices = [
+                    f for f in available_slices
+                    if get_reader_identifier(f, self.reader_identifier) in self.reader_factory.keys()
+                ]
+
             available_keys = [int(get_reader_identifier(f, self.reader_identifier)) for f in available_slices]
             sorted_ix = np.argsort(available_keys)
 
