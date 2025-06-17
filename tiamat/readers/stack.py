@@ -153,7 +153,6 @@ class ImageStackReader(ImageReader):
                 if fname is None:
                     reader_list.append(ConstantReader(self.missing_section_fill_value, self.prototype_metadata))
                 else:
-                    print(reader_list, self.reader_factory, fname)
                     reader_list.append(self.reader_factory(fname))
 
         return reader_list
