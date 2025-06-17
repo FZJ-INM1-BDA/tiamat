@@ -64,3 +64,4 @@ class ImageResult:
     image: np.ndarray
     accessor: ImageAccessor
     metadata: ImageMetadata = None
+    additional_images: dict = field(default_factory=dict)
