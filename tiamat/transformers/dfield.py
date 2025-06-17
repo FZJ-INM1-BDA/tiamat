@@ -18,6 +18,7 @@ class DeformationFieldTransformer(Transformer):
             dfield_file: str,
             request_margin: int = 2,
             interpolation = 'linear',
+            xy_coordinates = True,
             reader_factory: Callable[[str], ImageReader] | None = None,
         ):
         """Creates an instance of DeformationFieldTransformer
@@ -36,7 +37,10 @@ class DeformationFieldTransformer(Transformer):
         reader_factory = reader_factory or get_reader
         self.reader = reader_factory(dfield_file)
 
+        self.xy_coordinates = xy_coordinates
+
         self.meta = self.reader.read_metadata()
+
         self.dfield_origin = (0., 0.)
         if self.meta.additional_metadata is not None:
             if 'dfield_origin' in self.meta.additional_metadata.keys():
@@ -51,13 +55,14 @@ class DeformationFieldTransformer(Transformer):
         dfield_scale: Tuple[int, int],
         dfield_origin: Tuple[float, float],
         coord_dim: int = 2,
-        yx: bool = True,
+        xy: bool = True,
     ):
         # Determine if deformation vectors are xy or yx order
-        if yx:
-            x_i, y_i = 1, 0
-        else:
+        if xy:
             x_i, y_i = 0, 1
+        else:
+            x_i, y_i = 1, 0
+
         locations_x = np.arange(0, dfield.shape[1]) / dfield_scale[1] + dfield_origin[1]
         locations_x = np.take(dfield, x_i, axis=coord_dim) + locations_x[None]
 
@@ -65,7 +70,7 @@ class DeformationFieldTransformer(Transformer):
         locations_y = np.take(dfield, y_i, axis=coord_dim) + locations_y[:, None]
 
         return np.stack((locations_y, locations_x), axis=0)
-    
+
     @staticmethod
     def apply_deformation(
         image: np.ndarray,
@@ -88,13 +93,17 @@ class DeformationFieldTransformer(Transformer):
         )
 
         return out_image
-    
+
     @property
     def shape(self) -> tuple:
         from tiamat.readers.processing import expand_to_length
 
         dfield_scale = expand_to_length(self.meta.scales[0], 2)
-        shape = int((self.meta.shape[0] / dfield_scale[0])), int((self.meta.shape[1] / dfield_scale[1]))
+
+        shape = (
+            int((self.meta.shape[0] / dfield_scale[0])),
+            int((self.meta.shape[1] / dfield_scale[1])),
+        )
 
         return shape
 
@@ -105,8 +114,7 @@ class DeformationFieldTransformer(Transformer):
         from tiamat.readers.processing import _prepare_coordinates, expand_to_length
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-        # TODO: Account for spacing
-        dfield_scale = expand_to_length(self.meta.scales[0], 2)
+        # dfield_scale = expand_to_length(self.meta.scales[0], 2)
         image_scale = expand_to_length(accessor.scale, 2)
         coord_scale = expand_to_length(accessor.coordinate_scale, 2)
 
@@ -122,17 +130,18 @@ class DeformationFieldTransformer(Transformer):
         tmp_accessor.metadata = self.meta
         tmp_accessor.x = (x_from, x_to)
         tmp_accessor.y = (y_from, y_to)
-        tmp_accessor.fill_value = 0  # TODO: Check
+        tmp_accessor.fill_value = 0
 
         # Read the corresponding crop from dfield
         dfield_crop = self.reader.read_image(tmp_accessor)
+        dfield_vectors = dfield_crop.image
 
         # Determine requested coordinates from deformation vectors
         coordinates = DeformationFieldTransformer.get_coordinates(
-            dfield=dfield_crop.image,
+            dfield=dfield_vectors,
             dfield_scale=image_scale,
             dfield_origin=(y_from + self.dfield_origin[0], x_from + self.dfield_origin[1]),
-            yx=True, # TODO: Read this somehow from file
+            xy=self.xy_coordinates,
         )
 
         # Build requested frame from coordinates with margin
