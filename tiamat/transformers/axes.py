@@ -30,20 +30,27 @@ class ImageToVolumeTransformer(Transformer):
         # we search for the position of y, then prepend a 1-dimension
         y_index = metadata.dimensions.index(dimensions.Y)
         new_axis = max(y_index - 1, 0)
+
+        # Insert new spatial axis
         new_shape = list(metadata.shape)
         new_shape.insert(new_axis, 1)
         metadata.shape = new_shape
+
+        # Insert the axis to the dimensions
+        new_dimensions = list(metadata.dimensions)
+        new_dimensions.insert(new_axis, dimensions.Z)
+        metadata.dimensions = new_dimensions
 
         if self.z_spacing is None:
             if hasattr(metadata.spacing, '__len__'):
                 raise Exception(f"Need provide z_spacing for non-uniform spacing {metadata.spacing}")
         else:
             if hasattr(metadata.spacing, '__len__'):
-                metadata.spacing = (self.z_spacing, *metadata.spacing)
+                metadata.spacing = (*metadata.spacing, self.z_spacing)
             else:
                 from tiamat.readers.processing import expand_to_length
 
-                metadata.spacing = (self.z_spacing, *expand_to_length(metadata.spacing, 2))
+                metadata.spacing = (*expand_to_length(metadata.spacing, 2), self.z_spacing)
 
         return metadata
 
