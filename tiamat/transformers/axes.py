@@ -23,6 +23,7 @@ class ImageToVolumeTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
         from tiamat.metadata import dimensions
+        from tiamat.readers.processing import expand_to_length
 
         metadata = replace(metadata)
 
@@ -41,6 +42,9 @@ class ImageToVolumeTransformer(Transformer):
         new_dimensions.insert(new_axis, dimensions.Z)
         metadata.dimensions = new_dimensions
 
+        # Do not provide downsampled versions in z direction
+        metadata.scales = [(*expand_to_length(s, 2), 1.0) for s in metadata.scales]
+
         if self.z_spacing is None:
             if hasattr(metadata.spacing, '__len__'):
                 raise Exception(f"Need provide z_spacing for non-uniform spacing {metadata.spacing}")
@@ -48,8 +52,6 @@ class ImageToVolumeTransformer(Transformer):
             if hasattr(metadata.spacing, '__len__'):
                 metadata.spacing = (*metadata.spacing, self.z_spacing)
             else:
-                from tiamat.readers.processing import expand_to_length
-
                 metadata.spacing = (*expand_to_length(metadata.spacing, 2), self.z_spacing)
 
         return metadata
@@ -77,14 +79,15 @@ class ImageToVolumeTransformer(Transformer):
 class ReorderCoordinatesTransformer(Transformer):
 
     def __init__(self, axes=('x', 'y', 'z')):
+        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
         assert len(axes) == 2 or len(axes) == 3
 
         self.reorder_axes = axes
 
         if len(axes) == 2:
-            in_axes = ('y', 'x')
+            in_axes = SPATIAL_DIMENSIONS[1:] # ('y', 'x')
         else:
-            in_axes = ('z', 'y', 'x')
+            in_axes = SPATIAL_DIMENSIONS # ('z', 'y', 'x')
 
         self.from_indices = tuple(in_axes.index(a) for a in self.reorder_axes)
         self.to_indices = tuple(self.reorder_axes.index(a) for a in in_axes)
@@ -108,11 +111,11 @@ class ReorderCoordinatesTransformer(Transformer):
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
+        from tiamat.readers.processing import expand_to_length
         
         metadata = replace(metadata)
 
         sp_dims = metadata.spatial_dimensions
-
         assert len(sp_dims) == len(self.reorder_axes)
 
         new_shape = list(metadata.shape)
@@ -120,9 +123,19 @@ class ReorderCoordinatesTransformer(Transformer):
             new_shape[sp_dims[i]] = metadata.shape[sp_dims[ix]]
         metadata.shape = tuple(new_shape)
 
-        if hasattr(metadata.spacing, '__len__'):
-            assert len(metadata.spacing) == len(sp_dims)
-            metadata.spacing = tuple(metadata.spacing[ix] for ix in self.from_indices[::-1])
+        spacing = list(expand_to_length(metadata.spacing, len(sp_dims)))
+        scales = [list(expand_to_length(s, len(sp_dims))) for s in metadata.scales]
+
+        new_spacing = spacing.copy()
+        new_scales = [s.copy() for s in scales]
+        for i, ix in enumerate(self.to_indices[::-1]):
+            new_spacing[i] = spacing[ix]
+
+            for j in range(len(scales)):
+                new_scales[j][i] = scales[j][ix]
+
+        metadata.spacing = tuple(new_spacing)
+        metadata.scales = [tuple(s) for s in new_scales]
 
         return metadata
 
