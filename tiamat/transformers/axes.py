@@ -57,6 +57,8 @@ class ImageToVolumeTransformer(Transformer):
         return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
+        from tiamat.metadata import dimensions
+        
         metadata = image_result.metadata
         assert metadata is not None, "ImageToVolumeTransformer requires metadata."
         
@@ -64,7 +66,9 @@ class ImageToVolumeTransformer(Transformer):
         # we search for the position of y, then prepend a 1-dimension
         y_index = metadata.dimensions.index(dimensions.Y)
         new_axis = max(y_index - 1, 0)
-        new_shape = list(metadata.shape)
+        new_shape = list(image_result.image.shape)
+        new_shape.insert(new_axis, 1)
+
         image_result.image = image_result.image.reshape(new_shape)
 
         return image_result
@@ -94,18 +98,32 @@ class ReorderCoordinatesTransformer(Transformer):
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
+        from tiamat.readers.processing import expand_to_length
 
         accessor = replace(accessor)
+
+        scale = expand_to_length(accessor.scale, 3)
 
         if len(self.reorder_axes) == 2:
             coord_slices = [accessor.y, accessor.x]
             accessor.y = coord_slices[self.to_indices[0]]
             accessor.x = coord_slices[self.to_indices[1]]
+
+            accessor.scale = (
+                scale[self.from_indices[0]],
+                scale[self.from_indices[1]],
+            )
         else:
             coord_slices = [accessor.z, accessor.y, accessor.x]
             accessor.z = coord_slices[self.to_indices[0]]
             accessor.y = coord_slices[self.to_indices[1]]
             accessor.x = coord_slices[self.to_indices[2]]
+
+            accessor.scale = (
+                scale[self.from_indices[0]],
+                scale[self.from_indices[1]],
+                scale[self.from_indices[2]],
+            )
 
         return accessor
 
