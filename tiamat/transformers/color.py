@@ -88,6 +88,7 @@ class GrayscaleToRGBTransformer(Transformer):
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
+        from tiamat.metadata import dimensions
 
         # Only do something if the image is not already RGB.
         metadata = image_result.metadata
