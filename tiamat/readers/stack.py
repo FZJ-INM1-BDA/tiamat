@@ -372,6 +372,7 @@ class ImageStackReader(ImageReader):
 
         # TODO: make shure position of z is correct
         scales = metadata_first_slice.scales
+
         if isinstance(scales[0], Iterable):
             scales = [(*s[:2], min((slice_spacing * s[0]) / spacing, 1.0), *s[2:]) for s in scales]
         elif isinstance(scales[0], (int, float)):
@@ -441,12 +442,14 @@ class VolumeStackReader(ImageReader):
     @cached_property
     def subvolume_shapes(self):
 
-        if self.flag_const_shape:
-            metadata = self.ordered_subvolume_handles[0].read_metadata()
-            # logger.debug("VolumeStackReader subvolume_shapes: %s", metadata.shape)
-            return [(metadata.shape) for _ in range(self.num_slices)]
+        subvolume_handles = self.ordered_subvolume_handles
 
-        return [handle.read_metadata().shape for handle in self.ordered_subvolume_handles]
+        if self.flag_const_shape:
+            metadata = subvolume_handles[0].read_metadata()
+            # logger.debug("VolumeStackReader subvolume_shapes: %s", metadata.shape)
+            return [(metadata.shape) for _ in range(len(subvolume_handles))]
+
+        return [handle.read_metadata().shape for handle in subvolume_handles]
 
     @cached_property
     def shape(self):
