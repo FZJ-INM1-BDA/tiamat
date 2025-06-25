@@ -54,14 +54,14 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
     size = max_ix - min_ix
 
     # Start index is the center of the size or step (depending on which is smaller)
-    start_ix = min_ix + math.ceil(min(size, step) / 2) - 1
+    start_ix = min_ix + min(size, step) / 2
 
     # Select indices starting with start_ix and step size
     selected_ix = []
     ix = start_ix
     while (ix - start_ix) < size:
-        selected_ix.append(min(ix, min(max_ix, num_slices) - 1))
-        ix = int(ix + step)
+        selected_ix.append(int(min(ix, min(max_ix, num_slices) - 1)))
+        ix = ix + step
 
     return selected_ix
 
