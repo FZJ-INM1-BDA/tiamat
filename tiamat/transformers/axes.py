@@ -146,7 +146,7 @@ class ReorderCoordinatesTransformer(Transformer):
 
         new_spacing = spacing.copy()
         new_scales = [s.copy() for s in scales]
-        for i, ix in enumerate(self.to_indices[::-1]):
+        for i, ix in enumerate(self.to_indices):
             new_spacing[i] = spacing[ix]
 
             for j in range(len(scales)):
