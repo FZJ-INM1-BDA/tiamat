@@ -83,18 +83,26 @@ class ImageToVolumeTransformer(Transformer):
 class ReorderCoordinatesTransformer(Transformer):
 
     def __init__(self, axes=('x', 'y', 'z')):
-        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
+        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS, META_DIMENSIONS
         assert len(axes) == 2 or len(axes) == 3
 
         self.reorder_axes = axes
 
         if len(axes) == 2:
             in_axes = SPATIAL_DIMENSIONS[1:] # ('y', 'x')
+            meta_axes = META_DIMENSIONS[:-1] # ('x', 'y')
         else:
             in_axes = SPATIAL_DIMENSIONS # ('z', 'y', 'x')
+            meta_axes = META_DIMENSIONS # ('x', 'y', 'z')
 
+        # Determine forward and backward indices for z, y, x ordered 
         self.from_indices = tuple(in_axes.index(a) for a in self.reorder_axes)
         self.to_indices = tuple(self.reorder_axes.index(a) for a in in_axes)
+
+        # Invert for x, y, z ordered values (scale, spacing, ...)
+        # Assume that the given axes have z, y, x ordering
+        self.from_indices_meta = tuple(meta_axes.index(a) for a in self.reorder_axes[::-1])
+        self.to_indices_meta = tuple(self.reorder_axes[::-1].index(a) for a in meta_axes)
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
@@ -110,8 +118,8 @@ class ReorderCoordinatesTransformer(Transformer):
             accessor.x = coord_slices[self.to_indices[1]]
 
             accessor.scale = (
-                scale[self.from_indices[0]],
-                scale[self.from_indices[1]],
+                scale[self.to_indices_meta[0]],
+                scale[self.to_indices_meta[1]],
             )
         else:
             coord_slices = [accessor.z, accessor.y, accessor.x]
@@ -120,9 +128,9 @@ class ReorderCoordinatesTransformer(Transformer):
             accessor.x = coord_slices[self.to_indices[2]]
 
             accessor.scale = (
-                scale[self.from_indices[0]],
-                scale[self.from_indices[1]],
-                scale[self.from_indices[2]],
+                scale[self.to_indices_meta[0]],
+                scale[self.to_indices_meta[1]],
+                scale[self.to_indices_meta[2]],
             )
 
         return accessor
@@ -130,7 +138,7 @@ class ReorderCoordinatesTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
         from tiamat.readers.processing import expand_to_length
-        
+
         metadata = replace(metadata)
 
         sp_dims = metadata.spatial_dimensions
@@ -146,7 +154,7 @@ class ReorderCoordinatesTransformer(Transformer):
 
         new_spacing = spacing.copy()
         new_scales = [s.copy() for s in scales]
-        for i, ix in enumerate(self.to_indices):
+        for i, ix in enumerate(self.from_indices_meta):
             new_spacing[i] = spacing[ix]
 
             for j in range(len(scales)):
@@ -188,22 +196,29 @@ class MirrorTransformer(Transformer):
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
+        from tiamat.metadata import dimensions
 
-        spatial_shape = accessor.metadata.spatial_shape
+        metadata = accessor.metadata
 
         accessor = replace(accessor)
 
         if self.mirror_x:
-            x_from, x_to = resolve_coordinate_slice(accessor.x, spatial_shape[-1])
-            accessor.x = (spatial_shape[-1] - x_to, spatial_shape[-1] - x_from)
+            x_ix = metadata.dimensions.index(dimensions.X)
+            x_size = metadata.shape[x_ix]
+            x_from, x_to = resolve_coordinate_slice(accessor.x, x_size)
+            accessor.x = (x_size - x_to, x_size - x_from)
 
         if self.mirror_y:
-            y_from, y_to = resolve_coordinate_slice(accessor.y, spatial_shape[-2])
-            accessor.y = (spatial_shape[-2] - y_to, spatial_shape[-2] - y_from)
+            y_ix = metadata.dimensions.index(dimensions.Y)
+            y_size = metadata.shape[y_ix]
+            y_from, y_to = resolve_coordinate_slice(accessor.y, y_size)
+            accessor.y = (y_size - y_to, y_size - y_from)
 
-        if len(spatial_shape) > 2 and self.mirror_z:
-            z_from, z_to = resolve_coordinate_slice(accessor.z, spatial_shape[-3])
-            accessor.z = (spatial_shape[-3] - z_to, spatial_shape[-3] - z_from)
+        if len(metadata.spatial_dimensions) > 2 and self.mirror_z:
+            z_ix = metadata.dimensions.index(dimensions.Z)
+            z_size = metadata.shape[z_ix]
+            z_from, z_to = resolve_coordinate_slice(accessor.z, z_size)
+            accessor.z = (z_size - z_to, z_size - z_from)
 
         return accessor
 
