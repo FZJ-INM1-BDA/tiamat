@@ -7,17 +7,6 @@ import warnings
 
 import numpy as np
 
-try:
-    # noinspection PyUnresolvedReferences
-    import cv2
-
-    CV2_AVAILABLE = True
-except ImportError:
-    warnings.warn(
-        "image: Module cv2 is not available, using scikit-image as a fallback"
-    )
-    CV2_AVAILABLE = False
-
 from ..io import (
     ImageAccessor,
     INTERPOLATION_TYPE_NEAREST,
@@ -27,22 +16,45 @@ from ..io import (
     INTERPOLATION_TYPE_LANCZOS4,
 )
 
-OPENCV_INTERPOLATION_CODES = {
-    INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
-    INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
-    INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
-    INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
-    INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
+SCIPY_INTERPOLATION_CODES = {
+    INTERPOLATION_TYPE_NEAREST: 0,
+    INTERPOLATION_TYPE_LINEAR: 1,
+    INTERPOLATION_TYPE_CUBIC: 3,
 }
 
+try:
+    # noinspection PyUnresolvedReferences
+    import cv2
 
-def _expand_to_image_shape(value, image_shape):
+    CV2_AVAILABLE = True
+
+    OPENCV_INTERPOLATION_CODES = {
+        INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
+        INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
+        INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
+        INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
+        INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
+    }
+except ImportError:
+    warnings.warn(
+        "image: Module cv2 is not available, using scikit-image as a fallback"
+    )
+    CV2_AVAILABLE = False
+
+
+def _expand_to_dimension(value, image_shape):
     if not isinstance(value, (list, tuple, np.ndarray)):
         return [value for _ in image_shape]
     return value
 
 
-def rescale(
+def expand_to_length(value, length):
+    if not isinstance(value, (list, tuple, np.ndarray)):
+        return [value] * length
+    return value
+
+
+def _rescale(
     image: np.ndarray,
     scale: float | tuple[float, ...],
     interpolation: str = INTERPOLATION_TYPE_CUBIC,
@@ -50,14 +62,14 @@ def rescale(
 ) -> np.ndarray:
     import numpy as np
 
-    scale = _expand_to_image_shape(scale, image.shape[:2])
+    scale = _expand_to_dimension(scale, image.shape[:2])
     assert all(s > 0 for s in scale), f"Scale must be greater than zero, got {scale}."
 
     if np.allclose(scale, 1.0):
         # Nothing to do
         return image
 
-    # Note: Rescale always rounds up. This is a design decision, that we might want to revisit.
+    # Note: _rescale always rounds up. This is a design decision, that we might want to revisit.
     target_shape = np.ceil(
         np.array([dim * s for dim, s in zip(image.shape[:2], scale)], dtype=float)
     ).astype(int)
@@ -120,43 +132,37 @@ def resize(
     return res.astype(img.dtype)
 
 
-def _prepare_coordinates(
-    x, y, z, c, image_scale=(1.0, 1.0), coordinate_scale=(1.0, 1.0)
-):
+def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
     import math
 
-    prepared = []
-    for i, coord in enumerate((x, y, z, c)):
-        c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
-        i_scale = image_scale[i] if i < len(image_scale) else 1.0
-        factor = i_scale / c_scale
+    factor = image_scale / coordinate_scale
 
-        if isinstance(coord, int):
-            # A single element in the given dimension
-            coord = math.floor(coord * factor)
-            prepared_coord = (coord, coord + 1)
-        elif coord is None:
-            # All elements in the given dimension
-            prepared_coord = (0, None)
-        else:
-            # tuple of values
-            prepared_coord = tuple(
-                math.floor(c * factor) if c is not None else None
-                for c in coord
-            )
-        prepared.append(prepared_coord)
-    return prepared
-
-def _resolve_coordinate(coordinate, image_dimension):
-
-    if coordinate is None:
-        return image_dimension
-    elif isinstance(coordinate, (np.integer, int)):
-        return coordinate
-    elif isinstance(coordinate, (np.floating, float)):
-        raise RuntimeError(f"Encountered fractional value of {coordinate} as coordinate, which is not supported.")
+    if isinstance(coord, int):
+        # A single element in the given dimension
+        coord = math.floor(coord * factor)
+        prepared_coord = (coord, coord + 1)
+    elif coord is None:
+        # All elements in the given dimension
+        prepared_coord = (0, None)
     else:
-        return tuple(_resolve_coordinate(coordinate_i, image_dimension) for coordinate_i in coordinate)
+        # tuple of values
+        prepared_coord = tuple(
+            math.floor(c * factor) if c is not None else None
+            for c in coord
+        )
+    return prepared_coord
+
+
+def _prepare_coordinates(
+    image_scale=(1.0, 1.0), coordinate_scale=(1.0, 1.0), **coordinates
+):
+    prepared = {}
+    for i, (key,coord) in enumerate(coordinates.items()):
+        i_scale = image_scale[i] if i < len(image_scale) else 1.0
+        c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
+        prepared[key] = prepare_coordinate(coord, i_scale, c_scale)
+
+    return prepared
 
 
 def _zero_clip(values):
@@ -164,7 +170,7 @@ def _zero_clip(values):
 
 
 def access_image(
-    image: np.ndarray, accessor: ImageAccessor, image_scale: tuple[float, ...]
+    image: np.ndarray, accessor: ImageAccessor, image_scale: float | tuple[float, ...]
 ) -> np.ndarray:
     """Access image content.
 
@@ -176,7 +182,7 @@ def access_image(
         Row-major image content as numpy array
     accessor : ImageAccessor
         Requested image coordinates
-    image_scale : tuple[float, ...]
+    image_scale : float | tuple[float, ...]
         Scaling of each image dimension
     default_value: float or int
         Fill value for out of bounds request
@@ -187,16 +193,25 @@ def access_image(
         Requested image content
     """
 
-    coordinate_scale = _expand_to_image_shape(accessor.coordinate_scale, image.shape)
-    x, y, z, c = _prepare_coordinates(
-        x=accessor.x,
-        y=accessor.y,
-        z=accessor.z,
-        c=accessor.c,
+    coordinate_scale = _expand_to_dimension(accessor.coordinate_scale, accessor.metadata.spatial_shape)
+    image_scale = _expand_to_dimension(image_scale, accessor.metadata.spatial_shape)
+
+    access_channels = {
+        "x": accessor.x,
+        "y": accessor.y,
+        "z": accessor.z,
+    }
+    if isinstance(accessor.c, dict):
+        access_channels.update(accessor.c)
+    else:
+        access_channels["c"] = accessor.c
+
+    access_channels = _prepare_coordinates(
         image_scale=image_scale,
         coordinate_scale=coordinate_scale,
+        **access_channels,
     )
-    x, y, z, c = _prepare_coordinates(x, y, z, c)
+    z, y, x = [access_channels[key] for key in ("z", "y", "x")]
 
     def _pad_left(coordinate):
         if coordinate is None:
@@ -217,19 +232,17 @@ def access_image(
         return min(max(int(coordinate), int(min_coordinate)), int(max_coordinate))
 
     # Separate image and channel dimensions
-    # TODO: Support reading multiple channels
-    ch_dims = accessor.metadata.channel_dimension
-    ch_dims = [ch_dims] if ch_dims is not None else []
-    n_ch_dims = len(ch_dims)
+    ch_dims = list(accessor.metadata.channel_dimensions)
+    ch_dims = ch_dims if ch_dims is not None else []
 
-    image_dims = sorted(list(set(range(len(image.shape))) - set(ch_dims)))
+    image_dims = list(accessor.metadata.spatial_dimensions)
     n_image_dims = len(image_dims)
 
     assert n_image_dims == 2 or n_image_dims == 3, "Only 2D or 3D images supported"
 
     # Filter requested coordinates for each dim, assuming row major order
     access_image_dims = [z, y, x][-n_image_dims:]
-    access_ch_dims = [c] if n_ch_dims == 1 else []
+    access_ch_dims = [value for key, value in access_channels.items() if key not in ("z", "y", "x")]
 
     # Loop over all dimensions to create request
     request_slices = [slice(None)] * len(image.shape)
@@ -282,17 +295,18 @@ def access_and_rescale_image(
     accessor: ImageAccessor,
     image_scale: float | tuple[float, ...] = 1.0,
 ):
-    image_scale = _expand_to_image_shape(image_scale, image.shape)
+    assert accessor.metadata, f"access_and_rescale_image requires metadata of accessor to be set."
+    image_scale = _expand_to_dimension(image_scale, accessor.metadata.spatial_dimensions)
     image = access_image(image=image, accessor=accessor, image_scale=image_scale)
 
-    scale = _expand_to_image_shape(accessor.scale, image.shape)
+    scale = _expand_to_dimension(accessor.scale, accessor.metadata.spatial_dimensions)
     assert len(scale) == len(
         image_scale
     ), f"Scale and image scale do not match: {len(scale)} vs. {len(image_scale)}"
 
     interpolation = get_interpolation_for_accessor(accessor)
     target_scale = tuple(s / s_image for s, s_image in zip(scale, image_scale))
-    image = rescale(
+    image = _rescale(
         image,
         scale=target_scale,
         interpolation=interpolation,
@@ -311,7 +325,7 @@ def get_interpolation_for_accessor(accessor):
         )
     else:
         raise RuntimeError(
-            f"Could not rescale image, as neither 'interpolation' nor 'metadata.image_type' was provided."
+            f"Could not _rescale image, as neither 'interpolation' nor 'metadata.image_type' was provided."
         )
     return interpolation
 

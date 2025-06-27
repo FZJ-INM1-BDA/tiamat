@@ -73,6 +73,8 @@ class Pipeline:
         # forward pass through the transformers
         for transformer in self.transformers:
             image_result = transformer.transform_image(image_result=image_result)
+            if hasattr(transformer, "transform_metadata") and image_result.metadata is not None:
+                image_result.metadata = transformer.transform_metadata(image_result.metadata)
 
         return image_result
 

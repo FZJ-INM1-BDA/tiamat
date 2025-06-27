@@ -2,10 +2,13 @@
 Metadata on images.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from itertools import product, repeat
 from typing import Iterable
+
 import numpy as np
-from itertools import repeat, product
+
+import tiamat.metadata.dimensions as dimensions
 
 # Image types
 IMAGE_TYPE_SEGMENTATION = (
@@ -14,10 +17,9 @@ IMAGE_TYPE_SEGMENTATION = (
 IMAGE_TYPE_IMAGE = (
     "image"  # an image with continuous values (e.g., a microscopy image).
 )
-
-# Meaning of channel dimension
-CHANNEL_INTERPRETATION_COLOR = "color"
-CHANNEL_INTERPRETATION_STACK = "stack"
+IMAGE_TYPE_VECTOR = (
+    "vector"  # an image with continuous vector values (e.g., a deformation field).
+)
 
 
 def get_dtype_limits(dtype):
@@ -53,11 +55,10 @@ class ImageMetadata:
     shape: tuple
     value_range: tuple
     dtype: np.dtype
-    file_path: str | None = None
+    dimensions: list[str, ...] | tuple[str, ...] = (dimensions.Y, dimensions.X, dimensions.C)
+    file_path: Iterable[str] | str | None = None
     spacing: float | tuple[float, ...] | None = None
-    channel_dimension: int | None = None  # None means no channel dimension
-    channel_interpretation: str = CHANNEL_INTERPRETATION_COLOR
-    additional_metadata: dict | None = None
+    additional_metadata: dict = field(default_factory=dict)
     scales: float | int | Iterable[float | int] | None = None
 
     @property
@@ -65,8 +66,25 @@ class ImageMetadata:
         """
         Returns indices of spatial axes, excluding channels
         """
-        ch_dims = [self.channel_dimension] if self.channel_dimension is not None else []
-        return sorted(list(set(range(len(self.shape))) - set(ch_dims)))
+        return tuple(self.dimensions.index(dimension) for dimension in dimensions.SPATIAL_DIMENSIONS if dimension in self.dimensions)
+
+    @property
+    def channel_dimensions(self):
+        """
+        Returns indices of channels, excluding spatial axes
+        """
+        return tuple(index for index, _ in enumerate(self.shape) if index not in self.spatial_dimensions)
+
+    @property
+    def spatial_shape(self):
+        return tuple(self.shape[i] for i in self.spatial_dimensions)
+    
+    @spatial_shape.setter
+    def spatial_shape(self, shape):
+        shape_list = list(self.shape)
+        for i, ix in enumerate(self.spatial_dimensions):
+            shape_list[ix] = shape[i]
+        self.shape = tuple(shape_list)
 
     @property
     def extents(self):
@@ -80,10 +98,23 @@ class ImageMetadata:
         extents = list(zip(repeat(0), self.shape))
         return list(product(*extents))
 
-    @extents.setter
-    def extents(self, val):
-        self._extents = val
-
     @extents.deleter
     def extents(self):
         delattr(self, "_extents")
+
+    def __repr__(self):
+        return (
+            f"ImageMetadata(\n"
+            f"  image_type={self.image_type},\n"
+            f"  shape={self.shape},\n"
+            f"  value_range={self.value_range},\n"
+            f"  dtype={self.dtype},\n"
+            f"  spacing={self.spacing},\n"
+            f"  dimensions=({','.join(self.dimensions)}),\n"
+            f"  additional_metadata={self.additional_metadata},\n"
+            f"  scales={self.scales}\n"
+            f")"
+        )
+
+    def __str__(self):
+        return self.__repr__()

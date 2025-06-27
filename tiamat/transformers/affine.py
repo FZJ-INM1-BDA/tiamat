@@ -1,25 +1,31 @@
 """
 Affine transformers.
 """
-from typing import Tuple, List
+import logging
 from dataclasses import asdict
-from itertools import repeat, product
-
-from .protocol import Transformer
-from ..io import ImageResult, ImageAccessor
-from ..metadata import ImageMetadata
-from .coordinates import resolve_coordinate_slice
+from itertools import product, repeat
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
+from ..io import ImageAccessor, ImageResult
+from ..metadata import ImageMetadata
+from .protocol import Transformer
+
+logger = logging.getLogger(__name__)
 
 class AffineTransformer(Transformer):
+    # TODO: define a unit of affine matrix, e.g. microns, mm, ...
     def __init__(
             self,
             affine_matrix: np.array | List[List[float]],
-            request_margin: int = 0,
+            request_margin: int = 2,
         ):
         self.affine_matrix = np.array(affine_matrix)
+
+        # If affine is of shape (2, 3), extent to its (3, 3) form
+        if self.affine_matrix.shape == (2, 3):
+            self.affine_matrix = np.vstack((self.affine_matrix, [0.0, 0.0, 1.0]))
 
         # Pixel margin around requested image to avoid resampling artifacts
         self.request_margin = request_margin
@@ -40,19 +46,33 @@ class AffineTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         import math
         from dataclasses import replace
-        from tiamat.readers.processing import _prepare_coordinates, _expand_to_image_shape, _resolve_coordinate
+
+        from tiamat.readers.processing import _prepare_coordinates
+        from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         assert accessor.metadata is not None, f"AffineTransformer requires metadata."
 
         # TODO: Handle 3D.
 
+        target_spacing = accessor.metadata.spacing
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
+        if target_spacing.size == 1:
+            target_spacing = np.array([target_spacing, target_spacing])
+        target_spacing = target_spacing[:2]  # TODO: general solution for 3D
+
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
 
+        affine[:2, -1] = affine[:2, -1] * target_spacing  # Convert translation to pixel coordinates
+
         # Read coordinates for requested frame
-        x, y, *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
-        x_from, x_to = _resolve_coordinate(x, accessor.metadata.shape[1])
-        y_from, y_to = _resolve_coordinate(y, accessor.metadata.shape[0])
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
+        x, y = prepared_coordinates["x"], prepared_coordinates["y"]
+
+        # TODO: Account for spacing and coordinate scale
+        spatial_dims = accessor.metadata.spatial_dimensions
+        x_from, x_to = resolve_coordinate_slice(x, accessor.metadata.shape[spatial_dims[-1]])
+        y_from, y_to = resolve_coordinate_slice(y, accessor.metadata.shape[spatial_dims[-2]])
 
         # Transform all four corners of the requested frame by the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)
@@ -60,14 +80,18 @@ class AffineTransformer(Transformer):
         x3, y3 = self._transform_point(x_to, y_to, affine)
         x4, y4 = self._transform_point(x_from, y_to, affine)
 
+        scale = np.array(accessor.scale)
+        if scale.size == 1:
+            scale = np.array([scale, scale])
+
         # Scale the margin by self.request_margin to obtain physical extent
-        scaled_margin = self.request_margin / accessor.scale
+        scaled_margin = self.request_margin / scale
 
         # Request outer bounds of the transformed view
-        x_from_t = min(x1, x2, x3, x4) - scaled_margin
-        y_from_t = min(y1, y2, y3, y4) - scaled_margin
-        x_to_t = max(x1, x2, x3, x4) + scaled_margin
-        y_to_t = max(y1, y2, y3, y4) + scaled_margin
+        x_from_t = min(x1, x2, x3, x4) - scaled_margin[0]
+        y_from_t = min(y1, y2, y3, y4) - scaled_margin[1]
+        x_to_t = max(x1, x2, x3, x4) + scaled_margin[0]
+        y_to_t = max(y1, y2, y3, y4) + scaled_margin[1]
 
         # Calculate offsets of the requested frame due to integer rounding
         offset_x_input = math.floor(x_from_t) - x_from_t
@@ -75,8 +99,10 @@ class AffineTransformer(Transformer):
 
         # Replace accessor with new requested input
         accessor = replace(accessor)
+        # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
         accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
         accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
+        accessor.fill_value = 0 if accessor.fill_value is None else accessor.fill_value
 
         # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
         # We need to scale the coordinates to obtain pixel coordinates
@@ -85,38 +111,54 @@ class AffineTransformer(Transformer):
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        import numpy as np
         from dataclasses import replace
 
-        metadata_dict = asdict(metadata)
-        shape_tuple = metadata_dict.pop("shape")
+        import numpy as np
 
-        # converts shape to extends
+        shape_tuple = metadata.spatial_shape[-2:]
+
+        # converts shape to extents
         # e.g. shape of 10, 20
         # extents = ((0, 10), (0, 20))
         extents = list(zip(repeat(0), shape_tuple[::-1]))
         extent_coords = list(product(*extents))
-        
-        # shape is ONLY affected by rotation component of 3x3 matrix
-        transformed_coords = (self.affine_matrix[:2, :2] @ np.array(extent_coords).T).T
-        
-        xmax = np.max(transformed_coords[:,0])
-        ymax = np.max(transformed_coords[:,1])
-        
-        new_metadata = replace(metadata, shape=(ymax, xmax))
+
+        new_metadata = replace(metadata)
 
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
-        new_metadata.extents = transformed_coords.tolist()
+
+        out_shape = (
+            np.max(transformed_coords[:, 1]).item() - np.min(transformed_coords[:, 1]).item(),
+            np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item(),
+        )
+
+        new_metadata.spatial_shape = (*shape_tuple[:-2], *out_shape)
 
         return new_metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import math
+
         import cv2
         import numpy as np
-        from ..readers.processing import get_interpolation_for_accessor, OPENCV_INTERPOLATION_CODES, _prepare_coordinates
+
+        from ..readers.processing import (
+            OPENCV_INTERPOLATION_CODES,
+            _prepare_coordinates,
+            get_interpolation_for_accessor,
+        )
 
         target_scale = image_result.accessor.scale
+        target_scale = np.array(target_scale) if target_scale is not None else np.array((1,))
+        if target_scale.size == 1:
+            target_scale = np.array([target_scale, target_scale])
+        target_scale = target_scale[:2]  # TODO: general solution for 3D
+
+        target_spacing = image_result.accessor.metadata.spacing
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
+        if target_spacing.size == 1:
+            target_spacing = np.array([target_spacing, target_spacing])
+        target_spacing = target_spacing[:2]  # TODO: general solution for 3D
 
         # Restore extent from requested frame
         try:
@@ -124,12 +166,13 @@ class AffineTransformer(Transformer):
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
         target_size = (
-            int(target_scale * (x_to - x_from)),
-            int(target_scale * (y_to - y_from)),
+            int(target_scale[0] * (x_to - x_from)),
+            int(target_scale[1] * (y_to - y_from)),
         )
 
         accessor = image_result.accessor
-        (x_from_input, x_to_input), (y_from_input, y_to_input), *_ = _prepare_coordinates(x=accessor.x, y=accessor.y, z=accessor.z, c=accessor.c)
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
+        (x_from_input, _), (y_from_input, _) = prepared_coordinates["x"], prepared_coordinates["y"]
 
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.
@@ -139,8 +182,12 @@ class AffineTransformer(Transformer):
         # 2. Apply our actual affine matrix.
         # 3. Specify an affine matrix shifting towards the origin of the target image.
 
-        # Transform affine to pixel coordinates and make it corner pixel aligned
         px_affine = self.affine_matrix.copy()
+
+        # scale translation to pixel coordinates
+        px_affine[:2, -1] = px_affine[:2, -1] * target_spacing
+
+        # Transform affine to pixel coordinates and make it corner pixel aligned
         px_affine[:2, -1] = px_affine[:2, -1] * target_scale
         px_affine = self._make_corner_px_affine(px_affine)
 
@@ -153,7 +200,6 @@ class AffineTransformer(Transformer):
         target_origin_affine = np.eye(3)
         target_origin_affine[:2, -1] = (-x_from, -y_from)
         target_origin_affine[:2, -1] = target_origin_affine[:2, -1] * target_scale
-
         # Step 1., 2., and 3.
         affine = target_origin_affine @ px_affine @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
@@ -181,3 +227,10 @@ class AffineTransformer(Transformer):
             image_result.image = _apply_affine(image_result.image)
 
         return image_result
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        return cls(
+            affine_matrix=np.array(args["affine_matrix"]),
+            request_margin=args.get("request_margin", 2),
+        )

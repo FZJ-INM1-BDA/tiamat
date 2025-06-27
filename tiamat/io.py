@@ -2,6 +2,7 @@
 IO objects.
 """
 
+from typing import Iterable
 from dataclasses import dataclass, field
 import numpy as np
 from tiamat.metadata import ImageMetadata
@@ -19,7 +20,7 @@ class ImageAccessor:
     x: tuple[int | float | None, int | float | None] | int = None
     y: tuple[int | float | None, int | float | None] | int = None
     z: tuple[int | float | None, int | float | None] | int = None
-    c: tuple[int | float | None, int | float | None] | int = None
+    c: (tuple[int | float | None, int | float | None] | int) | dict[str: tuple[int | float | None, int | float | None] | int] = None
     # scale/spacing to retrieve
     scale: float = 1.0
     spacing: float = None
@@ -37,9 +38,30 @@ class ImageAccessor:
     fill_value: int | float = None
     history: dict = field(default_factory=dict)
 
+    def __repr__(self):
+        return (
+            f"ImageAccessor("
+            f"x={self.x}, "
+            f"y={self.y}, "
+            f"z={self.z}, "
+            f"c={self.c},\n"
+            f"  scale={self.scale}, "
+            f"spacing={self.spacing}, "
+            f"coordinate_scale={self.coordinate_scale}, "
+            f"coordinate_spacing={self.coordinate_spacing},\n"
+            f"  interpolation={self.interpolation}, "
+            f"anti_aliasing={self.anti_aliasing}, "
+            f"fill_value={self.fill_value}"
+            f")"
+        )
+
+    def __str__(self):
+        return self.__repr__()
+
 
 @dataclass
 class ImageResult:
     image: np.ndarray
     accessor: ImageAccessor
     metadata: ImageMetadata = None
+    additional_images: dict = field(default_factory=dict)

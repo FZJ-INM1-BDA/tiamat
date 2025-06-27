@@ -47,12 +47,12 @@ class LUTTransformer(Transformer):
             raise RuntimeError(f"Unknown type for color map: {type(self.color_map)}")
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        metadata.shape = tuple(
-            list(metadata.shape)
-            + [
-                3,
-            ]
-        )
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
+        metadata.shape = (*metadata.shape, 3)
+        
         return metadata
 
 
@@ -62,16 +62,23 @@ class GrayscaleTransformer(Transformer):
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
+        from tiamat.metadata import dimensions
 
-        # Only do something if the image is not already grayscale.
-        if image_result.image.ndim > 2:
+        # Only do this if the image contains RGB/RGBA channels
+        if dimensions.RGB in image_result.metadata.dimensions or dimensions.RGBA in image_result.metadata.dimensions:
+            # TODO: Check if COLOR_BGR2GRAY is correct or COLOR_RGB2GRAY should be used
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
 
         return image_result
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        if len(metadata.shape) > 2:
-            metadata.shape = metadata.shape[:2]
+        from dataclasses import replace
+        from tiamat.metadata import dimensions
+
+        # remove all color dimensions
+        metadata = replace(metadata)
+        metadata.dimensions = [dimension for dimension in metadata.dimensions if dimension not in (dimensions.RGB, dimensions.RGBA)]
+           
         return metadata
 
 
@@ -81,21 +88,24 @@ class GrayscaleToRGBTransformer(Transformer):
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         import cv2
+        from tiamat.metadata import dimensions
 
-        # Only do something if the image is not already grayscale.
-        if image_result.image.ndim == 2:
+        # Only do something if the image is not already RGB.
+        metadata = image_result.metadata
+        if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
             image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_GRAY2RGB)
 
         return image_result
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        if len(metadata.shape) == 2:
-            metadata.shape = tuple(
-                list(metadata.shape)
-                + [
-                    3,
-                ]
-            )
+        from dataclasses import replace
+        from tiamat.metadata import dimensions
+
+        metadata = replace(metadata)
+        if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
+            metadata.shape = (*metadata.shape, 3)
+            metadata.dimensions = list(metadata.dimensions) + [dimensions.RGB, ]
+        
         return metadata
 
 

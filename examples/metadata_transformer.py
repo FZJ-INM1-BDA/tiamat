@@ -2,10 +2,29 @@
 Example for transforming metadata.
 """
 
-import numpy as np
-from tiamat.transformers.metadata import MetadataLambdaTransformer
+from tiamat.transformers.metadata import MetadataLambdaTransformer, MetadataKwargsTransformer
 from tiamat.pipeline import Pipeline
 from tiamat.io import ImageAccessor
+import tiamat.metadata.dimensions as d
+
+
+fname = "./data/Koala.jpg"
+
+
+# Change interpretation of channels
+pipeline = Pipeline(
+    transformers=[
+        MetadataKwargsTransformer(dimensions=(d.Y, d.X, d.C))
+    ]
+)
+
+result = pipeline(
+    file_name=fname,
+    accessor=ImageAccessor(spacing=2.0, coordinate_spacing=1.0),
+    image_spacing=2.0,
+)
+print(result.metadata)
+print(result.image.shape)
 
 
 def metadata_transformation(metadata):
@@ -23,7 +42,7 @@ pipeline = Pipeline(
 )
 
 result = pipeline(
-    file_name="./data/Koala.jpg",
+    file_name=fname,
     accessor=ImageAccessor(spacing=2.0, coordinate_spacing=1.0),
     image_spacing=2.0,
 )
