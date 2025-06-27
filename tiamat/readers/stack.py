@@ -45,12 +45,12 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
     z_from, z_to = resolve_coordinate_slice(z_slice, z_shape)
 
     # Calculate minimum and maximum slice index to use
-    min_ix = math.floor(z_from / slice_spacing)
-    max_ix = math.ceil(z_to / slice_spacing)
+    min_ix = z_from / slice_spacing
+    max_ix = z_to / slice_spacing
 
     # Define step between slice indices to pick
     step = 1 / z_scale
-    size = (z_from - z_to) / slice_spacing
+    size = (z_to - z_from) / slice_spacing
 
     # Start index is the center of the size or step (depending on which is smaller)
     start_ix = min_ix + min(size, step) / 2
@@ -59,9 +59,10 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
     selected_ix = []
     ix = start_ix
     while True:
-        selected_ix.append(int(min(ix, min(max_ix, num_slices) - 1)))
+        selected_ix.append(int(min(ix, min(max_ix, num_slices - 1))))
         ix = ix + step
-        if (ix - start_ix) > size:
+        # Break condition accounting for rounding errors
+        if (ix - start_ix) + min(size, step) / 2 >= size:
             break
 
     return selected_ix
