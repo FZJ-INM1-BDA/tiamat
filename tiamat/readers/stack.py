@@ -50,8 +50,7 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
 
     # Define step between slice indices to pick
     step = 1 / z_scale
-
-    size = max_ix - min_ix
+    size = (z_from - z_to) / slice_spacing
 
     # Start index is the center of the size or step (depending on which is smaller)
     start_ix = min_ix + min(size, step) / 2
@@ -59,9 +58,11 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
     # Select indices starting with start_ix and step size
     selected_ix = []
     ix = start_ix
-    while (ix - start_ix) < size:
+    while True:
         selected_ix.append(int(min(ix, min(max_ix, num_slices) - 1)))
         ix = ix + step
+        if (ix - start_ix) > size:
+            break
 
     return selected_ix
 
@@ -198,6 +199,8 @@ class ImageStackReader(ImageReader):
         metadata.scales = self.scales
 
         metadata.dimensions = [self.stack_dimension, ] + list(metadata.dimensions)
+
+        metadata.additional_metadata["slow_dimension"] = self.stack_dimension
 
         return metadata
 
