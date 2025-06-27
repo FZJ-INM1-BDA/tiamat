@@ -42,6 +42,8 @@ class ImageToVolumeTransformer(Transformer):
         new_dimensions.insert(new_axis, dimensions.Z)
         metadata.dimensions = new_dimensions
 
+        metadata.additional_metadata["slow_dimension"] = dimensions.Z
+
         # Do not provide downsampled versions in z direction
         metadata.scales = [(*expand_to_length(s, 2), 1.0) for s in metadata.scales]
 
@@ -138,9 +140,11 @@ class ReorderCoordinatesTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
         from tiamat.readers.processing import expand_to_length
+        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
 
         metadata = replace(metadata)
 
+        # Adjust shape of image
         sp_dims = metadata.spatial_dimensions
         assert len(sp_dims) == len(self.reorder_axes)
 
@@ -149,6 +153,15 @@ class ReorderCoordinatesTransformer(Transformer):
             new_shape[sp_dims[i]] = metadata.shape[sp_dims[ix]]
         metadata.shape = tuple(new_shape)
 
+        # Adjust slow dimension
+        slow_dimension = metadata.additional_metadata["slow_dimension"]
+        slow_ix = self.reorder_axes.index(slow_dimension)
+        if len(self.reorder_axes) == 2:
+            metadata.additional_metadata["slow_dimension"] = SPATIAL_DIMENSIONS[1:][slow_ix]
+        else:
+            metadata.additional_metadata["slow_dimension"] = SPATIAL_DIMENSIONS[slow_ix]
+
+        # Adjust spacing and scale
         spacing = list(expand_to_length(metadata.spacing, len(sp_dims)))
         scales = [list(expand_to_length(s, len(sp_dims))) for s in metadata.scales]
 
