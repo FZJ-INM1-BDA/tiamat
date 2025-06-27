@@ -2,7 +2,7 @@
 Metadata on images.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product, repeat
 from typing import Iterable
 
@@ -58,7 +58,7 @@ class ImageMetadata:
     dimensions: list[str, ...] | tuple[str, ...] = (dimensions.Y, dimensions.X, dimensions.C)
     file_path: Iterable[str] | str | None = None
     spacing: float | tuple[float, ...] | None = None
-    additional_metadata: dict | None = None
+    additional_metadata: dict = field(default_factory=dict)
     scales: float | int | Iterable[float | int] | None = None
 
     @property

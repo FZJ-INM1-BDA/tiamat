@@ -143,7 +143,7 @@ class ImageStackReader(ImageReader):
                     factory = self.reader_factory[identifier]
                     reader_list.append(factory(fname))
 
-        elif isinstance(self.reader_factory, list):
+        elif isinstance(self.reader_factory, (tuple, list)):
             # Map each slice to reader at same slice index
             selected_readers = [self.reader_factory[i] for i in slice_ix]
             for reader, fname in zip(selected_readers, selected_slices):
