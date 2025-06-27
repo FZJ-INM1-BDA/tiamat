@@ -2,9 +2,13 @@
 Reader for in-memory arrays.
 """
 
+from typing import Tuple
+from tiamat.metadata import dimensions
 from .protocol import ImageReader
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
+
+import numpy as np
 
 
 class MemoryReader(ImageReader):
@@ -24,19 +28,66 @@ class MemoryReader(ImageReader):
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 
+        fallback_dimensions = [md.dimensions.Y, md.dimensions.X, ] + [md.dimensions.C for _ in range(len(self.image.shape) - 2)]
+
         return md.ImageMetadata(
             image_type=self.metadata_kwargs.get("image_type", md.IMAGE_TYPE_IMAGE),
             shape=self.image.shape,
             dtype=self.image.dtype,
             value_range=self.metadata_kwargs.get("value_range", (0, 255)),
             spacing=self.metadata_kwargs.get("spacing", None),
-            channel_dimension=self.metadata_kwargs.get(
-                "channel_dimension", None if len(self.image.shape) == 2 else 2
-            ),
-            channel_interpretation=self.metadata_kwargs.get(
-                "channel_interpretation", md.CHANNEL_INTERPRETATION_COLOR
+            dimensions=self.metadata_kwargs.get(
+                "dimenions", fallback_dimensions,
             ),
         )
+
+    @classmethod
+    def check_file(cls, fname) -> bool | int | float:
+        # Checking for the generic __array__ attribute makes sure we can not only handle numpy arrays, but also other array-like objects, like HDF5 data
+        return hasattr(fname, "__array__")
+
+
+class ConstantImage:
+    def __init__(self, shape, dtype=np.uint8, constant=0):
+        self.shape = shape
+        self.constant = constant
+        self.dtype = dtype
+
+    def __getitem__(self, array_slice: slice | Tuple[slice] | None):
+        from tiamat.array import slice_to_interval
+
+        array_intervals, _ = slice_to_interval(array_slice, self.shape)
+
+        out_shape = []
+
+        for i, ai in enumerate(array_intervals):
+            dim_size = min(ai[1], self.shape[i]) - max(ai[0], 0)
+            out_shape.append(dim_size)
+
+        out_array = np.full(out_shape, self.constant, dtype=self.dtype)
+
+        return out_array
+
+
+class ConstantReader(ImageReader):
+    def __init__(self, fill_value, metadata: ImageMetadata):
+        from dataclasses import replace
+        self.fill_value = fill_value
+        self.metadata = replace(metadata)
+        self.metadata.file_path = None
+
+        self.image = ConstantImage(metadata.shape, metadata.dtype, constant=fill_value)
+
+    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+        from .processing import access_and_rescale_image
+
+        # Read, crop, and rescale.
+        image = access_and_rescale_image(image=self.image, accessor=accessor, image_scale=accessor.scale)
+
+        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+
+    def read_metadata(self) -> ImageMetadata:
+        return self.metadata
 
     @classmethod
     def check_file(cls, fname) -> bool | int | float:

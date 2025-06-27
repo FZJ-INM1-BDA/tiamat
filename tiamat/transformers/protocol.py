@@ -15,16 +15,16 @@ class Transformer(Protocol):
         it has to return a __copy__ of the incoming object.
         The copy can be created using datalcasses.replace.
         """
-        ...
+        return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         """
         Applies a transformation to the metadata of an image.
         """
-        ...
+        return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
         """
         Transform an incoming image.
         """
-        ...
+        return image_result

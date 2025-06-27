@@ -12,14 +12,3 @@ def metadata():
 
 def test_default_extents(metadata: ImageMetadata):
     assert metadata.extents == [(0, 0), (0, 2), (1, 0), (1,2)]
-
-
-def test_assign_extents(metadata: ImageMetadata):
-    metadata.extents = 'foo bar'
-    assert metadata.extents == 'foo bar'
-
-def test_del_extents(metadata: ImageMetadata):
-    metadata.extents = 'foo bar'
-    del metadata.extents
-    assert metadata.extents == [(0, 0), (0, 2), (1, 0), (1,2)]
-

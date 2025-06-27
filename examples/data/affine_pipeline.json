@@ -1,0 +1,16 @@
+{
+  "reader": { "class": "GenericReader" },
+  "transformers": [
+    { "class": "MinMaxNormalizationTransformer", "args": {} },
+    { "class": "AffineTransformer", "args": { "affine_matrix": [
+      [-1.060660, -1.060660, 4351.0],
+      [-1.060660,  1.060660, 1600.0],
+      [ 0.0,       0.0     , 1.0   ]
+    ] } },
+    { "class": "BoundingBoxTransformer", "args": {
+        "bounds_x": [600, 2900],
+        "bounds_y": [-250, 1500]
+      }
+    }
+  ]
+}

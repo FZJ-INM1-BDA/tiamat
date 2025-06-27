@@ -2,56 +2,202 @@
 Transforms manipulating individual axes of images
 """
 
+from typing import Any, Dict
+
+import numpy as np
+
 from .protocol import Transformer
 from ..io import ImageResult, ImageAccessor
 from ..metadata import ImageMetadata
-from .coordinates import resolve_coordinate_slice
+from tiamat.transformers.coordinates import resolve_coordinate_slice
 
 
-class TransposeTransformer(Transformer):
+class ImageToVolumeTransformer(Transformer):
 
-    def __init__(self, axes=(0, 1, 2)):
-        import numpy as np
+    def __init__(self, z_spacing=None):
+        self.z_spacing = z_spacing
 
-        # Assume exactly 3 dimensions in (z, y, x) order for now.
-        # TODO: Should be made dynamic with an update of ImageAccessor supporting variable dimension order and channel axis
-        assert len(axes) == 3, "Values for all three axes (z, y, x) need to be provided"
-        assert set(axes).difference(set((0, 1, 2))) == set(), "Need to provide all values in (0, 1, 2)"
+    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+        return accessor
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        from dataclasses import replace
+        from tiamat.metadata import dimensions
+        from tiamat.readers.processing import expand_to_length
+
+        metadata = replace(metadata)
+
+        # this transformer always expands y, x to z,y,x
+        # we search for the position of y, then prepend a 1-dimension
+        y_index = metadata.dimensions.index(dimensions.Y)
+        new_axis = max(y_index - 1, 0)
+
+        # Insert new spatial axis
+        new_shape = list(metadata.shape)
+        new_shape.insert(new_axis, 1)
+        metadata.shape = new_shape
+
+        # Insert the axis to the dimensions
+        new_dimensions = list(metadata.dimensions)
+        new_dimensions.insert(new_axis, dimensions.Z)
+        metadata.dimensions = new_dimensions
+
+        metadata.additional_metadata["slow_dimension"] = dimensions.Z
+
+        # Do not provide downsampled versions in z direction
+        metadata.scales = [(*expand_to_length(s, 2), 1.0) for s in metadata.scales]
+
+        if self.z_spacing is None:
+            if hasattr(metadata.spacing, '__len__'):
+                raise Exception(f"Need provide z_spacing for non-uniform spacing {metadata.spacing}")
+        else:
+            if hasattr(metadata.spacing, '__len__'):
+                metadata.spacing = (*metadata.spacing, self.z_spacing)
+            else:
+                metadata.spacing = (*expand_to_length(metadata.spacing, 2), self.z_spacing)
+
+        return metadata
+
+    def transform_image(self, image_result: ImageResult) -> ImageResult:
+        from tiamat.metadata import dimensions
+        
+        metadata = image_result.metadata
+        assert metadata is not None, "ImageToVolumeTransformer requires metadata."
+        
+        # this transformer always expands y, x to z,y,x
+        # we search for the position of y, then prepend a 1-dimension
+        y_index = metadata.dimensions.index(dimensions.Y)
+        new_axis = max(y_index - 1, 0)
+        new_shape = list(image_result.image.shape)
+        new_shape.insert(new_axis, 1)
+
+        image_result.image = image_result.image.reshape(new_shape)
+
+        return image_result
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        return cls(
+            z_spacing=float(args.get("z_spacing", None)),
+        )
+
+
+class ReorderCoordinatesTransformer(Transformer):
+
+    def __init__(self, axes=('x', 'y', 'z')):
+        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS, META_DIMENSIONS
+        assert len(axes) == 2 or len(axes) == 3
 
         self.reorder_axes = axes
-        self.indices_axes = tuple(np.argsort(axes))
+
+        if len(axes) == 2:
+            in_axes = SPATIAL_DIMENSIONS[1:] # ('y', 'x')
+            meta_axes = META_DIMENSIONS[:-1] # ('x', 'y')
+        else:
+            in_axes = SPATIAL_DIMENSIONS # ('z', 'y', 'x')
+            meta_axes = META_DIMENSIONS # ('x', 'y', 'z')
+
+        # Determine forward and backward indices for z, y, x ordered 
+        self.from_indices = tuple(in_axes.index(a) for a in self.reorder_axes)
+        self.to_indices = tuple(self.reorder_axes.index(a) for a in in_axes)
+
+        # Invert for x, y, z ordered values (scale, spacing, ...)
+        # Assume that the given axes have z, y, x ordering
+        self.from_indices_meta = tuple(meta_axes.index(a) for a in self.reorder_axes[::-1])
+        self.to_indices_meta = tuple(self.reorder_axes[::-1].index(a) for a in meta_axes)
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
-
-        coord_slices = [accessor.z, accessor.y, accessor.x]
+        from tiamat.readers.processing import expand_to_length
 
         accessor = replace(accessor)
-        accessor.z = coord_slices[self.indices_axes[0]]
-        accessor.y = coord_slices[self.indices_axes[1]]
-        accessor.x = coord_slices[self.indices_axes[2]]
+
+        scale = expand_to_length(accessor.scale, 3)
+
+        if len(self.reorder_axes) == 2:
+            coord_slices = [accessor.y, accessor.x]
+            accessor.y = coord_slices[self.to_indices[0]]
+            accessor.x = coord_slices[self.to_indices[1]]
+
+            accessor.scale = (
+                scale[self.to_indices_meta[0]],
+                scale[self.to_indices_meta[1]],
+            )
+        else:
+            coord_slices = [accessor.z, accessor.y, accessor.x]
+            accessor.z = coord_slices[self.to_indices[0]]
+            accessor.y = coord_slices[self.to_indices[1]]
+            accessor.x = coord_slices[self.to_indices[2]]
+
+            accessor.scale = (
+                scale[self.to_indices_meta[0]],
+                scale[self.to_indices_meta[1]],
+                scale[self.to_indices_meta[2]],
+            )
 
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        # TODO: Shape should be changed in image metadata as well!
+        from dataclasses import replace
+        from tiamat.readers.processing import expand_to_length
+        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
+
+        metadata = replace(metadata)
+
+        # Adjust shape of image
+        sp_dims = metadata.spatial_dimensions
+        assert len(sp_dims) == len(self.reorder_axes)
+
+        new_shape = list(metadata.shape)
+        for i, ix in enumerate(self.from_indices):
+            new_shape[sp_dims[i]] = metadata.shape[sp_dims[ix]]
+        metadata.shape = tuple(new_shape)
+
+        # Adjust slow dimension
+        slow_dimension = metadata.additional_metadata["slow_dimension"]
+        slow_ix = self.reorder_axes.index(slow_dimension)
+        if len(self.reorder_axes) == 2:
+            metadata.additional_metadata["slow_dimension"] = SPATIAL_DIMENSIONS[1:][slow_ix]
+        else:
+            metadata.additional_metadata["slow_dimension"] = SPATIAL_DIMENSIONS[slow_ix]
+
+        # Adjust spacing and scale
+        spacing = list(expand_to_length(metadata.spacing, len(sp_dims)))
+        scales = [list(expand_to_length(s, len(sp_dims))) for s in metadata.scales]
+
+        new_spacing = spacing.copy()
+        new_scales = [s.copy() for s in scales]
+        for i, ix in enumerate(self.from_indices_meta):
+            new_spacing[i] = spacing[ix]
+
+            for j in range(len(scales)):
+                new_scales[j][i] = scales[j][ix]
+
+        metadata.spacing = tuple(new_spacing)
+        metadata.scales = [tuple(s) for s in new_scales]
+
         return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
-        import numpy as np
+        metadata = image_result.metadata
+        assert metadata is not None, "MirrorTransformer requires metadata."
 
-        metadata = image_result.accessor.metadata
-        assert metadata is not None, "CPNTransformer requires metadata."
+        sp_dims = metadata.spatial_dimensions
+        assert len(sp_dims) == len(self.reorder_axes)
 
-        # TODO: Only support 2D for now, remove [1:] later if 3D supported
         image_result.image = np.moveaxis(
             image_result.image,
-            [metadata.spatial_dimensions[i] for i in self.reorder_axes[1:]],
-            metadata.spatial_dimensions,
+            [sp_dims[i] for i in self.from_indices],
+            sp_dims,
         )
-        # image_result.image = np.transpose(image_result.image, axes=self.reorder_axes[1:])
 
         return image_result
+    
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        return cls(
+            axes=tuple(args.get("axes", ('x', 'y', 'z'))),
+        )
 
 
 class MirrorTransformer(Transformer):
@@ -63,19 +209,29 @@ class MirrorTransformer(Transformer):
 
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         from dataclasses import replace
+        from tiamat.metadata import dimensions
 
-        # TODO: Only support 2D for now, leave 3D for later
-        height, width = accessor.metadata.shape[:2]
+        metadata = accessor.metadata
 
         accessor = replace(accessor)
 
         if self.mirror_x:
-            x_from, x_to = resolve_coordinate_slice(accessor.x, width)
-            accessor.x = (width - x_to, width - x_from)
+            x_ix = metadata.dimensions.index(dimensions.X)
+            x_size = metadata.shape[x_ix]
+            x_from, x_to = resolve_coordinate_slice(accessor.x, x_size)
+            accessor.x = (x_size - x_to, x_size - x_from)
 
         if self.mirror_y:
-            y_from, y_to = resolve_coordinate_slice(accessor.y, height)
-            accessor.y = (height - y_to, height - y_from)
+            y_ix = metadata.dimensions.index(dimensions.Y)
+            y_size = metadata.shape[y_ix]
+            y_from, y_to = resolve_coordinate_slice(accessor.y, y_size)
+            accessor.y = (y_size - y_to, y_size - y_from)
+
+        if len(metadata.spatial_dimensions) > 2 and self.mirror_z:
+            z_ix = metadata.dimensions.index(dimensions.Z)
+            z_size = metadata.shape[z_ix]
+            z_from, z_to = resolve_coordinate_slice(accessor.z, z_size)
+            accessor.z = (z_size - z_to, z_size - z_from)
 
         return accessor
 
@@ -83,14 +239,23 @@ class MirrorTransformer(Transformer):
         return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
-        import numpy as np
+        metadata = image_result.metadata
+        assert metadata is not None, "MirrorTransformer requires metadata."
 
-        metadata = image_result.accessor.metadata
-        assert metadata is not None, "CPNTransformer requires metadata."
-
-        # TODO: Only support 2D for now, use spatial_dimensions[0]] for z later
-        flip_axes = self.mirror_y * [metadata.spatial_dimensions[0]] + self.mirror_x * [metadata.spatial_dimensions[1]]
+        s_dim = metadata.spatial_dimensions
+        if len(s_dim) == 2:
+            flip_axes = self.mirror_y * [s_dim[0]] + self.mirror_x * [s_dim[1]]
+        else :
+            flip_axes = self.mirror_z * [s_dim[0]] + self.mirror_y * [s_dim[1]] + self.mirror_x * [s_dim[2]]
 
         image_result.image = np.flip(image_result.image, axis=flip_axes)
 
         return image_result
+
+    @classmethod
+    def from_json(cls, args: Dict[str, Any]):
+        return cls(
+            mirror_x=bool(args.get("mirror_x", False)),
+            mirror_y=bool(args.get("mirror_y", False)),
+            mirror_z=bool(args.get("mirror_z", False)),
+        )
