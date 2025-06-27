@@ -53,7 +53,7 @@ def slice_to_interval(array_slice, shape):
             stop = shape[i] + stop
         array_intervals.append((start, stop))
     
-    return array_intervals
+    return array_intervals, squeeze_dims
 
 
 class Array(object):
@@ -135,7 +135,7 @@ class Array(object):
 
     def __getitem__(self, array_slice: slice | Tuple[slice] | None):
 
-        array_intervals = slice_to_interval(array_slice, self.shape)
+        array_intervals, squeeze_dims = slice_to_interval(array_slice, self.shape)
 
         # matching from slice to dimension names. We assume fixed (z, y, x) indexing
         dim_names = self.metadata.dimensions
