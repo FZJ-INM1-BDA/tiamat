@@ -2,11 +2,13 @@
 Metadata on images.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product, repeat
 from typing import Iterable
 
 import numpy as np
+
+import tiamat.metadata.dimensions as dimensions
 
 # Image types
 IMAGE_TYPE_SEGMENTATION = (
@@ -53,10 +55,10 @@ class ImageMetadata:
     shape: tuple
     value_range: tuple
     dtype: np.dtype
-    dimensions: list[str, ...] | tuple[str, ...]
+    dimensions: list[str, ...] | tuple[str, ...] = (dimensions.Y, dimensions.X, dimensions.C)
     file_path: Iterable[str] | str | None = None
     spacing: float | tuple[float, ...] | None = None
-    additional_metadata: dict | None = None
+    additional_metadata: dict = field(default_factory=dict)
     scales: float | int | Iterable[float | int] | None = None
 
     @property
@@ -64,8 +66,7 @@ class ImageMetadata:
         """
         Returns indices of spatial axes, excluding channels
         """
-        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
-        return tuple(self.dimensions.index(dimension) for dimension in SPATIAL_DIMENSIONS if dimension in self.dimensions)
+        return tuple(self.dimensions.index(dimension) for dimension in dimensions.SPATIAL_DIMENSIONS if dimension in self.dimensions)
 
     @property
     def channel_dimensions(self):
@@ -77,6 +78,13 @@ class ImageMetadata:
     @property
     def spatial_shape(self):
         return tuple(self.shape[i] for i in self.spatial_dimensions)
+    
+    @spatial_shape.setter
+    def spatial_shape(self, shape):
+        shape_list = list(self.shape)
+        for i, ix in enumerate(self.spatial_dimensions):
+            shape_list[ix] = shape[i]
+        self.shape = tuple(shape_list)
 
     @property
     def extents(self):
@@ -89,10 +97,6 @@ class ImageMetadata:
             return self._extents
         extents = list(zip(repeat(0), self.shape))
         return list(product(*extents))
-
-    @extents.setter
-    def extents(self, val):
-        self._extents = val
 
     @extents.deleter
     def extents(self):
