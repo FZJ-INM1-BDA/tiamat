@@ -56,7 +56,7 @@ class ConstantImage:
     def __getitem__(self, array_slice: slice | Tuple[slice] | None):
         from tiamat.array import slice_to_interval
 
-        array_intervals = slice_to_interval(array_slice, self.shape)
+        array_intervals, _ = slice_to_interval(array_slice, self.shape)
 
         out_shape = []
 

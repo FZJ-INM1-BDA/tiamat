@@ -54,8 +54,8 @@ class AffineTransformer(Transformer):
 
         # TODO: Handle 3D.
 
-
-        target_spacing = np.array(accessor.metadata.spacing)
+        target_spacing = accessor.metadata.spacing
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
         target_spacing = target_spacing[:2]  # TODO: general solution for 3D
@@ -63,6 +63,7 @@ class AffineTransformer(Transformer):
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
         affine[:2, -1] = affine[:2, -1] / target_spacing # Convert translation to pixel coordinates
+
 
         # Read coordinates for requested frame
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
@@ -125,7 +126,13 @@ class AffineTransformer(Transformer):
         new_metadata = replace(metadata)
 
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
-        new_metadata.extents = transformed_coords.tolist()
+
+        out_shape = (
+            np.max(transformed_coords[:, 1]).item() - np.min(transformed_coords[:, 1]).item(),
+            np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item(),
+        )
+
+        new_metadata.spatial_shape = (*shape_tuple[:-2], *out_shape)
 
         return new_metadata
 
@@ -141,12 +148,14 @@ class AffineTransformer(Transformer):
             get_interpolation_for_accessor,
         )
 
-        target_scale = np.array(image_result.accessor.scale)
+        target_scale = image_result.accessor.scale
+        target_scale = np.array(target_scale) if target_scale is not None else np.array((1,))
         if target_scale.size == 1:
             target_scale = np.array([target_scale, target_scale])
         target_scale = target_scale[:2]  # TODO: general solution for 3D
 
-        target_spacing = np.array(image_result.accessor.metadata.spacing)
+        target_spacing = image_result.accessor.metadata.spacing
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
         target_spacing = target_spacing[:2]  # TODO: general solution for 3D
