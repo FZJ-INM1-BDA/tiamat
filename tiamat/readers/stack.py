@@ -201,7 +201,7 @@ class ImageStackReader(ImageReader):
 
         metadata.dimensions = [self.stack_dimension, ] + list(metadata.dimensions)
 
-        metadata.additional_metadata["slow_dimension"] = self.stack_dimension
+        metadata.additional_metadata["stack_dimensions"] = self.stack_dimension
 
         return metadata
 
@@ -224,9 +224,9 @@ class ImageStackReader(ImageReader):
 
         metadata = replace(tmp_accessor.metadata)
         metadata.shape = metadata.shape[1:]
-        dimensions = list(metadata.dimensions)
-        dimensions.remove(self.stack_dimension)
-        metadata.dimensions = dimensions
+        dimension_list = list(metadata.dimensions)
+        dimension_list.remove(self.stack_dimension)
+        metadata.dimensions = dimension_list
         tmp_accessor.metadata = metadata
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
