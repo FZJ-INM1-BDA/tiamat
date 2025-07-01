@@ -54,6 +54,7 @@ class AffineTransformer(Transformer):
 
         # TODO: Handle 3D.
 
+
         target_spacing = np.array(accessor.metadata.spacing)
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
@@ -61,7 +62,7 @@ class AffineTransformer(Transformer):
 
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
-        affine[:2, -1] = affine[:2, -1] * target_spacing  # Convert translation to pixel coordinates
+        affine[:2, -1] = affine[:2, -1] / target_spacing # Convert translation to pixel coordinates
 
         # Read coordinates for requested frame
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
@@ -175,7 +176,8 @@ class AffineTransformer(Transformer):
         px_affine = self.affine_matrix.copy()
 
         # scale translation to pixel coordinates
-        px_affine[:2, -1] = px_affine[:2, -1] * target_spacing
+        px_affine[:2, -1] = px_affine[:2, -1] / target_spacing
+
 
         # Transform affine to pixel coordinates and make it corner pixel aligned
         px_affine[:2, -1] = px_affine[:2, -1] * target_scale
