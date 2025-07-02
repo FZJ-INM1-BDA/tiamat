@@ -20,6 +20,7 @@ class AffineTransformer(Transformer):
             self,
             affine_matrix: np.array | List[List[float]],
             request_margin: int = 2,
+            fill_value: int | float | None = None,
         ):
         self.affine_matrix = np.array(affine_matrix)
 
@@ -29,6 +30,8 @@ class AffineTransformer(Transformer):
 
         # Pixel margin around requested image to avoid resampling artifacts
         self.request_margin = request_margin
+
+        self.fill_value = fill_value
 
     def _make_corner_px_affine(self, affine):
         # Make input affine matrix corner pixel aligned by shifted half a pixel value and reverse
@@ -205,13 +208,18 @@ class AffineTransformer(Transformer):
         affine = target_origin_affine @ px_affine @ input_origin_affine
         interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
 
+        if self.fill_value is None:
+            fill_value = accessor.fill_value,
+        else:
+            fill_value = self.fill_value
+
         def _apply_affine(image):
             return cv2.warpAffine(
                 src=image,
                 M=affine[:2],
                 dsize=target_size,
                 flags=OPENCV_INTERPOLATION_CODES[interpolation],
-                borderValue=accessor.fill_value,
+                borderValue=fill_value,
             )
 
         # Apply to image or loop over stack of images if 3 spatial dims
@@ -234,4 +242,5 @@ class AffineTransformer(Transformer):
         return cls(
             affine_matrix=np.array(args["affine_matrix"]),
             request_margin=args.get("request_margin", 2),
+            fill_value=args.get("fill_value"),
         )
