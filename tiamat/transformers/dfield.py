@@ -189,7 +189,7 @@ class DeformationFieldTransformer(Transformer):
         )
 
         if self.fill_value is None:
-            fill_value = accessor.fill_value,
+            fill_value = accessor.fill_value
         else:
             fill_value = self.fill_value
 
