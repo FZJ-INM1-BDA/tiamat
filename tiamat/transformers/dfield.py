@@ -18,6 +18,7 @@ class DeformationFieldTransformer(Transformer):
             dfield_file: str,
             request_margin: int = 2,
             interpolation = 'linear',
+            fill_value: int | float | None = None,
             xy_coordinates = True,
             reader_factory: Callable[[str], ImageReader] | None = None,
         ):
@@ -48,6 +49,7 @@ class DeformationFieldTransformer(Transformer):
         
         self.request_margin = request_margin
         self.interpolation = interpolation
+        self.fill_value = fill_value
 
     @staticmethod
     def get_coordinates(
@@ -185,12 +187,18 @@ class DeformationFieldTransformer(Transformer):
             float(y_from_input),
             float(x_from_input)
         )
+
+        if self.fill_value is None:
+            fill_value = accessor.fill_value,
+        else:
+            fill_value = self.fill_value
+
         image_result.image = DeformationFieldTransformer.apply_deformation(
             image=image_result.image,
             image_scale=image_scale,
             image_origin=image_origin,
             coordinates=coordinates,
-            fill_value=accessor.fill_value,
+            fill_value=fill_value,
             interpolation=self.interpolation,
         )
 
@@ -204,5 +212,6 @@ class DeformationFieldTransformer(Transformer):
             dfield_file=args["dfield_file"],
             request_margin=args.get("request_margin", 2),
             interpolation=args.get("interpolation", 'linear'),
+            fill_value=args.get("fill_value"),
             reader_factory=get_reader_from_config(args.get("reader_factory")),
         )
