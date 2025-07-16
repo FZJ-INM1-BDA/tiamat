@@ -40,9 +40,8 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
     assert len(spatial_dims) == 3, "Only able to perform stack slicing for 3D images"
 
     z_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
-    z_slice = prepare_coordinate(accessor.z)
     z_shape = accessor.metadata.shape[spatial_dims[0]]
-    z_from, z_to = resolve_coordinate_slice(z_slice, z_shape)
+    z_from, z_to = resolve_coordinate_slice(accessor.z, z_shape)
 
     # Calculate minimum and maximum slice index to use
     min_ix = z_from / slice_spacing
