@@ -69,10 +69,9 @@ def _rescale(
         # Nothing to do
         return image
 
-    # Note: _rescale always rounds up. This is a design decision, that we might want to revisit.
-    target_shape = np.ceil(
-        np.array([dim * s for dim, s in zip(image.shape[:2], scale)], dtype=float)
-    ).astype(int)
+    # Round to closest integer to avoid floating precision errors
+    target_shape =  np.array([dim * s for dim, s in zip(image.shape[:2], scale)], dtype=float)
+    target_shape = np.round(target_shape).astype(int)
     return resize(
         img=image,
         shape=target_shape,
