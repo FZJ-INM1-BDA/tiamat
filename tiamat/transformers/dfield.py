@@ -91,6 +91,7 @@ class DeformationFieldTransformer(Transformer):
             image,
             coordinates,
             order=SCIPY_INTERPOLATION_CODES[interpolation],
+            mode='constant',
             cval=fill_value,
         )
 
@@ -132,7 +133,7 @@ class DeformationFieldTransformer(Transformer):
         tmp_accessor.metadata = self.meta
         tmp_accessor.x = (x_from, x_to)
         tmp_accessor.y = (y_from, y_to)
-        tmp_accessor.fill_value = 0
+        tmp_accessor.fill_value = -1
 
         # Read the corresponding crop from dfield
         dfield_crop = self.reader.read_image(tmp_accessor)
@@ -158,7 +159,10 @@ class DeformationFieldTransformer(Transformer):
         accessor = replace(accessor)
         accessor.x = (math.floor(min_x), math.ceil(max_x) + 1)
         accessor.y = (math.floor(min_y), math.ceil(max_y) + 1)
-        accessor.fill_value = 0 if accessor.fill_value is None else accessor.fill_value
+        if self.fill_value is not None:
+            accessor.fill_value = self.fill_value
+        elif accessor.fill_value is None:
+            accessor.fill_value = 0
         accessor.history[id(self)] = coordinates # Cache coordinates so we don't need to read twice
 
         return accessor
