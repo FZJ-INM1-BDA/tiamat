@@ -2,8 +2,8 @@
 Reader for Stacks.
 """
 
-from functools import cached_property, partial
 import math
+from functools import cached_property, partial
 from typing import Any, Callable, Dict, Iterable, List
 
 import numpy as np
@@ -40,9 +40,8 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
     assert len(spatial_dims) == 3, "Only able to perform stack slicing for 3D images"
 
     z_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
-    z_slice = prepare_coordinate(accessor.z)
     z_shape = accessor.metadata.shape[spatial_dims[0]]
-    z_from, z_to = resolve_coordinate_slice(z_slice, z_shape)
+    z_from, z_to = resolve_coordinate_slice(accessor.z, z_shape)
 
     # Calculate minimum and maximum slice index to use
     min_ix = z_from / slice_spacing
@@ -132,7 +131,7 @@ class ImageStackReader(ImageReader):
         reader_list = []
         if isinstance(self.reader_factory, dict):
             # Loop over all selected files and assign corresponding reader via the identifier
-            
+
             for fname in selected_slices:
                 if fname is None:
                     # Missing section
@@ -173,7 +172,7 @@ class ImageStackReader(ImageReader):
         selected_handles = self._prepare_slices([0])
 
         return selected_handles[0]
-        
+
     @instance_cached_property
     def prototype_metadata(self):
         metadata = self.prototype_slice_handle.read_metadata()
@@ -201,7 +200,7 @@ class ImageStackReader(ImageReader):
 
         metadata.dimensions = [self.stack_dimension, ] + list(metadata.dimensions)
 
-        metadata.additional_metadata["slow_dimension"] = self.stack_dimension
+        metadata.additional_metadata["stack_dimensions"] = self.stack_dimension
 
         return metadata
 
@@ -220,19 +219,19 @@ class ImageStackReader(ImageReader):
         # if scale is tuple, remove z scale
         if isinstance(tmp_accessor.scale, (tuple, list)):
             assert len(tmp_accessor.scale) == 3
-            tmp_accessor.scale = tmp_accessor.scale[:2]
+            tmp_accessor.scale = tmp_accessor.scale[:2] # TODO: check with self.stack_dimension
 
         metadata = replace(tmp_accessor.metadata)
         metadata.shape = metadata.shape[1:]
-        dimensions = list(metadata.dimensions)
-        dimensions.remove(self.stack_dimension)
-        
+        dimension_list = list(metadata.dimensions)
+        dimension_list.remove(self.stack_dimension)
+
         # for each scale, remove the z scale
         scales = list(metadata.scales)
         for i, s in enumerate(scales):
-            scales[i] = s[:2]
+            scales[i] = s[:2] # TODO: check with self.stack_dimension
 
-        metadata.dimensions = dimensions
+        metadata.dimensions = dimension_list
         tmp_accessor.metadata = metadata
         tmp_accessor.scales = tuple(scales)
 
@@ -305,11 +304,11 @@ class ImageStackReader(ImageReader):
                             ordered_slices += [None] * missing
                         else:
                             raise AttributeError(f"Unknown missing_section_interpolation: {self.missing_section_interpolation}")
-                        
+
                     ordered_slices.append(available_slices[sorted_ix[i + 1]])
 
             return ordered_slices
-            
+
 
     @cached_property
     def num_slices(self) -> int:
