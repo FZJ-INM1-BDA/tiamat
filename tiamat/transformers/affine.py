@@ -66,7 +66,7 @@ class AffineTransformer(Transformer):
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
         affine[:2, -1] = affine[:2, -1] / target_spacing # Convert translation to pixel coordinates
-
+        # affine = self._make_corner_px_affine(affine)
 
         # Read coordinates for requested frame
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
@@ -105,7 +105,10 @@ class AffineTransformer(Transformer):
         # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
         accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
         accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
-        accessor.fill_value = 0 if accessor.fill_value is None else accessor.fill_value
+        if self.fill_value is not None:
+            accessor.fill_value = self.fill_value
+        elif accessor.fill_value is None:
+            accessor.fill_value = 0
 
         # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
         # We need to scale the coordinates to obtain pixel coordinates
@@ -190,10 +193,9 @@ class AffineTransformer(Transformer):
         # scale translation to pixel coordinates
         px_affine[:2, -1] = px_affine[:2, -1] / target_spacing
 
-
         # Transform affine to pixel coordinates and make it corner pixel aligned
         px_affine[:2, -1] = px_affine[:2, -1] * target_scale
-        px_affine = self._make_corner_px_affine(px_affine)
+        # px_affine = self._make_corner_px_affine(px_affine)
 
         # Step 1: Shift towards input.
         input_origin_affine = np.eye(3)
