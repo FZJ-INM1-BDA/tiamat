@@ -226,8 +226,16 @@ class ImageStackReader(ImageReader):
         metadata.shape = metadata.shape[1:]
         dimensions = list(metadata.dimensions)
         dimensions.remove(self.stack_dimension)
+        
+        # for each scale, remove the z scale
+        scales = list(metadata.scales)
+        for i, s in enumerate(scales):
+            scales[i] = s[:2]
+
         metadata.dimensions = dimensions
         tmp_accessor.metadata = metadata
+        tmp_accessor.scales = tuple(scales)
+
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
