@@ -218,8 +218,12 @@ class ImageStackReader(ImageReader):
         tmp_accessor = replace(accessor, z = None)
         # if scale is tuple, remove z scale
         if isinstance(tmp_accessor.scale, (tuple, list)):
-            assert len(tmp_accessor.scale) == 3
-            tmp_accessor.scale = tmp_accessor.scale[:2] # TODO: check with self.stack_dimension
+            if self.stack_dimension == dimensions.X:
+                tmp_accessor.scale = tmp_accessor.scale[1:]
+            elif self.stack_dimension == dimensions.Y:
+                tmp_accessor.scale = (tmp_accessor.scale[0], *tmp_accessor.scale[2:])
+            elif self.stack_dimension == dimensions.Z:
+                tmp_accessor.scale = tmp_accessor.scale[:2]
 
         metadata = replace(tmp_accessor.metadata)
         metadata.shape = metadata.shape[1:]
@@ -229,12 +233,18 @@ class ImageStackReader(ImageReader):
         # for each scale, remove the z scale
         scales = list(metadata.scales)
         for i, s in enumerate(scales):
-            scales[i] = s[:2] # TODO: check with self.stack_dimension
+            if self.stack_dimension == dimensions.X:
+                scales[i] = s[1:]
+            elif self.stack_dimension == dimensions.Y:
+                scales[i] = (s[0], *s[2:])
+            elif self.stack_dimension == dimensions.Z:
+                scales[i] = s[:2]
+            else:
+                raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
 
         metadata.dimensions = dimension_list
         tmp_accessor.metadata = metadata
         tmp_accessor.scales = tuple(scales)
-
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
@@ -308,7 +318,6 @@ class ImageStackReader(ImageReader):
                     ordered_slices.append(available_slices[sorted_ix[i + 1]])
 
             return ordered_slices
-
 
     @cached_property
     def num_slices(self) -> int:
