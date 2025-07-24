@@ -87,16 +87,12 @@ class DeformationFieldTransformer(Transformer):
     @staticmethod
     def apply_deformation(
         image: np.ndarray,
-        image_scale: Tuple[float, float],
-        image_origin: Tuple[float, float],
         coordinates: np.ndarray,
         fill_value = 0,
         interpolation = "nearest",
     ):
         from scipy.ndimage import map_coordinates
         from tiamat.readers.processing import SCIPY_INTERPOLATION_CODES
-
-        coordinates = (coordinates - np.array(image_origin)[:, np.newaxis, np.newaxis]) * np.array(image_scale)[:, np.newaxis, np.newaxis]
 
         out_image = map_coordinates(
             image,
@@ -180,7 +176,11 @@ class DeformationFieldTransformer(Transformer):
         accessor.x = (math.floor(min_x), math.ceil(max_x) + 1)
         accessor.y = (math.floor(min_y), math.ceil(max_y) + 1)
         accessor.fill_value = 0 if accessor.fill_value is None else accessor.fill_value
-        accessor.history[id(self)] = coordinates # Cache coordinates so we don't need to read twice
+
+        # Store pixel coordinates for transforming image
+        coord_origin = np.array((accessor.y[0], accessor.x[0]), dtype=float)
+        px_coordinates = (coordinates - coord_origin[:, np.newaxis, np.newaxis]) * np.array(image_scale)[:, np.newaxis, np.newaxis]
+        accessor.history[id(self)] = px_coordinates
 
         return accessor
 
@@ -201,35 +201,47 @@ class DeformationFieldTransformer(Transformer):
         return metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
-        from tiamat.readers.processing import get_interpolation_for_accessor, _prepare_coordinates, expand_to_length
-
         try:
-            coordinates = image_result.accessor.history[id(self)]
+            px_coordinates = image_result.accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
-        image_scale = expand_to_length(image_result.accessor.scale, 2)
-        accessor = image_result.accessor
-        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
-        (x_from_input, _), (y_from_input, _) = prepared_coordinates["x"], prepared_coordinates["y"]
-        image_origin = (
-            float(y_from_input),
-            float(x_from_input)
-        )
-
         if self.fill_value is None:
-            fill_value = accessor.fill_value
+            fill_value = image_result.accessor.fill_value
         else:
             fill_value = self.fill_value
 
-        image_result.image = DeformationFieldTransformer.apply_deformation(
-            image=image_result.image,
-            image_scale=image_scale,
-            image_origin=image_origin,
-            coordinates=coordinates,
-            fill_value=fill_value,
-            interpolation=self.interpolation,
-        )
+        ch_ix = image_result.metadata.channel_dimensions
+
+        if len(ch_ix) == 0:
+            image_result.image = DeformationFieldTransformer.apply_deformation(
+                image=image_result.image,
+                coordinates=px_coordinates,
+                fill_value=fill_value,
+                interpolation=self.interpolation,
+            )
+        elif len(ch_ix) == 1:
+            img_standard = np.moveaxis(image_result.image, ch_ix[0], -1)
+            num_channels = img_standard.shape[-1]
+
+            # Allocate memory for result
+            result = np.empty((*px_coordinates.shape[1:], num_channels), dtype=image_result.image.dtype)
+
+            # Loop over each channel
+            for c in range(num_channels):
+                image_channel = img_standard[..., c]
+
+                result[..., c] = DeformationFieldTransformer.apply_deformation(
+                    image=image_channel,
+                    coordinates=px_coordinates,
+                    fill_value=fill_value,
+                    interpolation=self.interpolation,
+                )
+
+            image_result.image = np.moveaxis(result, -1, ch_ix[0])
+        else:
+            raise Exception("More than one channel currently not supported in DeformationFieldTransformer")
+
 
         return image_result
 
