@@ -51,6 +51,8 @@ def _expand_to_dimension(value, image_shape):
 def expand_to_length(value, length):
     if not isinstance(value, (list, tuple, np.ndarray)):
         return [value] * length
+    elif len(value) == 1:
+        return [value[0]] * length
     return value
 
 
