@@ -193,10 +193,12 @@ class DeformationFieldTransformer(Transformer):
         image_spacing = expand_to_length(metadata.spacing, 2)
         dfield_spacing = expand_to_length(self.reader.spacing, 2)
 
-        metadata.shape = (
-            self.meta.shape[0] * dfield_spacing[0] / image_spacing[0],
-            self.meta.shape[1] * dfield_spacing[1] / image_spacing[1],
+        out_shape = (
+            int(self.meta.spatial_shape[-2] * dfield_spacing[1] / image_spacing[1]),
+            int(self.meta.spatial_shape[-1] * dfield_spacing[0] / image_spacing[0]),
         )
+
+        metadata.spatial_shape = (*metadata.shape[:-2], *out_shape)
 
         return metadata
 
