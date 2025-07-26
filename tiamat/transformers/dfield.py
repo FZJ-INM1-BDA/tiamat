@@ -88,19 +88,40 @@ class DeformationFieldTransformer(Transformer):
     def apply_deformation(
         image: np.ndarray,
         coordinates: np.ndarray,
+        channel_dim: int = None,
         fill_value = 0,
         interpolation = "nearest",
     ):
         from scipy.ndimage import map_coordinates
         from tiamat.readers.processing import SCIPY_INTERPOLATION_CODES
 
-        out_image = map_coordinates(
-            image,
-            coordinates,
-            order=SCIPY_INTERPOLATION_CODES[interpolation],
-            cval=fill_value,
-        )
+        if channel_dim is None:
+            out_image = map_coordinates(
+                image,
+                coordinates,
+                order=SCIPY_INTERPOLATION_CODES[interpolation],
+                cval=fill_value,
+            )
+        else:
+            img_standard = np.moveaxis(image, channel_dim, -1)
+            num_channels = img_standard.shape[-1]
 
+            # Allocate memory for result
+            result = np.empty((*coordinates.shape[1:], num_channels), dtype=image.dtype)
+
+            # Loop over each channel
+            for c in range(num_channels):
+                image_channel = img_standard[..., c]
+
+                result[..., c] = map_coordinates(
+                    image_channel,
+                    coordinates,
+                    order=SCIPY_INTERPOLATION_CODES[interpolation],
+                    cval=fill_value,
+                )
+
+            out_image = np.moveaxis(result, -1, channel_dim)
+    
         return out_image
 
 
@@ -111,8 +132,8 @@ class DeformationFieldTransformer(Transformer):
         from tiamat.readers.processing import _prepare_coordinates, expand_to_length
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-        image_scale = expand_to_length(accessor.scale, 2)
-        image_spacing = expand_to_length(accessor.metadata.spacing, 2)
+        image_scale = expand_to_length(accessor.scale, 2)[:2]
+        image_spacing = expand_to_length(accessor.metadata.spacing, 2)[:2]
         image_shape = accessor.metadata.shape
 
         coord_scale = expand_to_length(accessor.coordinate_scale, 2)
@@ -213,37 +234,38 @@ class DeformationFieldTransformer(Transformer):
         else:
             fill_value = self.fill_value
 
-        ch_ix = image_result.metadata.channel_dimensions
+        ch_dim = image_result.metadata.channel_dimensions
+        if len(ch_dim) > 1:
+            raise Exception(f"Multiple channels {ch_dim} not supported in DeformationField Transformer")
+        elif len(ch_dim) == 1:
+            ch_dim = ch_dim[0]
+        else:
+            ch_dim = None
 
-        if len(ch_ix) == 0:
+        spatial_dimensions = image_result.metadata.spatial_dimensions
+        if len(spatial_dimensions) > 2:
+            result_imgs = []
+            # Loop over first spatial dimension
+            for i in range(image_result.image.shape[spatial_dimensions[0]]):
+                result_imgs.append(
+                    DeformationFieldTransformer.apply_deformation(
+                        image=image_result.image[i],
+                        coordinates=px_coordinates,
+                        channel_dim=ch_dim,
+                        fill_value=fill_value,
+                        interpolation=self.interpolation,
+                    )
+                )
+            result_image = np.stack(result_imgs, axis=0)
+            image_result.image = result_image
+        else:
             image_result.image = DeformationFieldTransformer.apply_deformation(
                 image=image_result.image,
                 coordinates=px_coordinates,
+                channel_dim=ch_dim,
                 fill_value=fill_value,
                 interpolation=self.interpolation,
             )
-        elif len(ch_ix) == 1:
-            img_standard = np.moveaxis(image_result.image, ch_ix[0], -1)
-            num_channels = img_standard.shape[-1]
-
-            # Allocate memory for result
-            result = np.empty((*px_coordinates.shape[1:], num_channels), dtype=image_result.image.dtype)
-
-            # Loop over each channel
-            for c in range(num_channels):
-                image_channel = img_standard[..., c]
-
-                result[..., c] = DeformationFieldTransformer.apply_deformation(
-                    image=image_channel,
-                    coordinates=px_coordinates,
-                    fill_value=fill_value,
-                    interpolation=self.interpolation,
-                )
-
-            image_result.image = np.moveaxis(result, -1, ch_ix[0])
-        else:
-            raise Exception("More than one channel currently not supported in DeformationFieldTransformer")
-
 
         return image_result
 
