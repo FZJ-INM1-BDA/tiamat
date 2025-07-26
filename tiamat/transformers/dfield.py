@@ -166,6 +166,7 @@ class DeformationFieldTransformer(Transformer):
         tmp_accessor.metadata = self.meta
         tmp_accessor.scale = target_scale
         tmp_accessor.coordinate_scale = tmp_coord_scale
+        tmp_accessor.interpolation = 'linear'
         tmp_accessor.fill_value = -1
 
         # Read the corresponding crop from dfield
