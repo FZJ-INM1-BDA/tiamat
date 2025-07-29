@@ -143,10 +143,10 @@ class AffineTransformer(Transformer):
         return new_metadata
 
     def transform_image(self, image_result: ImageResult) -> ImageResult:
-        import math
-
         import cv2
         import numpy as np
+
+        from tiamat.readers.processing import rescale_shape
 
         from ..readers.processing import (
             OPENCV_INTERPOLATION_CODES,
@@ -171,10 +171,11 @@ class AffineTransformer(Transformer):
             x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = image_result.accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
-        target_size = (
-            int(target_scale[0] * (x_to - x_from)),
-            int(target_scale[1] * (y_to - y_from)),
-        )
+
+        target_shape = rescale_shape(
+            ((y_to - y_from), (x_to - x_from)),
+            target_scale
+        )[::-1]
 
         accessor = image_result.accessor
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
@@ -219,7 +220,7 @@ class AffineTransformer(Transformer):
             return cv2.warpAffine(
                 src=image,
                 M=affine[:2],
-                dsize=target_size,
+                dsize=target_shape,
                 flags=OPENCV_INTERPOLATION_CODES[interpolation],
                 borderValue=fill_value,
             )
