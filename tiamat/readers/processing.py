@@ -45,13 +45,29 @@ except ImportError:
 def _expand_to_dimension(value, image_shape):
     if not isinstance(value, (list, tuple, np.ndarray)):
         return [value for _ in image_shape]
+    elif len(value) == 1:
+        return [value[0]] * len(image_shape)
     return value
 
 
 def expand_to_length(value, length):
     if not isinstance(value, (list, tuple, np.ndarray)):
         return [value] * length
+    elif len(value) == 1:
+        return [value[0]] * length
     return value
+
+
+def rescale_shape(shape, scale):
+    # Assume scale is scalar or (x_scale, y_scale)
+    scale = _expand_to_dimension(scale, shape)[:len(shape)][::-1]
+    assert all(s > 0 for s in scale), f"Scale must be greater than zero, got {scale}."
+
+    # Round to closest integer to avoid floating precision errors
+    target_shape =  np.array([dim * s for dim, s in zip(shape, scale)], dtype=float)
+    target_shape = np.round(target_shape).astype(int)
+
+    return target_shape
 
 
 def _rescale(
@@ -62,17 +78,15 @@ def _rescale(
 ) -> np.ndarray:
     import numpy as np
 
-    scale = _expand_to_dimension(scale, image.shape[:2])
-    assert all(s > 0 for s in scale), f"Scale must be greater than zero, got {scale}."
+    target_shape = rescale_shape(
+        image.shape[:2],
+        scale,
+    )
 
-    if np.allclose(scale, 1.0):
+    if np.allclose(target_shape, image.shape[:2]):
         # Nothing to do
         return image
 
-    # Note: _rescale always rounds up. This is a design decision, that we might want to revisit.
-    target_shape = np.ceil(
-        np.array([dim * s for dim, s in zip(image.shape[:2], scale)], dtype=float)
-    ).astype(int)
     return resize(
         img=image,
         shape=target_shape,
