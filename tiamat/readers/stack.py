@@ -393,10 +393,12 @@ class ImageStackReader(ImageReader):
         # TODO: make shure position of z is correct
         scales = metadata_first_slice.scales
 
+        min_scale = 1. / self.num_slices
+
         if isinstance(scales[0], Iterable):
-            scales = [(*s[:2], min((slice_spacing * s[0]) / spacing, 1.0), *s[2:]) for s in scales]
+            scales = [(*s[:2], max(min((slice_spacing * s[0]) / spacing, 1.0), min_scale), *s[2:]) for s in scales]
         elif isinstance(scales[0], (int, float)):
-            scales = [(s, s, min((slice_spacing * s) / spacing, 1.0)) for s in scales]
+            scales = [(s, s, max(min((slice_spacing * s) / spacing, 1.0), min_scale)) for s in scales]
 
         return scales
 
