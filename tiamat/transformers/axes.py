@@ -42,7 +42,7 @@ class ImageToVolumeTransformer(Transformer):
         new_dimensions.insert(new_axis, dimensions.Z)
         metadata.dimensions = new_dimensions
 
-        metadata.additional_metadata["stack_dimensions"] = dimensions.Z
+        metadata.additional_metadata["stack_dimension"] = dimensions.Z
 
         # Do not provide downsampled versions in z direction
         metadata.scales = [(*expand_to_length(s, 2), 1.0) for s in metadata.scales]
@@ -154,13 +154,13 @@ class ReorderCoordinatesTransformer(Transformer):
         metadata.shape = tuple(new_shape)
 
         # Adjust stack dimension if present
-        if "stack_dimensions" in metadata.additional_metadata.keys():
-            stack_dimensions = metadata.additional_metadata["stack_dimensions"]
-            stack_ix = self.reorder_axes.index(stack_dimensions)
+        if "stack_dimension" in metadata.additional_metadata.keys():
+            stack_dimension = metadata.additional_metadata["stack_dimension"]
+            stack_ix = self.reorder_axes.index(stack_dimension)
             if len(self.reorder_axes) == 2:
-                metadata.additional_metadata["stack_dimensions"] = SPATIAL_DIMENSIONS[1:][stack_ix]
+                metadata.additional_metadata["stack_dimension"] = SPATIAL_DIMENSIONS[1:][stack_ix]
             else:
-                metadata.additional_metadata["stack_dimensions"] = SPATIAL_DIMENSIONS[stack_ix]
+                metadata.additional_metadata["stack_dimension"] = SPATIAL_DIMENSIONS[stack_ix]
 
         # Adjust spacing and scale
         spacing = list(expand_to_length(metadata.spacing, len(sp_dims)))
