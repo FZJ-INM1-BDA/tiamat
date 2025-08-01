@@ -200,7 +200,7 @@ class ImageStackReader(ImageReader):
 
         metadata.dimensions = [self.stack_dimension, ] + list(metadata.dimensions)
 
-        metadata.additional_metadata["stack_dimensions"] = self.stack_dimension
+        metadata.additional_metadata["stack_dimension"] = self.stack_dimension
 
         return metadata
 
