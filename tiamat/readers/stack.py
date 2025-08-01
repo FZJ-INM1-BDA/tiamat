@@ -447,8 +447,10 @@ class VolumeStackReader(ImageReader):
                 factory = self.reader_factory[k]
                 # Find all files that match k
                 file_matches = tuple(fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k)
-                if len(file_matches) > 0:
+                if len(file_matches) > 1:
                     reader_list.append(factory(file_matches))
+                if len(file_matches) == 1:
+                    reader_list.append(factory(file_matches[0]))
             return reader_list
 
         elif hasattr(self.reader_factory, '__iter__'):
