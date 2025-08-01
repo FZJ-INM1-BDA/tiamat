@@ -2,6 +2,7 @@
 Deformation field transformers.
 """
 from typing import Any, Dict, Tuple, Callable
+from tiamat.cache import instance_cached_property
 
 from tiamat.readers.protocol import ImageReader
 from tiamat.transformers.protocol import Transformer
@@ -35,17 +36,10 @@ class DeformationFieldTransformer(Transformer):
         """
         from tiamat.readers.factory import get_reader
 
-        reader_factory = reader_factory or get_reader
-        self.reader = reader_factory(dfield_file)
+        self.dfield_file = dfield_file
+        self.reader_factory = reader_factory or get_reader
 
         self.xy_coordinates = xy_coordinates
-
-        self.meta = self.reader.read_metadata()
-
-        self.dfield_origin = (0., 0.)
-        if self.meta.additional_metadata is not None:
-            if 'dfield_origin' in self.meta.additional_metadata.keys():
-                self.dfield_origin = self.meta.additional_metadata['dfield_origin']
         
         self.request_margin = request_margin
         self.interpolation = interpolation
@@ -83,6 +77,33 @@ class DeformationFieldTransformer(Transformer):
         coord_y = phys_y / image_spacing[1]
 
         return np.stack((coord_y, coord_x), axis=0)
+
+    @instance_cached_property
+    def dfield_file_handle(self) -> ImageReader:
+        # TODO: Need to connect this reader to a reader_post_creation_hook somehow and change
+        # to @property to manage caching of open file handles at a central location
+        return self.reader_factory(self.dfield_file)
+
+
+    @instance_cached_property
+    def dfield_metadata(self) -> ImageMetadata:
+        return self.dfield_file_handle.read_metadata()
+
+    @instance_cached_property
+    def dfield_spacing(self) -> Tuple[float, float]:
+        from tiamat.readers.processing import expand_to_length
+
+        return expand_to_length(self.dfield_file_handle.spacing, 2)
+
+    @instance_cached_property
+    def dfield_origin(self) -> Tuple[float, float]:
+        dfield_origin = (0., 0.)
+        if self.dfield_metadata.additional_metadata is not None:
+            if 'dfield_origin' in self.dfield_metadata.additional_metadata.keys():
+                dfield_origin = self.dfield_metadata.additional_metadata['dfield_origin']
+
+        return dfield_origin
+
 
     @staticmethod
     def apply_deformation(
@@ -140,8 +161,6 @@ class DeformationFieldTransformer(Transformer):
 
         coord_scale = expand_to_length(accessor.coordinate_scale, 2)
 
-        dfield_spacing = expand_to_length(self.reader.spacing, 2)
-
         # Input are pixel coordinates for scale=1.0
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
@@ -151,8 +170,8 @@ class DeformationFieldTransformer(Transformer):
         y_from, y_to = resolve_coordinate_slice(y, image_shape[spatial_dims[-2]])
 
         scale_factor = (
-            dfield_spacing[0] / image_spacing[0],
-            dfield_spacing[1] / image_spacing[1]
+            self.dfield_spacing[0] / image_spacing[0],
+            self.dfield_spacing[1] / image_spacing[1]
         )
 
         # Request fitting scale of dfield that matches physical resolution of the request
@@ -180,7 +199,7 @@ class DeformationFieldTransformer(Transformer):
 
         # Build temporary accessor to read dfield vectors
         tmp_accessor = replace(accessor)
-        tmp_accessor.metadata = self.meta
+        tmp_accessor.metadata = self.dfield_metadata
         tmp_accessor.scale = target_scale
         tmp_accessor.coordinate_scale = tmp_coord_scale
         tmp_accessor.interpolation = 'linear'
@@ -197,7 +216,7 @@ class DeformationFieldTransformer(Transformer):
         )
 
         # Read the corresponding crop from dfield
-        dfield_crop = self.reader.read_image(tmp_accessor)
+        dfield_crop = self.dfield_file_handle.read_image(tmp_accessor)
 
         # Crop the output to valid pixels not affected by the margin
         # TODO: Check if rounding up or down here
@@ -217,7 +236,7 @@ class DeformationFieldTransformer(Transformer):
         # Determine requested coordinates from deformation vectors
         coordinates = DeformationFieldTransformer.get_pixel_coordinates(
             dfield=dfield_vectors,
-            dfield_spacing=dfield_spacing,
+            dfield_spacing=self.dfield_spacing,
             dfield_scale=target_scale,
             dfield_origin=(x_from_phys + self.dfield_origin[0], y_from_phys + self.dfield_origin[1]),
             image_spacing=image_spacing,
@@ -255,11 +274,10 @@ class DeformationFieldTransformer(Transformer):
         metadata = replace(metadata)
 
         image_spacing = expand_to_length(metadata.spacing, 2)
-        dfield_spacing = expand_to_length(self.reader.spacing, 2)
 
         out_shape = (
-            int(self.meta.spatial_shape[-2] * dfield_spacing[1] / image_spacing[1]),
-            int(self.meta.spatial_shape[-1] * dfield_spacing[0] / image_spacing[0]),
+            int(self.dfield_metadata.spatial_shape[-2] * self.dfield_spacing[1] / image_spacing[1]),
+            int(self.dfield_metadata.spatial_shape[-1] * self.dfield_spacing[0] / image_spacing[0]),
         )
 
         metadata.spatial_shape = (*metadata.shape[:-2], *out_shape)
