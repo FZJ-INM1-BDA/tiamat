@@ -321,5 +321,6 @@ class DeformationFieldTransformer(Transformer):
             request_margin=args.get("request_margin", 2),
             interpolation=args.get("interpolation", 'linear'),
             fill_value=args.get("fill_value"),
+            xy_coordinates=args.get("xy_coordinates", True),
             reader_factory=get_reader_from_config(args.get("reader_factory")),
         )
