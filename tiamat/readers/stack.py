@@ -29,10 +29,8 @@ def get_reader_identifier(fname, identifier):
     return match.group(1)
 
 
-def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
-    import math
-
-    from tiamat.readers.processing import expand_to_length, prepare_coordinate
+def select_slice_ix(accessor, num_slices, slice_spacing=1.0):
+    from tiamat.readers.processing import expand_to_length
     from tiamat.transformers.coordinates import resolve_coordinate_slice
 
     spatial_dims = accessor.metadata.spatial_dimensions
@@ -208,7 +206,7 @@ class ImageStackReader(ImageReader):
         from dataclasses import replace
 
         # Request only subset of slice handles neded for the requested scale
-        selected_slice_ix = _select_slice_ix(accessor, self.num_slices)
+        selected_slice_ix = select_slice_ix(accessor, self.num_slices)
         slice_handles = self.access_slices(selected_slice_ix)
 
         if len(slice_handles) == 0:
