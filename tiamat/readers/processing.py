@@ -65,7 +65,7 @@ def rescale_shape(shape, scale):
 
     # Round to closest integer to avoid floating precision errors
     target_shape =  np.array([dim * s for dim, s in zip(shape, scale)], dtype=float)
-    target_shape = np.round(target_shape).astype(int)
+    target_shape = np.maximum(np.round(target_shape).astype(int), 1)
 
     return target_shape
 
