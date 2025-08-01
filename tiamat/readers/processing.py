@@ -78,24 +78,41 @@ def _rescale(
 ) -> np.ndarray:
     import numpy as np
 
+    # check valid size of image
+    if min(image.shape) == 0:
+        warnings.warn("Not possible to resize image of shape {}".format(image.shape))
+        return image
+
+    # For simplicity assume spatial information in first ndims dimensions for now
+    ndims = len(scale)
+    assert ndims == 2 or ndims == 3
+
     target_shape = rescale_shape(
-        image.shape[:2],
+        image.shape[:ndims],
         scale,
     )
 
-    if np.allclose(target_shape, image.shape[:2]):
+    if np.allclose(target_shape, image.shape[:ndims]):
         # Nothing to do
         return image
 
-    return resize(
-        img=image,
-        shape=target_shape,
-        interpolation=interpolation,
-        anti_aliasing=anti_aliasing,
-    )
+    if ndims == 2:
+        return resize_2d(
+            img=image,
+            shape=target_shape,
+            interpolation=interpolation,
+            anti_aliasing=anti_aliasing,
+        )
+    if ndims == 3:
+        return resize_3d(
+            img=image,
+            shape=target_shape,
+            interpolation=interpolation,
+            anti_aliasing=anti_aliasing,
+        )
 
 
-def resize(
+def resize_2d(
     img,
     shape,
     interpolation=INTERPOLATION_TYPE_CUBIC,
@@ -111,11 +128,6 @@ def resize(
         interpolation (str): interpolation strategy.
     """
     import cv2
-
-    # check valid size of image
-    if min(img.shape) == 0:
-        warnings.warn("Not possible to resize image of shape {}".format(img.shape))
-        return img
 
     # Scaling factors per dimension
     factors = np.divide(img.shape[:2], shape)
@@ -146,24 +158,71 @@ def resize(
     return res.astype(img.dtype)
 
 
+def resize_3d(
+    img,
+    shape,
+    interpolation=INTERPOLATION_TYPE_CUBIC,
+    anti_aliasing: bool = False,
+):
+    """Resize the image to specified shape using the given interpolation.
+    If anti-alias is defined, a gauss filter will smooth the image before downsizing.
+    If interpolation is NEAREST, anti-aliasing is turned of.
+
+    Args:
+        img (array-like): image to resize.
+        shape (tuple): shape of the resized image.
+        interpolation (str): interpolation strategy.
+    """
+
+    # Scaling factors per dimension
+    factors = np.divide(img.shape, shape)
+
+    # Rescale an image stack
+    # if at least one factor is one, use resize_2d with loop
+    if np.any(np.isclose(factors, 1.0)):
+        # pick first dimension with factor 1
+        idx = np.where(np.isclose(factors, 1.0))[0][0]
+
+        # create new shape
+        img_rescaled = np.empty(shape, dtype=img.dtype)
+        shape_2d = (*shape[:idx], *shape[idx + 1 :])
+
+        for i in range(img.shape[idx]):
+            # create slice
+            slices = [slice(None)] * len(img.shape)
+            slices[idx] = i
+
+            # resize image
+            img_rescaled[i] = resize_2d(
+                img=img[tuple(slices)],
+                shape=shape_2d,
+                interpolation=interpolation,
+                anti_aliasing=anti_aliasing,
+            )
+        return img_rescaled
+
+    raise NotImplementedError("Full 3D resizing not supported yet")
+
+
 def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
     import math
 
     factor = image_scale / coordinate_scale
 
-    if isinstance(coord, int):
-        # A single element in the given dimension
-        coord = math.floor(coord * factor)
-        prepared_coord = (coord, coord + 1)
-    elif coord is None:
-        # All elements in the given dimension
-        prepared_coord = (0, None)
-    else:
+    if hasattr(coord, '__iter__'):
         # tuple of values
         prepared_coord = tuple(
             math.floor(c * factor) if c is not None else None
             for c in coord
         )
+    elif coord is None:
+        # All elements in the given dimension
+        prepared_coord = (0, None)
+    else:
+        # A single element in the given dimension
+        coord = math.floor(coord * factor)
+        prepared_coord = (coord, coord + 1)
+
     return prepared_coord
 
 
