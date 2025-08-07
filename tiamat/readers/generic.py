@@ -34,7 +34,7 @@ class GenericReader(ImageReader):
         image = self._read_image()
         image = access_and_rescale_image(image=image, accessor=accessor)
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=image, metadata=accessor.metadata)
 
     @cache
     def read_metadata(self) -> ImageMetadata:
