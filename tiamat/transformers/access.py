@@ -34,7 +34,7 @@ class SpacingToScaleTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result):
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         return image_result
 
     @classmethod
@@ -74,7 +74,7 @@ class FractionTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         return image_result
 
     @classmethod

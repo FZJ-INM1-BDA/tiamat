@@ -14,7 +14,7 @@ class LUTTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         assert image_result.metadata, f"LUTTransformer requires metadata."
         assert (
             image_result.metadata.value_range is not None
@@ -60,7 +60,7 @@ class GrayscaleTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         import cv2
         from tiamat.metadata import dimensions
 
@@ -86,7 +86,7 @@ class GrayscaleToRGBTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         import cv2
         from tiamat.metadata import dimensions
 
@@ -113,7 +113,7 @@ class FloatToByteTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         import numpy as np
 
         if np.issubdtype(image_result.image.dtype, np.floating):

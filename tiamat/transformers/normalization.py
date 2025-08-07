@@ -17,7 +17,7 @@ class MinMaxNormalizationTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         assert image_result.metadata, f"LUTTransformer requires metadata."
         assert image_result.metadata.value_range is not None, f"LUTTransformer requires metadata.value_range."
 

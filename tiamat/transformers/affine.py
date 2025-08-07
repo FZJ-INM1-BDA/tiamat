@@ -103,8 +103,10 @@ class AffineTransformer(Transformer):
         # Replace accessor with new requested input
         accessor = replace(accessor)
         # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
-        accessor.x = (math.floor(x_from_t), math.ceil(x_to_t))
-        accessor.y = (math.floor(y_from_t), math.ceil(y_to_t))
+        x_from_input = (math.floor(x_from_t), math.ceil(x_to_t))
+        accessor.x = x_from_input
+        y_from_input = (math.floor(y_from_t), math.ceil(y_to_t))
+        accessor.y = y_from_input
         if self.fill_value is not None:
             accessor.fill_value = self.fill_value
         elif accessor.fill_value is None:
@@ -112,7 +114,7 @@ class AffineTransformer(Transformer):
 
         # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
         # We need to scale the coordinates to obtain pixel coordinates
-        accessor.history[id(self)] = (x_from, x_to, offset_x_input, y_from, y_to, offset_y_input)
+        accessor.history[id(self)] = (x_from_input, y_from_input, x_from, x_to, offset_x_input, y_from, y_to, offset_y_input)
 
         return accessor
 
@@ -142,7 +144,7 @@ class AffineTransformer(Transformer):
 
         return new_metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         import cv2
         import numpy as np
 
@@ -154,13 +156,13 @@ class AffineTransformer(Transformer):
             get_interpolation_for_accessor,
         )
 
-        target_scale = image_result.accessor.scale
+        target_scale = accessor.scale
         target_scale = np.array(target_scale) if target_scale is not None else np.array((1,))
         if target_scale.size == 1:
             target_scale = np.array([target_scale, target_scale])
         target_scale = target_scale[:2]  # TODO: general solution for 3D
 
-        target_spacing = image_result.accessor.metadata.spacing
+        target_spacing = image_result.metadata.spacing
         target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
@@ -168,7 +170,7 @@ class AffineTransformer(Transformer):
 
         # Restore extent from requested frame
         try:
-            x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = image_result.accessor.history[id(self)]
+            x_from_input, y_from_input, x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
@@ -176,10 +178,6 @@ class AffineTransformer(Transformer):
             ((y_to - y_from), (x_to - x_from)),
             target_scale
         )[::-1]
-
-        accessor = image_result.accessor
-        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
-        (x_from_input, _), (y_from_input, _) = prepared_coordinates["x"], prepared_coordinates["y"]
 
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.
@@ -209,7 +207,7 @@ class AffineTransformer(Transformer):
         target_origin_affine[:2, -1] = target_origin_affine[:2, -1] * target_scale
         # Step 1., 2., and 3.
         affine = target_origin_affine @ px_affine @ input_origin_affine
-        interpolation = get_interpolation_for_accessor(accessor=image_result.accessor)
+        interpolation = get_interpolation_for_accessor(accessor=accessor)
 
         if self.fill_value is None:
             fill_value = accessor.fill_value,
@@ -226,7 +224,7 @@ class AffineTransformer(Transformer):
             )
 
         # Apply to image or loop over stack of images if 3 spatial dims
-        spatial_dimensions = accessor.metadata.spatial_dimensions
+        spatial_dimensions = image_result.metadata.spatial_dimensions
         if len(spatial_dimensions) > 2:
             result_imgs = []
             # Loop over first spatial dimension

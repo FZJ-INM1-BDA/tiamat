@@ -284,14 +284,14 @@ class DeformationFieldTransformer(Transformer):
 
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         try:
-            px_coordinates = image_result.accessor.history[id(self)]
+            px_coordinates = accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
         if self.fill_value is None:
-            fill_value = image_result.accessor.fill_value
+            fill_value = accessor.fill_value
         else:
             fill_value = self.fill_value
 

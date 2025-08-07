@@ -23,7 +23,7 @@ class Transformer(Protocol):
         """
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         """
         Transform an incoming image.
         """
