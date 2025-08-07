@@ -16,6 +16,8 @@ class PipelineReader(ImageReader):
         self.reader_kwargs = reader_kwargs
 
     def read_image(self, accessor: ImageAccessor) -> ImageResult:
+        # pipeline will read metadata itself
+        accessor.metadata = None
         return self.pipeline(
             file_name=self.fname, accessor=accessor, **self.reader_kwargs
         )

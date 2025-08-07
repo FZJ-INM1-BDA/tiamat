@@ -103,10 +103,10 @@ class AffineTransformer(Transformer):
         # Replace accessor with new requested input
         accessor = replace(accessor)
         # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
-        x_from_input = (math.floor(x_from_t), math.ceil(x_to_t))
-        accessor.x = x_from_input
-        y_from_input = (math.floor(y_from_t), math.ceil(y_to_t))
-        accessor.y = y_from_input
+        x_from_input, x_to_input = (math.floor(x_from_t), math.ceil(x_to_t))
+        accessor.x = x_from_input, x_to_input
+        y_from_input, y_to_input = (math.floor(y_from_t), math.ceil(y_to_t))
+        accessor.y = y_from_input, y_to_input
         if self.fill_value is not None:
             accessor.fill_value = self.fill_value
         elif accessor.fill_value is None:
@@ -210,7 +210,10 @@ class AffineTransformer(Transformer):
         interpolation = get_interpolation_for_accessor(accessor=accessor)
 
         if self.fill_value is None:
-            fill_value = accessor.fill_value,
+            if accessor.fill_value is None:
+                fill_value = 0
+            else:
+                fill_value = accessor.fill_value
         else:
             fill_value = self.fill_value
 

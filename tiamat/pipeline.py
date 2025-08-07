@@ -67,7 +67,8 @@ class Pipeline:
         reader = self.reader_factory(file_name, **reader_kwargs)
 
         # Forward rollout of metadata through transformers
-        metadata = [reader.get_metadata()]
+        metadata = [reader.read_metadata()]
+
         for transformer in self.transformers:
             # Check for transformers that do not implement transform_metadata
             if hasattr(transformer, "transform_metadata"):
@@ -90,7 +91,7 @@ class Pipeline:
             accessors.append(accessor)
 
         # Read image data
-        image_result = reader.read_image(accessor=accessor)
+        image_result = reader.read_image(accessor=accessors[-1])
 
         # Forward pass through the transformers to get final image result
         for transformer, meta, acc in zip(self.transformers, metadata[:-1], accessors[::-1][1:]):
@@ -115,6 +116,6 @@ class Pipeline:
             if hasattr(transformer, "transform_metadata"):
                 # check for transformers that do not implement transform_metadata
                 metadata = transformer.transform_metadata(
-                    etadata=replace(metadata)
+                    metadata=replace(metadata)
                 )
         return metadata
