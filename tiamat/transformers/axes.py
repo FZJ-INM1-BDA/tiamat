@@ -58,7 +58,7 @@ class ImageToVolumeTransformer(Transformer):
 
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         from tiamat.metadata import dimensions
         
         metadata = image_result.metadata
@@ -179,7 +179,7 @@ class ReorderCoordinatesTransformer(Transformer):
 
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         metadata = image_result.metadata
         assert metadata is not None, "MirrorTransformer requires metadata."
 
@@ -239,7 +239,7 @@ class MirrorTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         metadata = image_result.metadata
         assert metadata is not None, "MirrorTransformer requires metadata."
 

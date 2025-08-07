@@ -19,7 +19,7 @@ class _MetadataTransformer(ABC, Transformer):
         # noop, no access transformation
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
         # noop, no image transformation
         return image_result
 
