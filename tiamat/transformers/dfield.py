@@ -291,7 +291,10 @@ class DeformationFieldTransformer(Transformer):
             raise Exception("transform_access has to be called once before transform_image")
 
         if self.fill_value is None:
-            fill_value = accessor.fill_value
+            if accessor.fill_value is None:
+                fill_value = 0
+            else:
+                fill_value = accessor.fill_value
         else:
             fill_value = self.fill_value
 

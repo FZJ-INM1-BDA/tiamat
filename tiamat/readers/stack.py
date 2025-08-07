@@ -229,20 +229,21 @@ class ImageStackReader(ImageReader):
         dimension_list.remove(self.stack_dimension)
 
         # for each scale, remove the z scale
-        scales = list(metadata.scales)
-        for i, s in enumerate(scales):
-            if self.stack_dimension == dimensions.X:
-                scales[i] = s[1:]
-            elif self.stack_dimension == dimensions.Y:
-                scales[i] = (s[0], *s[2:])
-            elif self.stack_dimension == dimensions.Z:
-                scales[i] = s[:2]
-            else:
-                raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+        if metadata.scales is not None:
+            scales = list(metadata.scales)
+            for i, s in enumerate(scales):
+                if self.stack_dimension == dimensions.X:
+                    scales[i] = s[1:]
+                elif self.stack_dimension == dimensions.Y:
+                    scales[i] = (s[0], *s[2:])
+                elif self.stack_dimension == dimensions.Z:
+                    scales[i] = s[:2]
+                else:
+                    raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+            metadata.scales = tuple(scales)
 
         metadata.dimensions = dimension_list
         tmp_accessor.metadata = metadata
-        tmp_accessor.scales = tuple(scales)
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
