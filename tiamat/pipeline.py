@@ -42,12 +42,12 @@ class Pipeline:
 
         # For convenience, access transformers and image transformers can be specified separately.
         # This saves users from thinking about the (maybe) unintuitive order of coordinate transformers.
-        if access_transformers:
-            # Access transformers are applied first, but in reverse order. Make sure that access_transformers is reversable first.
-            access_transformers = list(access_transformers)
-            self.transformers.extend(access_transformers[::-1])
         if image_transformers:
             self.transformers.extend(image_transformers)
+        if access_transformers:
+            # Access transformers are applied in reverse order. Make sure that access_transformers is reversable first.
+            access_transformers = list(access_transformers)
+            self.transformers.extend(access_transformers[::-1])
 
         self.reader_factory = reader_factory or get_reader
         self.auto_register_default_readers = auto_register_default_readers
