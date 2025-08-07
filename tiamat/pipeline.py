@@ -53,37 +53,68 @@ class Pipeline:
         self.auto_register_default_readers = auto_register_default_readers
 
     def __call__(
-        self, file_name, accessor: ImageAccessor, read_metadata=True, **reader_kwargs
+        self, file_name, accessor: ImageAccessor, **reader_kwargs
     ) -> ImageResult:
+        from dataclasses import replace
+
+        # Disable user defined metadata for now
+        assert accessor.metadata is None
+
         if self.auto_register_default_readers:
             from tiamat.readers import register_all_readers
 
             register_all_readers()
         reader = self.reader_factory(file_name, **reader_kwargs)
-        if not accessor.metadata and read_metadata:
-            accessor.metadata = reader.read_metadata()
 
-        # backwards pass through the transformers to transform the accessor
-        for transformer in self.transformers[::-1]:
-            accessor = transformer.transform_access(accessor=accessor)
+        # Forward rollout of metadata through transformers
+        metadata = [reader.get_metadata()]
+        for transformer in self.transformers:
+            # Check for transformers that do not implement transform_metadata
+            if hasattr(transformer, "transform_metadata"):
+                metadata.append(transformer.transform_metadata(
+                    metadata=replace(metadata[-1])),
+                )
+            else:
+                metadata.append(metadata=replace(metadata[-1]))
+
+        # Set the first accessor metadata to output metadata
+        accessor.metadata = metadata[-1]
+
+        # Backwards rollout of accessor through transformers and metadata
+        accessors = [accessor]
+        for transformer, meta in zip(self.transformers[::-1], metadata[::-1][1:]):
+            accessor = transformer.transform_access(
+                accessor=replace(accessors[-1]),
+            )
+            accessor.metadata = meta
+            accessors.append(accessor)
 
         # Read image data
         image_result = reader.read_image(accessor=accessor)
 
-        # forward pass through the transformers
-        for transformer in self.transformers:
-            image_result = transformer.transform_image(image_result=image_result)
-            if hasattr(transformer, "transform_metadata") and image_result.metadata is not None:
-                image_result.metadata = transformer.transform_metadata(image_result.metadata)
+        # Forward pass through the transformers to get final image result
+        for transformer, meta, acc in zip(self.transformers, metadata[:-1], accessors[::-1][1:]):
+            image_result.metadata = meta
+            image_result = transformer.transform_image(
+                image_result=image_result,
+                accessor=acc,
+            )
+
+        # Associate final output image with output metadata
+        image_result.metadata = metadata[-1]
 
         return image_result
 
     def read_metadata(self, file_name, **reader_kwargs) -> ImageMetadata:
+        from dataclasses import replace
+
         reader = self.reader_factory(file_name, **reader_kwargs)
         metadata = reader.read_metadata()
         # backwards pass through the transformers to transform the accessor
         for transformer in self.transformers:
             if hasattr(transformer, "transform_metadata"):
                 # check for transformers that do not implement transform_metadata
-                metadata = transformer.transform_metadata(metadata=metadata)
+                metadata = transformer.transform_metadata(
+                    etadata=replace(metadata)
+                )
         return metadata
