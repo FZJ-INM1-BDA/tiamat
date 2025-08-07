@@ -1,14 +1,23 @@
 """
-Factory for readers.
+Factory for managing and instantiating ImageReader classes.
 """
 
-from typing import List
+from typing import List, Type, Union, Tuple
 from ..readers.protocol import ImageReader
 
-_READER_REGISTRY: List[ImageReader] = []
+
+# Registry of registered ImageReader classes
+_READER_REGISTRY: List[Type[ImageReader]] = []
 
 
-def register_reader(*reader_classes):
+def register_reader(*reader_classes: Type[ImageReader])-> None:
+    """
+    Register one or more ImageReader classes to the global registry.
+
+    Args:
+        *reader_classes: One or more ImageReader subclasses to register.
+    """
+
     for reader_class in reader_classes:
         if reader_class not in _READER_REGISTRY:
             _READER_REGISTRY.append(reader_class)
@@ -23,14 +32,40 @@ def get_reader_for_file_type(file_type):
         raise UnknownFileError(f"Could not find reader for file type {file_type}")
 
 
-def get_reader_from_registry(reader_name):
+def get_reader_from_registry(reader_name:str) -> Type[ImageReader]:
+    """
+    Get a registered ImageReader class by its class name.
+
+    Args:
+        reader_name: The name of the reader class.
+
+    Returns:
+        The ImageReader class matching the name.
+
+    Raises:
+        KeyError: If no reader with the given name is found.
+    """
     for cls in _READER_REGISTRY:
         if cls.__name__ == reader_name:
             return cls
     raise KeyError(f"No reader found with name {reader_name}")
 
 
-def get_reader(fname: str, auto_register_default_readers=True, **kwargs) -> ImageReader:
+def get_reader(fname: str, auto_register_default_readers:bool=True, **kwargs) -> ImageReader:
+    """
+    Select and instantiate the best matching reader for a given file.
+
+    Args:
+        fname: Path to the image file.
+        auto_register_default_readers: If True, automatically register default readers before selection.
+        **kwargs: Additional keyword arguments passed to the reader constructor.
+
+    Returns:
+        An instantiated ImageReader object suitable for reading the file.
+
+    Raises:
+        UnknownFileError: If no reader can handle the file or multiple readers have the same priority.
+    """
     from tiamat.errors import UnknownFileError
 
     if auto_register_default_readers:
@@ -44,7 +79,7 @@ def get_reader(fname: str, auto_register_default_readers=True, **kwargs) -> Imag
         try:
             reader_priority = reader.check_file(fname)
         except Exception as ex:
-            # we don't want readers doing weird things while checking for compatibility to fail
+            #Ignore errors in check_file, but keep track of them for diagnostics
             reader_errors.append((reader, ex))
             continue
         if isinstance(reader_priority, bool):

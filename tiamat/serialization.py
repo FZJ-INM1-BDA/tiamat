@@ -1,23 +1,47 @@
 """
-Pipeline serialization.
+Pipeline serialization and instantiation from configuration dictionaries.
 """
 
 from functools import partial
-import json
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, Optional, Callable
+
+from tiamat.readers.protocol import ImageReader
 
 # Example class registry
 class_registry: Dict[str, Type] = {}
 
 
-def register_class(cls: Type):
-    """Decorator to register a class for safe instantiation."""
+def register_class(cls: Type) -> Type:
+    """
+    Decorator to register a class for safe instantiation from configuration.
+
+    Args:
+        cls (Type): The class to register.
+
+    Returns:
+        Type: The registered class.
+    """
     class_registry[cls.__name__] = cls
     return cls
 
 
-def create_instance(class_name: str, args: Dict[str, Any]) -> Any:
-    """Safely instantiate a class with arguments from JSON."""
+def create_instance(
+    class_name: str,
+    args: Dict[str, Any]
+) -> Any:
+    """
+    Safely instantiate a registered class with arguments from a configuration dictionary.
+
+    Args:
+        class_name (str): The name of the class to instantiate.
+        args (Dict[str, Any]): Initialization arguments.
+
+    Returns:
+        Any: The instantiated object.
+
+    Raises:
+        ValueError: If the class is not registered.
+    """
     if class_name not in class_registry:
         raise ValueError(f"Class '{class_name}' is not registered.")
 
@@ -28,38 +52,68 @@ def create_instance(class_name: str, args: Dict[str, Any]) -> Any:
     else:
         # Validate provided arguments
         allowed_args = cls.__init__.__code__.co_varnames[
-            1 : cls.__init__.__code__.co_argcount
+            1: cls.__init__.__code__.co_argcount
         ]
         filtered_args = {k: v for k, v in args.items() if k in allowed_args}
 
         return cls(**filtered_args)
 
 
-def make_object_from_config(config_entry: dict):
-    """Make a transformer from a single config entry."""
-    return create_instance(config_entry["class"], config_entry.get("args", {}))
+def make_object_from_config(config_entry: dict) -> Any:
+    """"
+    Instantiate an object from a single configuration entry.
+
+    Args:
+        config_entry (dict): Dictionary with "class" and optional "args" keys.
+
+    Returns:
+        Any: Instantiated object.
+    """
+    class_name = config_entry.get("class")
+    args = config_entry.get("args", {})
+
+    if class_name is None:
+        raise ValueError("Config entry must contain a 'class' key.")
+    return create_instance(class_name, args)
 
 
-def get_reader_from_config(config_reader: dict, reader_post_creation_hook=None):
-    from tiamat.readers.factory import get_reader_from_registry
+def get_reader_from_config(
+    config_reader: Optional[dict],
+    reader_post_creation_hook: Optional[Callable]=None
+) -> Callable[...,"ImageReader"]:
+    """
+    Get a reader constructor from configuration.
+
+    Args:
+        config_reader (Optional[dict]): Configuration dictionary for the reader.
+        reader_post_creation_hook (Optional[Callable]): Hook to modify the reader after construction.
+
+    Returns:
+        Callable[..., Any]: A reader constructor (possibly a partial).
+    """
+
 
     if config_reader is None:
         from tiamat.readers.factory import get_reader
-
         if reader_post_creation_hook is None:
             return get_reader
         else:
             return partial(reader_post_creation_hook, get_reader)
 
-    cls = get_reader_from_registry(config_reader["class"])
+    from tiamat.readers.factory import get_reader_from_registry
+
+    class_name = config_reader.get("class")
+    if class_name is None:
+        raise ValueError("Reader config must contain a 'class' key.")
+    cls = get_reader_from_registry(class_name)
     args = config_reader.get("args", {})
 
     if hasattr(cls, "from_json"):
         return cls.from_json(args, reader_post_creation_hook=reader_post_creation_hook)
-    else:        
+    else:
         # Validate provided arguments
         allowed_args = cls.__init__.__code__.co_varnames[
-            1 : cls.__init__.__code__.co_argcount
+            1: cls.__init__.__code__.co_argcount
         ]
         filtered_args = {k: v for k, v in args.items() if k in allowed_args}
 
@@ -69,8 +123,22 @@ def get_reader_from_config(config_reader: dict, reader_post_creation_hook=None):
             return partial(reader_post_creation_hook, cls, **filtered_args)
 
 
-def load_pipeline_from_config(config: dict, auto_register_default_readers=True, reader_post_creation_hook=None):
-    """Make a pipeline from a config dict."""
+def load_pipeline_from_config(
+    config: dict,
+    auto_register_default_readers: bool=True,
+    reader_post_creation_hook:Optional[Callable]=None
+    ) -> Any:
+    """
+    Construct a pipeline from a configuration dictionary.
+
+    Args:
+        config (dict): Configuration dictionary defining transformers and reader.
+        auto_register_default_readers (bool): If True, registers built-in readers.
+        reader_post_creation_hook (Optional[Callable]): Optional hook for customizing the reader.
+
+    Returns:
+        Pipeline: The constructed pipeline.
+    """
     from .pipeline import Pipeline
 
     if auto_register_default_readers:
@@ -80,7 +148,8 @@ def load_pipeline_from_config(config: dict, auto_register_default_readers=True, 
 
     return Pipeline(
         transformers=[
-            make_object_from_config(item) for item in config.get("transformers", [])
+            make_object_from_config(item)
+            for item in config.get("transformers", [])
         ],
         access_transformers=[
             make_object_from_config(item)
@@ -90,6 +159,7 @@ def load_pipeline_from_config(config: dict, auto_register_default_readers=True, 
             make_object_from_config(item)
             for item in config.get("image_transformers", [])
         ],
-        reader_factory=get_reader_from_config(config.get("reader", None), reader_post_creation_hook=reader_post_creation_hook),
+        reader_factory=get_reader_from_config(config.get("reader", None),
+                                              reader_post_creation_hook=reader_post_creation_hook),
         auto_register_default_readers=False,
     )
