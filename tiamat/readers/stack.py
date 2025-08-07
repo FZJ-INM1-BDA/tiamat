@@ -257,7 +257,7 @@ class ImageStackReader(ImageReader):
         for i, handle in enumerate(slice_handles[1:], 1):
             image[i] = handle.read_image(accessor=tmp_accessor).image
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=image, metadata=accessor.metadata)
 
     @property
     def file_handle(self) -> ImageReader:
@@ -569,7 +569,7 @@ class VolumeStackReader(ImageReader):
             else:
                 cur_z_offset += z_size
 
-        return ImageResult(image=out_image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=out_image, metadata=accessor.metadata)
 
     @classmethod
     def check_file(cls, fname: str | List[str]) -> bool | int | float:

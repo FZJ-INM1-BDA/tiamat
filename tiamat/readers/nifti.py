@@ -21,7 +21,7 @@ class NiftiReader(ImageReader):
 
         image = access_and_rescale_image(data, accessor)
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=image, metadata=accessor.metadata)
 
     def read_metadata(self):
         from tiamat import metadata as md

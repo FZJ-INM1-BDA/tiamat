@@ -23,7 +23,7 @@ class MemoryReader(ImageReader):
         # Read, crop, and rescale.
         image = access_and_rescale_image(image=self.image, accessor=accessor)
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=image, metadata=accessor.metadata)
 
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
@@ -84,7 +84,7 @@ class ConstantReader(ImageReader):
         # Read, crop, and rescale.
         image = access_and_rescale_image(image=self.image, accessor=accessor, image_scale=accessor.scale)
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return ImageResult(image=image, metadata=accessor.metadata)
 
     def read_metadata(self) -> ImageMetadata:
         return self.metadata
