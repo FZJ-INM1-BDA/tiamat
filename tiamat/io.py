@@ -2,12 +2,12 @@
 IO objects.
 """
 
-from typing import Iterable
+from typing import Iterable, Union
 from dataclasses import dataclass, field
 import numpy as np
 from tiamat.metadata import ImageMetadata
 
-# interpolation strategies for rescaling
+# Interpolation strategies for rescaling
 INTERPOLATION_TYPE_NEAREST = "nearest"
 INTERPOLATION_TYPE_LINEAR = "linear"
 INTERPOLATION_TYPE_CUBIC = "cubic"
@@ -17,25 +17,41 @@ INTERPOLATION_TYPE_LANCZOS4 = "lanczos4"
 
 @dataclass
 class ImageAccessor:
-    x: tuple[int | float | None, int | float | None] | int = None
-    y: tuple[int | float | None, int | float | None] | int = None
-    z: tuple[int | float | None, int | float | None] | int = None
-    c: (tuple[int | float | None, int | float | None] | int) | dict[str: tuple[int | float | None, int | float | None] | int] = None
+    # Coordinate ranges or specific indices for image access
+    x: Union[tuple[int | float | None, int | float | None], int, None] = None
+    y: Union[tuple[int | float | None, int | float | None] | int, None]  = None
+    z: Union[tuple[int | float | None, int | float | None] | int, None] = None
+
+    # Channels can be an int, tuple, or dict mapping channel names to ranges
+    c: Union[tuple[int | float | None, int | float | None],
+       int,
+    dict[str, Union[tuple[int | float | None, int | float | None], int]], None] = None
+
     # scale/spacing to retrieve
     scale: float = 1.0
-    spacing: float = None
-    # scale/spacing of coordinates
+    spacing: float | None = None
+
+    # Coordinate scaling of the requested region
     coordinate_scale: float = 1.0
     coordinate_spacing: float = 1.0
+
+    # Associated metadata for the image
     metadata: ImageMetadata = None
+
+    # Interpolation strategy (e.g., cv2.INTER_LINEAR)
     interpolation: int = None
-    # Wether to apply Gauss smothing, default is False:
+
+    # Wether to apply Gauss smoothing, default is False:
     anti_aliasing: bool = False
+
     # (Maybe not needed) Std of Gauss filter, default is (s - 1) / 2:
     # anti_aliasing_sigma: float = None
-    # Fill value for out-of-bounds request (padding)
+
+    # Optional fill value for out-of-bounds access
     # Can be set to None for no padding
-    fill_value: int | float = None
+    fill_value: int | float | None = None
+
+    # Arbitrary history or debugging information
     history: dict = field(default_factory=dict)
 
     def __repr__(self):
@@ -63,5 +79,5 @@ class ImageAccessor:
 class ImageResult:
     image: np.ndarray
     accessor: ImageAccessor
-    metadata: ImageMetadata = None
+    metadata: ImageMetadata | None = None
     additional_images: dict = field(default_factory=dict)
