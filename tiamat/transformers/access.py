@@ -2,6 +2,9 @@
 Transformers that affect how files are accessed.
 """
 import math
+
+import numpy as np
+
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -32,8 +35,8 @@ class SpacingToScaleTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
-        return image_result
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        return image
 
     @classmethod
     def _scale_coordinate(cls, coordinate, input_spacing, output_spacing):
@@ -71,8 +74,8 @@ class FractionTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
-        return image_result
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        return image
 
     @classmethod
     def _scale_coordinate(cls, fraction, image_dimension):

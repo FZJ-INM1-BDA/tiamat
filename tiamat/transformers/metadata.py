@@ -5,8 +5,11 @@ Transformers to specifically modify metadata.
 from abc import ABC
 from typing import Callable
 from dataclasses import fields
+
+import numpy as np
+
 from .protocol import Transformer
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
@@ -19,7 +22,7 @@ class _MetadataTransformer(ABC, Transformer):
         # noop, no access transformation
         return accessor
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         # noop, no image transformation
         return image_result
 

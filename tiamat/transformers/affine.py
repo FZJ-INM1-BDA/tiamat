@@ -2,14 +2,12 @@
 Affine transformers.
 """
 import logging
-from dataclasses import asdict
 from itertools import product, repeat
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from numpy import ndarray
 
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 from .protocol import Transformer
 
@@ -141,7 +139,7 @@ class AffineTransformer(Transformer):
 
         return new_metadata
 
-    def transform_image(self, image: ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> ndarray:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         import cv2
         import numpy as np
 

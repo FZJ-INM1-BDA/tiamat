@@ -58,22 +58,19 @@ class ImageToVolumeTransformer(Transformer):
 
         return metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         from tiamat.metadata import dimensions
-        
-        metadata = image_result.metadata
-        assert metadata is not None, "ImageToVolumeTransformer requires metadata."
         
         # this transformer always expands y, x to z,y,x
         # we search for the position of y, then prepend a 1-dimension
         y_index = metadata.dimensions.index(dimensions.Y)
         new_axis = max(y_index - 1, 0)
-        new_shape = list(image_result.image.shape)
+        new_shape = list(image.shape)
         new_shape.insert(new_axis, 1)
 
-        image_result.image = image_result.image.reshape(new_shape)
+        image = image.reshape(new_shape)
 
-        return image_result
+        return image
 
     @classmethod
     def from_json(cls, args: Dict[str, Any]):
@@ -179,20 +176,17 @@ class ReorderCoordinatesTransformer(Transformer):
 
         return metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
-        metadata = image_result.metadata
-        assert metadata is not None, "MirrorTransformer requires metadata."
-
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         sp_dims = metadata.spatial_dimensions
         assert len(sp_dims) == len(self.reorder_axes)
 
-        image_result.image = np.moveaxis(
-            image_result.image,
+        image = np.moveaxis(
+            image,
             [sp_dims[i] for i in self.from_indices],
             sp_dims,
         )
 
-        return image_result
+        return image
     
     @classmethod
     def from_json(cls, args: Dict[str, Any]):
@@ -237,19 +231,16 @@ class MirrorTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
-        metadata = image_result.metadata
-        assert metadata is not None, "MirrorTransformer requires metadata."
-
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         s_dim = metadata.spatial_dimensions
         if len(s_dim) == 2:
             flip_axes = self.mirror_y * [s_dim[0]] + self.mirror_x * [s_dim[1]]
         else :
             flip_axes = self.mirror_z * [s_dim[0]] + self.mirror_y * [s_dim[1]] + self.mirror_x * [s_dim[2]]
 
-        image_result.image = np.flip(image_result.image, axis=flip_axes)
+        image = np.flip(image, axis=flip_axes)
 
-        return image_result
+        return image
 
     @classmethod
     def from_json(cls, args: Dict[str, Any]):
