@@ -23,6 +23,7 @@ dependencies = [
   "opencv-python-headless>=4.8.1",
   "imageio",
   "nibabel",
+  "scipy",
 ]
 
 [build-system]
