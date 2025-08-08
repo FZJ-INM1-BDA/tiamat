@@ -24,7 +24,7 @@ class _MetadataTransformer(ABC, Transformer):
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         # noop, no image transformation
-        return image_result
+        return image
 
 
 class MetadataKwargsTransformer(_MetadataTransformer):
