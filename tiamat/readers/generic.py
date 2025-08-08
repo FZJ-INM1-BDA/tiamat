@@ -2,12 +2,11 @@
 Reader for generic image formats.
 """
 
-from functools import cache, cached_property
-
 import numpy as np
 
+from tiamat.cache import instance_cache
 from .protocol import ImageReader
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
@@ -38,7 +37,7 @@ class GenericReader(ImageReader):
 
         return image
 
-    @cache
+    @instance_cache
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 
