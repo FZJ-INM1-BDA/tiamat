@@ -64,11 +64,9 @@ class BoundingBoxTransformer(Transformer):
         )
         return shape
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
 
-        metadata = accessor.metadata
-        assert metadata is not None, "BoundingBoxTransformer requires metadata."
         assert metadata.shape is not None, "BoundingBoxTransformer requires metadata.shape."
 
         accessor = replace(accessor)

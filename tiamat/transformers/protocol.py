@@ -10,6 +10,7 @@ from ..metadata import ImageMetadata
 
 
 class Transformer(Protocol):
+
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         """
         Applies a transformation that affects accessing the image.

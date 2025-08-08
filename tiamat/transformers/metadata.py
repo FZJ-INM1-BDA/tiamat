@@ -15,7 +15,7 @@ class _MetadataTransformer(ABC, Transformer):
     Base class for metadata transformers to ensure they only modify metadata.
     """
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         # noop, no access transformation
         return accessor
 

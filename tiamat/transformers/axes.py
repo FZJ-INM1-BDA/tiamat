@@ -17,7 +17,7 @@ class ImageToVolumeTransformer(Transformer):
     def __init__(self, z_spacing=None):
         self.z_spacing = z_spacing
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
@@ -106,7 +106,7 @@ class ReorderCoordinatesTransformer(Transformer):
         self.from_indices_meta = tuple(meta_axes.index(a) for a in self.reorder_axes[::-1])
         self.to_indices_meta = tuple(self.reorder_axes[::-1].index(a) for a in meta_axes)
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
         from tiamat.readers.processing import expand_to_length
 
@@ -208,11 +208,9 @@ class MirrorTransformer(Transformer):
         self.mirror_y = mirror_y
         self.mirror_z = mirror_z
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
         from tiamat.metadata import dimensions
-
-        metadata = accessor.metadata
 
         accessor = replace(accessor)
 
