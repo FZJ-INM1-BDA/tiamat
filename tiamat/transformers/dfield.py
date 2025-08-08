@@ -283,7 +283,7 @@ class DeformationFieldTransformer(Transformer):
 
         return metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         try:
             px_coordinates = accessor.history[id(self)]
         except KeyError:
@@ -297,7 +297,7 @@ class DeformationFieldTransformer(Transformer):
         else:
             fill_value = self.fill_value
 
-        ch_dim = image_result.metadata.channel_dimensions
+        ch_dim = metadata.channel_dimensions
         if len(ch_dim) > 1:
             raise Exception(f"Multiple channels {ch_dim} not supported in DeformationField Transformer")
         elif len(ch_dim) == 1:
@@ -305,14 +305,14 @@ class DeformationFieldTransformer(Transformer):
         else:
             ch_dim = None
 
-        spatial_dimensions = image_result.metadata.spatial_dimensions
+        spatial_dimensions = metadata.spatial_dimensions
         if len(spatial_dimensions) > 2:
             result_imgs = []
             # Loop over first spatial dimension
-            for i in range(image_result.image.shape[spatial_dimensions[0]]):
+            for i in range(image.shape[spatial_dimensions[0]]):
                 result_imgs.append(
                     DeformationFieldTransformer.apply_deformation(
-                        image=image_result.image[i],
+                        image=image[i],
                         coordinates=px_coordinates,
                         channel_dim=ch_dim,
                         fill_value=fill_value,
@@ -320,17 +320,17 @@ class DeformationFieldTransformer(Transformer):
                     )
                 )
             result_image = np.stack(result_imgs, axis=0)
-            image_result.image = result_image
+            image = result_image
         else:
-            image_result.image = DeformationFieldTransformer.apply_deformation(
-                image=image_result.image,
+            image = DeformationFieldTransformer.apply_deformation(
+                image=image,
                 coordinates=px_coordinates,
                 channel_dim=ch_dim,
                 fill_value=fill_value,
                 interpolation=self.interpolation,
             )
 
-        return image_result
+        return image
 
     @classmethod
     def from_json(cls, args: Dict[str, Any]):
