@@ -325,7 +325,7 @@ def access_image(
     # Loop over all dimensions to create request
     request_slices = [slice(None)] * len(image.shape)
     access_shape = np.ones((len(image.shape)), dtype=np.int64)
-    for dim, coord in zip(ch_dims + image_dims, access_ch_dims + access_image_dims):
+    for dim, coord in zip(ch_dims[:len(access_ch_dims)] + image_dims, access_ch_dims + access_image_dims):
         max_c = image.shape[dim]
         c_from, c_to = coord
 
