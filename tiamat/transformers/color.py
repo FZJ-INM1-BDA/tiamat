@@ -11,7 +11,7 @@ class LUTTransformer(Transformer):
     def __init__(self, color_map):
         self.color_map = color_map
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
     def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
@@ -57,7 +57,8 @@ class LUTTransformer(Transformer):
 
 
 class GrayscaleTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
     def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
@@ -83,7 +84,8 @@ class GrayscaleTransformer(Transformer):
 
 
 class GrayscaleToRGBTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
     def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
@@ -110,7 +112,8 @@ class GrayscaleToRGBTransformer(Transformer):
 
 
 class FloatToByteTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
     def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:

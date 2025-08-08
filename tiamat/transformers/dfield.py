@@ -148,7 +148,7 @@ class DeformationFieldTransformer(Transformer):
         return out_image
 
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
         import math
 
@@ -156,8 +156,8 @@ class DeformationFieldTransformer(Transformer):
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         image_scale = expand_to_length(accessor.scale, 2)[:2]
-        image_spacing = expand_to_length(accessor.metadata.spacing, 2)[:2]
-        image_shape = accessor.metadata.shape
+        image_spacing = expand_to_length(metadata.spacing, 2)[:2]
+        image_shape = metadata.shape
 
         coord_scale = expand_to_length(accessor.coordinate_scale, 2)
 
@@ -165,7 +165,7 @@ class DeformationFieldTransformer(Transformer):
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
 
-        spatial_dims = accessor.metadata.spatial_dimensions
+        spatial_dims = metadata.spatial_dimensions
         x_from, x_to = resolve_coordinate_slice(x, image_shape[spatial_dims[-1]])
         y_from, y_to = resolve_coordinate_slice(y, image_shape[spatial_dims[-2]])
 
@@ -199,7 +199,6 @@ class DeformationFieldTransformer(Transformer):
 
         # Build temporary accessor to read dfield vectors
         tmp_accessor = replace(accessor)
-        tmp_accessor.metadata = self.dfield_metadata
         tmp_accessor.scale = target_scale
         tmp_accessor.coordinate_scale = tmp_coord_scale
         tmp_accessor.interpolation = 'linear'

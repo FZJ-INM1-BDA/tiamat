@@ -9,11 +9,9 @@ from ..metadata import ImageMetadata
 
 class SpacingToScaleTransformer(Transformer):
 
-    def transform_access(self, accessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
 
-        metadata = accessor.metadata
-        assert metadata is not None, f"SpacingToScaleTransformer requires metadata."
         assert metadata.spacing is not None, f"SpacingToScaleTransformer requires spacing, but metadata does not provide it. Make sure to use a suitable reader, or provide the metadata yourself."
         assert accessor.coordinate_spacing is not None, f"SpacingToScaleTransformer requires accessor.coordinate_spacing."
         assert accessor.spacing is not None, f"SpacingToScaleTransformer requires accessor.spacing."
@@ -50,11 +48,10 @@ class SpacingToScaleTransformer(Transformer):
 
 
 class FractionTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
 
-        metadata = accessor.metadata
-        assert metadata is not None, f"FractionTransformer requires metadata."
         assert metadata.shape is not None, f"FractionTransformer requires metadata.shape."
 
         accessor = replace(accessor)
