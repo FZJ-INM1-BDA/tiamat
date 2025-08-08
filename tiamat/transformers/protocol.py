@@ -2,12 +2,15 @@
 Protocol for transformers.
 """
 from typing import Protocol
-from ..io import ImageAccessor, ImageResult
+
+import numpy as np
+
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
 class Transformer(Protocol):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         """
         Applies a transformation that affects accessing the image.
 
@@ -23,8 +26,8 @@ class Transformer(Protocol):
         """
         return metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
         Transform an incoming image.
         """
-        return image_result
+        return image

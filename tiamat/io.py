@@ -27,7 +27,6 @@ class ImageAccessor:
     # scale/spacing of coordinates
     coordinate_scale: float = 1.0
     coordinate_spacing: float = 1.0
-    metadata: ImageMetadata = None
     interpolation: int = None
     # Wether to apply Gauss smothing, default is False:
     anti_aliasing: bool = False

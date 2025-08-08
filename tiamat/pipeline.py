@@ -57,9 +57,6 @@ class Pipeline:
     ) -> ImageResult:
         from dataclasses import replace
 
-        # Disable user defined metadata for now
-        assert accessor.metadata is None
-
         if self.auto_register_default_readers:
             from tiamat.readers import register_all_readers
 
@@ -78,33 +75,31 @@ class Pipeline:
             else:
                 metadata.append(metadata=replace(metadata[-1]))
 
-        # Set the first accessor metadata to output metadata
-        accessor.metadata = metadata[-1]
-
         # Backwards rollout of accessor through transformers and metadata
         accessors = [accessor]
-        for transformer, meta in zip(self.transformers[::-1], metadata[::-1][1:]):
+        for transformer, meta in zip(self.transformers[::-1], metadata[::-1][:-1]):
             accessor = transformer.transform_access(
                 accessor=replace(accessors[-1]),
+                metadata=meta
             )
-            accessor.metadata = meta
             accessors.append(accessor)
 
         # Read image data
-        image_result = reader.read_image(accessor=accessors[-1])
+        image = reader.read_image(accessor=accessors[-1])
 
         # Forward pass through the transformers to get final image result
         for transformer, meta, acc in zip(self.transformers, metadata[:-1], accessors[::-1][1:]):
-            image_result.metadata = meta
-            image_result = transformer.transform_image(
-                image_result=image_result,
+            image = transformer.transform_image(
+                image=image,
+                metadata=meta,
                 accessor=acc,
             )
 
         # Associate final output image with output metadata
-        image_result.metadata = metadata[-1]
-
-        return image_result
+        return ImageResult(
+            image=image,
+            metadata=metadata[-1],
+        )
 
     def read_metadata(self, file_name, **reader_kwargs) -> ImageMetadata:
         from dataclasses import replace

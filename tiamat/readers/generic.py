@@ -4,6 +4,8 @@ Reader for generic image formats.
 
 from functools import cache, cached_property
 
+import numpy as np
+
 from .protocol import ImageReader
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -27,14 +29,14 @@ class GenericReader(ImageReader):
 
         return image
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
         image = self._read_image()
-        image = access_and_rescale_image(image=image, accessor=accessor)
+        image = access_and_rescale_image(image=image, metadata=self.read_metadata(), accessor=accessor)
 
-        return ImageResult(image=image, metadata=accessor.metadata)
+        return image
 
     @cache
     def read_metadata(self) -> ImageMetadata:

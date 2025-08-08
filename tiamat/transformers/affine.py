@@ -7,6 +7,7 @@ from itertools import product, repeat
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
+from numpy import ndarray
 
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -46,18 +47,14 @@ class AffineTransformer(Transformer):
     def _transform_point(self, x: int | float, y: int | float, affine: np.ndarray) -> Tuple[int | float, int | float]:
         return affine[:2, :2] @ (x, y) + affine[:2, -1]
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         import math
         from dataclasses import replace
 
         from tiamat.readers.processing import _prepare_coordinates
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-        assert accessor.metadata is not None, f"AffineTransformer requires metadata."
-
-        # TODO: Handle 3D.
-
-        target_spacing = accessor.metadata.spacing
+        target_spacing = metadata.spacing
         target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
@@ -73,9 +70,9 @@ class AffineTransformer(Transformer):
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
 
         # TODO: Account for spacing and coordinate scale
-        spatial_dims = accessor.metadata.spatial_dimensions
-        x_from, x_to = resolve_coordinate_slice(x, accessor.metadata.shape[spatial_dims[-1]])
-        y_from, y_to = resolve_coordinate_slice(y, accessor.metadata.shape[spatial_dims[-2]])
+        spatial_dims = metadata.spatial_dimensions
+        x_from, x_to = resolve_coordinate_slice(x, metadata.shape[spatial_dims[-1]])
+        y_from, y_to = resolve_coordinate_slice(y, metadata.shape[spatial_dims[-2]])
 
         # Transform all four corners of the requested frame by the affine to determine min, max coordinates
         x1, y1 = self._transform_point(x_from, y_from, affine)
@@ -136,15 +133,15 @@ class AffineTransformer(Transformer):
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
 
         out_shape = (
-            np.max(transformed_coords[:, 1]).item() - np.min(transformed_coords[:, 1]).item(),
-            np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item(),
+            round(np.max(transformed_coords[:, 1]).item() - np.min(transformed_coords[:, 1]).item()),
+            round(np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item()),
         )
 
         new_metadata.spatial_shape = (*shape_tuple[:-2], *out_shape)
 
         return new_metadata
 
-    def transform_image(self, image_result: ImageResult, accessor: ImageAccessor) -> ImageResult:
+    def transform_image(self, image: ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> ndarray:
         import cv2
         import numpy as np
 
@@ -152,7 +149,6 @@ class AffineTransformer(Transformer):
 
         from ..readers.processing import (
             OPENCV_INTERPOLATION_CODES,
-            _prepare_coordinates,
             get_interpolation_for_accessor,
         )
 
@@ -162,7 +158,7 @@ class AffineTransformer(Transformer):
             target_scale = np.array([target_scale, target_scale])
         target_scale = target_scale[:2]  # TODO: general solution for 3D
 
-        target_spacing = image_result.metadata.spacing
+        target_spacing = metadata.spacing
         target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
@@ -207,7 +203,7 @@ class AffineTransformer(Transformer):
         target_origin_affine[:2, -1] = target_origin_affine[:2, -1] * target_scale
         # Step 1., 2., and 3.
         affine = target_origin_affine @ px_affine @ input_origin_affine
-        interpolation = get_interpolation_for_accessor(accessor=accessor)
+        interpolation = get_interpolation_for_accessor(accessor=accessor, metadata=metadata)
 
         if self.fill_value is None:
             if accessor.fill_value is None:
@@ -227,19 +223,19 @@ class AffineTransformer(Transformer):
             )
 
         # Apply to image or loop over stack of images if 3 spatial dims
-        spatial_dimensions = image_result.metadata.spatial_dimensions
+        spatial_dimensions = metadata.spatial_dimensions
         if len(spatial_dimensions) > 2:
             result_imgs = []
             # Loop over first spatial dimension
-            for i in range(image_result.image.shape[spatial_dimensions[0]]):
-                result_imgs.append(_apply_affine(image_result.image[i]))
+            for i in range(image.shape[spatial_dimensions[0]]):
+                result_imgs.append(_apply_affine(image[i]))
             result_image = np.stack(result_imgs, axis=0)
-            image_result.image = result_image
+            image = result_image
         else:
             # CV2
-            image_result.image = _apply_affine(image_result.image)
+            image = _apply_affine(image)
 
-        return image_result
+        return image
 
     @classmethod
     def from_json(cls, args: Dict[str, Any]):
