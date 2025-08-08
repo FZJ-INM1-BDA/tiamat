@@ -29,16 +29,16 @@ def get_reader_identifier(fname, identifier):
     return match.group(1)
 
 
-def select_slice_ix(accessor, num_slices, slice_spacing=1.0):
+def select_slice_ix(accessor, metadata, num_slices, slice_spacing=1.0):
     from tiamat.readers.processing import expand_to_length
     from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-    spatial_dims = accessor.metadata.spatial_dimensions
+    spatial_dims = metadata.spatial_dimensions
 
     assert len(spatial_dims) == 3, "Only able to perform stack slicing for 3D images"
 
     z_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
-    z_shape = accessor.metadata.shape[spatial_dims[0]]
+    z_shape = metadata.shape[spatial_dims[0]]
     z_from, z_to = resolve_coordinate_slice(accessor.z, z_shape)
 
     # Calculate minimum and maximum slice index to use
@@ -205,8 +205,10 @@ class ImageStackReader(ImageReader):
     def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         from dataclasses import replace
 
+        metadata = self.read_metadata()
+
         # Request only subset of slice handles neded for the requested scale
-        selected_slice_ix = select_slice_ix(accessor, self.num_slices)
+        selected_slice_ix = select_slice_ix(accessor, metadata, self.num_slices)
         slice_handles = self.access_slices(selected_slice_ix)
 
         if len(slice_handles) == 0:
@@ -249,15 +251,15 @@ class ImageStackReader(ImageReader):
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
         image = np.empty(
-            shape=([len(slice_handles), *first_result.image.shape]),
-            dtype=first_result.image.dtype,
+            shape=([len(slice_handles), *first_result.shape]),
+            dtype=first_result.dtype,
         )
 
         # Reuse first result
-        image[0] = first_result.image
+        image[0] = first_result
         # Read and stack all remaining images.
         for i, handle in enumerate(slice_handles[1:], 1):
-            image[i] = handle.read_image(accessor=tmp_accessor).image
+            image[i] = handle.read_image(accessor=tmp_accessor)
 
         return image
 
