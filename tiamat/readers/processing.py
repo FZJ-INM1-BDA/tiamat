@@ -7,6 +7,8 @@ import warnings
 
 import numpy as np
 
+from tiamat.metadata.metadata import ImageMetadata
+
 from ..io import (
     ImageAccessor,
     INTERPOLATION_TYPE_NEAREST,
@@ -243,7 +245,10 @@ def _zero_clip(values):
 
 
 def access_image(
-    image: np.ndarray, accessor: ImageAccessor, image_scale: float | tuple[float, ...]
+    image: np.ndarray,
+    metadata: ImageMetadata,
+    accessor: ImageAccessor,
+    image_scale: float | tuple[float, ...],
 ) -> np.ndarray:
     """Access image content.
 
@@ -266,8 +271,8 @@ def access_image(
         Requested image content
     """
 
-    coordinate_scale = _expand_to_dimension(accessor.coordinate_scale, accessor.metadata.spatial_shape)
-    image_scale = _expand_to_dimension(image_scale, accessor.metadata.spatial_shape)
+    coordinate_scale = _expand_to_dimension(accessor.coordinate_scale, metadata.spatial_shape)
+    image_scale = _expand_to_dimension(image_scale, metadata.spatial_shape)
 
     access_channels = {
         "x": accessor.x,
@@ -305,10 +310,10 @@ def access_image(
         return min(max(int(coordinate), int(min_coordinate)), int(max_coordinate))
 
     # Separate image and channel dimensions
-    ch_dims = list(accessor.metadata.channel_dimensions)
+    ch_dims = list(metadata.channel_dimensions)
     ch_dims = ch_dims if ch_dims is not None else []
 
-    image_dims = list(accessor.metadata.spatial_dimensions)
+    image_dims = list(metadata.spatial_dimensions)
     n_image_dims = len(image_dims)
 
     assert n_image_dims == 2 or n_image_dims == 3, "Only 2D or 3D images supported"
@@ -365,19 +370,19 @@ def access_image(
 
 def access_and_rescale_image(
     image: np.ndarray,
+    metadata: ImageMetadata,
     accessor: ImageAccessor,
     image_scale: float | tuple[float, ...] = 1.0,
 ):
-    assert accessor.metadata, f"access_and_rescale_image requires metadata of accessor to be set."
-    image_scale = _expand_to_dimension(image_scale, accessor.metadata.spatial_dimensions)
-    image = access_image(image=image, accessor=accessor, image_scale=image_scale)
+    image_scale = _expand_to_dimension(image_scale, metadata.spatial_dimensions)
+    image = access_image(image=image, metadata=metadata, accessor=accessor, image_scale=image_scale)
 
-    scale = _expand_to_dimension(accessor.scale, accessor.metadata.spatial_dimensions)
+    scale = _expand_to_dimension(accessor.scale, metadata.spatial_dimensions)
     assert len(scale) == len(
         image_scale
     ), f"Scale and image scale do not match: {len(scale)} vs. {len(image_scale)}"
 
-    interpolation = get_interpolation_for_accessor(accessor)
+    interpolation = get_interpolation_for_accessor(accessor, metadata)
     target_scale = tuple(s / s_image for s, s_image in zip(scale, image_scale))
     image = _rescale(
         image,
@@ -389,12 +394,12 @@ def access_and_rescale_image(
     return image
 
 
-def get_interpolation_for_accessor(accessor):
+def get_interpolation_for_accessor(accessor: ImageAccessor, metadata: ImageMetadata):
     if accessor.interpolation:
         interpolation = accessor.interpolation
-    elif accessor.metadata and accessor.metadata.image_type:
+    elif metadata and metadata.image_type:
         interpolation = get_interpolation_for_image_type(
-            image_type=accessor.metadata.image_type
+            image_type=metadata.image_type
         )
     else:
         raise RuntimeError(
