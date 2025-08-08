@@ -3,12 +3,13 @@ Reader for in-memory arrays.
 """
 
 from typing import Tuple
-from tiamat.metadata import dimensions
-from .protocol import ImageReader
-from ..io import ImageAccessor, ImageResult
-from ..metadata import ImageMetadata
 
 import numpy as np
+
+from tiamat.cache import instance_cache
+from .protocol import ImageReader
+from ..io import ImageAccessor
+from ..metadata import ImageMetadata
 
 
 class MemoryReader(ImageReader):
@@ -17,14 +18,15 @@ class MemoryReader(ImageReader):
         self._cached_image = None
         self.metadata_kwargs = metadata_kwargs
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
-        image = access_and_rescale_image(image=self.image, accessor=accessor)
+        image = access_and_rescale_image(image=self.image, metadata=self.read_metadata(), accessor=accessor)
 
-        return ImageResult(image=image, metadata=accessor.metadata)
+        return image
 
+    @instance_cache
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 
@@ -78,14 +80,20 @@ class ConstantReader(ImageReader):
 
         self.image = ConstantImage(metadata.shape, metadata.dtype, constant=fill_value)
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         from .processing import access_and_rescale_image
 
         # Read, crop, and rescale.
-        image = access_and_rescale_image(image=self.image, accessor=accessor, image_scale=accessor.scale)
+        image = access_and_rescale_image(
+            image=self.image,
+            metadata=self.read_metadata(),
+            accessor=accessor,
+            image_scale=accessor.scale
+        )
 
-        return ImageResult(image=image, metadata=accessor.metadata)
+        return image
 
+    @instance_cache
     def read_metadata(self) -> ImageMetadata:
         return self.metadata
 
