@@ -52,7 +52,7 @@ affine_matrix = build_affine(scale, rotation, mirror_x, mirror_y, translate)
 pipeline = Pipeline(
     transformers=[MinMaxNormalizationTransformer(), AffineTransformer(affine_matrix=affine_matrix), ],
 )
-result = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=access_frame[0], y=access_frame[1]))
+result = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=access_frame[0], y=access_frame[1], fill_value=0))
 
 plt.imshow(result.image)
 plt.show()

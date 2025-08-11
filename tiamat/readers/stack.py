@@ -29,16 +29,16 @@ def get_reader_identifier(fname, identifier):
     return match.group(1)
 
 
-def select_slice_ix(accessor, num_slices, slice_spacing=1.0):
+def select_slice_ix(accessor, metadata, num_slices, slice_spacing=1.0):
     from tiamat.readers.processing import expand_to_length
     from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-    spatial_dims = accessor.metadata.spatial_dimensions
+    spatial_dims = metadata.spatial_dimensions
 
     assert len(spatial_dims) == 3, "Only able to perform stack slicing for 3D images"
 
     z_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
-    z_shape = accessor.metadata.shape[spatial_dims[0]]
+    z_shape = metadata.shape[spatial_dims[0]]
     z_from, z_to = resolve_coordinate_slice(accessor.z, z_shape)
 
     # Calculate minimum and maximum slice index to use
@@ -202,11 +202,13 @@ class ImageStackReader(ImageReader):
 
         return metadata
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         from dataclasses import replace
 
+        metadata = self.read_metadata()
+
         # Request only subset of slice handles neded for the requested scale
-        selected_slice_ix = select_slice_ix(accessor, self.num_slices)
+        selected_slice_ix = select_slice_ix(accessor, metadata, self.num_slices)
         slice_handles = self.access_slices(selected_slice_ix)
 
         if len(slice_handles) == 0:
@@ -223,41 +225,43 @@ class ImageStackReader(ImageReader):
             elif self.stack_dimension == dimensions.Z:
                 tmp_accessor.scale = tmp_accessor.scale[:2]
 
-        metadata = replace(tmp_accessor.metadata)
-        metadata.shape = metadata.shape[1:]
-        dimension_list = list(metadata.dimensions)
-        dimension_list.remove(self.stack_dimension)
+        # TODO: Check if unnecessary and remove
+        # metadata = replace(tmp_accessor.metadata)
+        # metadata.shape = metadata.shape[1:]
+        # dimension_list = list(metadata.dimensions)
+        # dimension_list.remove(self.stack_dimension)
 
-        # for each scale, remove the z scale
-        scales = list(metadata.scales)
-        for i, s in enumerate(scales):
-            if self.stack_dimension == dimensions.X:
-                scales[i] = s[1:]
-            elif self.stack_dimension == dimensions.Y:
-                scales[i] = (s[0], *s[2:])
-            elif self.stack_dimension == dimensions.Z:
-                scales[i] = s[:2]
-            else:
-                raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+        # # for each scale, remove the z scale
+        # if metadata.scales is not None:
+        #     scales = list(metadata.scales)
+        #     for i, s in enumerate(scales):
+        #         if self.stack_dimension == dimensions.X:
+        #             scales[i] = s[1:]
+        #         elif self.stack_dimension == dimensions.Y:
+        #             scales[i] = (s[0], *s[2:])
+        #         elif self.stack_dimension == dimensions.Z:
+        #             scales[i] = s[:2]
+        #         else:
+        #             raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+        #     metadata.scales = tuple(scales)
 
-        metadata.dimensions = dimension_list
-        tmp_accessor.metadata = metadata
-        tmp_accessor.scales = tuple(scales)
+        # metadata.dimensions = dimension_list
+        # tmp_accessor.metadata = metadata
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
         image = np.empty(
-            shape=([len(slice_handles), *first_result.image.shape]),
-            dtype=first_result.image.dtype,
+            shape=([len(slice_handles), *first_result.shape]),
+            dtype=first_result.dtype,
         )
 
         # Reuse first result
-        image[0] = first_result.image
+        image[0] = first_result
         # Read and stack all remaining images.
         for i, handle in enumerate(slice_handles[1:], 1):
-            image[i] = handle.read_image(accessor=tmp_accessor).image
+            image[i] = handle.read_image(accessor=tmp_accessor)
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return image
 
     @property
     def file_handle(self) -> ImageReader:
@@ -496,18 +500,18 @@ class VolumeStackReader(ImageReader):
 
         return metadata
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         import math
         from dataclasses import replace
 
         from tiamat.readers.processing import (
-            _prepare_coordinates,
             expand_to_length,
             prepare_coordinate,
         )
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-        z_dim, y_dim, x_dim = accessor.metadata.spatial_dimensions
+        metadata = self.read_metadata()
+        z_dim, y_dim, x_dim = metadata.spatial_dimensions
 
         image_z_size = self.shape[z_dim]
         image_scales = expand_to_length(accessor.scale, 3)  # x, y, z
@@ -556,7 +560,7 @@ class VolumeStackReader(ImageReader):
                 tmp_accessor = replace(accessor, z=(from_ix, to_ix))
 
                 # print("VolumeStackReader", accessor)
-                tmp_image = handle.read_image(accessor=tmp_accessor).image
+                tmp_image = handle.read_image(accessor=tmp_accessor)
 
                 # Position in the output array to place the image
                 scaled_z_offset = math.floor(max(cur_z_offset - z_from, 0) * image_scales[-1])
@@ -569,7 +573,7 @@ class VolumeStackReader(ImageReader):
             else:
                 cur_z_offset += z_size
 
-        return ImageResult(image=out_image, accessor=accessor, metadata=accessor.metadata)
+        return out_image
 
     @classmethod
     def check_file(cls, fname: str | List[str]) -> bool | int | float:
