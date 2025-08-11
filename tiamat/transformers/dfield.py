@@ -220,10 +220,10 @@ class DeformationFieldTransformer(Transformer):
         # Crop the output to valid pixels not affected by the margin
         # TODO: Check if rounding up or down here
         offset = (
-            math.floor((dfield_crop.image.shape[0] - target_shape[0]) / 2),
-            math.floor((dfield_crop.image.shape[1] - target_shape[1]) / 2),
+            math.floor((dfield_crop.shape[0] - target_shape[0]) / 2),
+            math.floor((dfield_crop.shape[1] - target_shape[1]) / 2),
         )
-        dfield_vectors = dfield_crop.image[
+        dfield_vectors = dfield_crop[
             offset[0]:(offset[0] + target_shape[0]),
             offset[1]:(offset[1] + target_shape[1])
         ]
