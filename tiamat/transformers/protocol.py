@@ -10,25 +10,75 @@ from ..metadata import ImageMetadata
 
 
 class Transformer(Protocol):
+    """
+    Protocol for image transformation steps in a pipeline.
 
-    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
-        """
-        Applies a transformation that affects accessing the image.
+    A transformer can modify metadata, access parameters, and image data 
+    in three stages, executed in the following order:
 
-        Note: If this method modifies the incoming accessor,
-        it has to return a __copy__ of the incoming object.
-        The copy can be created using datalcasses.replace.
-        """
-        return accessor
+        1. transform_metadata
+        2. transform_access
+        3. transform_image
+    """
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         """
-        Applies a transformation to the metadata of an image.
+        Adjusts image metadata to match the metadata describing 
+        the transformed image returned by `transform_image`.
+
+        Parameters
+        ----------
+        metadata : ImageMetadata
+            Metadata from the downstream transformer or pipeline reader.
+
+        Returns
+        -------
+        ImageMetadata
+            Updated metadata associated with the transformed image.
         """
         return metadata
 
-    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         """
-        Transform an incoming image.
+        Modifies how the image should be accessed to read the correct image
+        input required by `transform_image`.
+
+        Parameters
+        ----------
+        accessor : ImageAccessor
+            Access configuration from the upstream transformer or user.
+        metadata : ImageMetadata
+            Metadata output from this transformer's `transform_metadata`.
+
+        Returns
+        -------
+        ImageAccessor
+            Updated accessor to be passed downstream.
+        """
+        return accessor
+
+    def transform_image(
+        self,
+        image: np.ndarray,
+        metadata: ImageMetadata,
+        accessor: ImageAccessor
+    ) -> np.ndarray:
+        """
+        Modifies image pixel data based on its metadata and an accessor.
+
+        Parameters
+        ----------
+        image : np.ndarray
+            Image data from a downstream transformer or the pipeline reader
+            to be transformed.
+        metadata : ImageMetadata
+            Associated metadata from the downstream transformer or reader.
+        accessor : ImageAccessor
+            Access configuration from the upstream transformer or user.
+
+        Returns
+        -------
+        np.ndarray
+            Transformed image data.
         """
         return image
