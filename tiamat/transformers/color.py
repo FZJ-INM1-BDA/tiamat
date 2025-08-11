@@ -2,6 +2,8 @@
 Color transformers.
 """
 
+import numpy as np
+
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -11,20 +13,19 @@ class LUTTransformer(Transformer):
     def __init__(self, color_map):
         self.color_map = color_map
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
-        assert image_result.metadata, f"LUTTransformer requires metadata."
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         assert (
-            image_result.metadata.value_range is not None
+            metadata.value_range is not None
         ), f"LUTTransformer requires metadata.value_range."
 
-        image_result.image = self._apply_color_map(
-            image=image_result.image, value_range=image_result.metadata.value_range
+        image = self._apply_color_map(
+            image=image, value_range=metadata.value_range
         )
 
-        return image_result
+        return image
 
     def _apply_color_map(self, image, value_range):
         import numpy as np
@@ -57,19 +58,20 @@ class LUTTransformer(Transformer):
 
 
 class GrayscaleTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         import cv2
         from tiamat.metadata import dimensions
 
         # Only do this if the image contains RGB/RGBA channels
-        if dimensions.RGB in image_result.metadata.dimensions or dimensions.RGBA in image_result.metadata.dimensions:
+        if dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions:
             # TODO: Check if COLOR_BGR2GRAY is correct or COLOR_RGB2GRAY should be used
-            image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_BGR2GRAY)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        return image_result
+        return image
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
@@ -83,19 +85,19 @@ class GrayscaleTransformer(Transformer):
 
 
 class GrayscaleToRGBTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         import cv2
         from tiamat.metadata import dimensions
 
         # Only do something if the image is not already RGB.
-        metadata = image_result.metadata
         if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
-            image_result.image = cv2.cvtColor(image_result.image, cv2.COLOR_GRAY2RGB)
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
 
-        return image_result
+        return image
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
@@ -110,16 +112,17 @@ class GrayscaleToRGBTransformer(Transformer):
 
 
 class FloatToByteTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         import numpy as np
 
-        if np.issubdtype(image_result.image.dtype, np.floating):
-            image_result.image = (image_result.image * 255).astype(np.uint8)
+        if np.issubdtype(image.dtype, np.floating):
+            image = (image * 255).astype(np.uint8)
 
-        return image_result
+        return image
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         metadata.value_range = (0, 255)

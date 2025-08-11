@@ -123,8 +123,8 @@ def test_affine_transform_image(src_img, affine, exp_img):
     print("Reader:\n", input_accessor)
 
     # Forward path
-    src = ImageResult(img_nd, input_accessor, meta)
-    result = xform.transform_image(src)
+    src = ImageResult(img_nd, meta)
+    result = xform.transform_image(src, input_accessor)
 
     print("Result:\n", result.image)
     print("Expected:\n", exp_nd)

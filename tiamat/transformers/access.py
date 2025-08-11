@@ -2,6 +2,9 @@
 Transformers that affect how files are accessed.
 """
 import math
+
+import numpy as np
+
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -9,11 +12,9 @@ from ..metadata import ImageMetadata
 
 class SpacingToScaleTransformer(Transformer):
 
-    def transform_access(self, accessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
 
-        metadata = accessor.metadata
-        assert metadata is not None, f"SpacingToScaleTransformer requires metadata."
         assert metadata.spacing is not None, f"SpacingToScaleTransformer requires spacing, but metadata does not provide it. Make sure to use a suitable reader, or provide the metadata yourself."
         assert accessor.coordinate_spacing is not None, f"SpacingToScaleTransformer requires accessor.coordinate_spacing."
         assert accessor.spacing is not None, f"SpacingToScaleTransformer requires accessor.spacing."
@@ -34,8 +35,8 @@ class SpacingToScaleTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result):
-        return image_result
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        return image
 
     @classmethod
     def _scale_coordinate(cls, coordinate, input_spacing, output_spacing):
@@ -50,11 +51,10 @@ class SpacingToScaleTransformer(Transformer):
 
 
 class FractionTransformer(Transformer):
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
 
-        metadata = accessor.metadata
-        assert metadata is not None, f"FractionTransformer requires metadata."
         assert metadata.shape is not None, f"FractionTransformer requires metadata.shape."
 
         accessor = replace(accessor)
@@ -74,8 +74,8 @@ class FractionTransformer(Transformer):
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
-        return image_result
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        return image
 
     @classmethod
     def _scale_coordinate(cls, fraction, image_dimension):
