@@ -560,7 +560,7 @@ class VolumeStackReader(ImageReader):
                 tmp_accessor = replace(accessor, z=(from_ix, to_ix))
 
                 # print("VolumeStackReader", accessor)
-                tmp_image = handle.read_image(accessor=tmp_accessor).image
+                tmp_image = handle.read_image(accessor=tmp_accessor)
 
                 # Position in the output array to place the image
                 scaled_z_offset = math.floor(max(cur_z_offset - z_from, 0) * image_scales[-1])

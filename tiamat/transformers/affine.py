@@ -135,7 +135,7 @@ class AffineTransformer(Transformer):
             round(np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item()),
         )
 
-        new_metadata.spatial_shape = (*shape_tuple[:-2], *out_shape)
+        new_metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
 
         return new_metadata
 
