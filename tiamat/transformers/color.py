@@ -2,6 +2,8 @@
 Color transformers.
 """
 
+import numpy as np
+
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
@@ -51,8 +53,17 @@ class LUTTransformer(Transformer):
 
         metadata = replace(metadata)
 
-        metadata.shape = (*metadata.shape, 3)
-        
+        if isinstance(self.color_map, str):
+            import matplotlib
+            metadata.dtype = np.asarray(matplotlib.colormaps.get_cmap(self.color_map)(0)).dtype
+            ldim = len(matplotlib.colormaps.get_cmap(self.color_map)(0))
+        elif isinstance(self.color_map, (np.ndarray, (tuple, list))):
+            metadata.dtype = np.asarray(self.color_map).dtype
+            ldim = len(self.color_map[0])
+        else:
+            raise RuntimeError(f"Unknown type for color map: {type(self.color_map)}")
+        metadata.shape = (*metadata.shape, ldim)
+
         return metadata
 
 
@@ -78,6 +89,8 @@ class GrayscaleTransformer(Transformer):
         # remove all color dimensions
         metadata = replace(metadata)
         metadata.dimensions = [dimension for dimension in metadata.dimensions if dimension not in (dimensions.RGB, dimensions.RGBA)]
+
+        metadata.shape = metadata.shape[:-1]
            
         return metadata
 
