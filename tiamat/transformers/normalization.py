@@ -1,10 +1,12 @@
 """
 Normalization transformers.
 """
+
+import numpy as np
+
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
-import numpy as np
 
 
 class MinMaxNormalizationTransformer(Transformer):
@@ -15,6 +17,9 @@ class MinMaxNormalizationTransformer(Transformer):
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        metadata.dtype = self.target_dtype
+        metadata.value_range = (0.0, 1.0)
+
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
