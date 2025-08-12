@@ -2,10 +2,14 @@
 Reader for pipelines.
 """
 
-from functools import cached_property, cache, partial
+from functools import partial
 from typing import Any, Dict
+
+import numpy as np
+
+from tiamat.cache import instance_cache
 from .protocol import ImageReader
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
@@ -15,11 +19,12 @@ class PipelineReader(ImageReader):
         self.pipeline = pipeline
         self.reader_kwargs = reader_kwargs
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         return self.pipeline(
             file_name=self.fname, accessor=accessor, **self.reader_kwargs
-        )
+        ).image
 
+    @instance_cache
     def read_metadata(self) -> ImageMetadata:
         return self.pipeline.read_metadata(file_name=self.fname, **self.reader_kwargs)
 
