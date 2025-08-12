@@ -144,9 +144,11 @@ class Array(object):
             dim: ai for ai, dim in zip(array_intervals, dim_names)
         }
 
-        # consolidate channel access into a named dictionary 
+        # consolidate channel access into a named dictionary
         spatial_accessor_kwargs = {key: value for key, value in accessor_kwargs.items() if key in dimensions.SPATIAL_DIMENSIONS}
         channel_accessor_kwargs = {key: value for key, value in accessor_kwargs.items() if key not in spatial_accessor_kwargs}
+        if len(channel_accessor_kwargs) == 0:
+            channel_accessor_kwargs = None
 
         accessor = ImageAccessor(
             **spatial_accessor_kwargs,
