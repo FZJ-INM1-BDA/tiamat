@@ -5,6 +5,7 @@ Reader for Stacks.
 import math
 from functools import cached_property, partial
 from typing import Any, Callable, Dict, Iterable, List
+from collections import defaultdict
 
 import numpy as np
 
@@ -438,13 +439,20 @@ class VolumeStackReader(ImageReader):
         return len(self.slices)
 
     @property
+    def _file_names_per_reader_identifier(self):
+        file_matches = defaultdict(list)
+        for fname in self.slices:
+            file_matches[get_reader_identifier(fname, self.reader_identifier)].append(fname)
+        return file_matches
+
+    @property
     def ordered_subvolume_handles(self):
         if isinstance(self.reader_factory, dict):
             reader_list = []
             for k in sorted(self.reader_factory.keys()):
                 factory = self.reader_factory[k]
                 # Find all files that match k
-                file_matches = tuple(fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k)
+                file_matches = tuple(self._file_names_per_reader_identifier[k])
                 if len(file_matches) > 1:
                     reader_list.append(factory(file_matches))
                 if len(file_matches) == 1:
