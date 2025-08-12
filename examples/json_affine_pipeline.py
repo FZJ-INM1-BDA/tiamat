@@ -30,6 +30,7 @@ result = pipeline(
     file_name=file_name, accessor=ImageAccessor(
         x=(-100, metadata.spatial_shape[-1] + 100),
         y=(-100, metadata.spatial_shape[-2] + 100),
+        fill_value=0,
     )
 )
 
