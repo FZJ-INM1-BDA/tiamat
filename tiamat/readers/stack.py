@@ -442,7 +442,7 @@ class VolumeStackReader(ImageReader):
     def num_slices(self) -> int:
         return len(self.slices)
 
-    @property
+    @cached_property
     def _file_names_per_reader_identifier(self):
         file_matches = defaultdict(list)
         for fname in self.slices:
