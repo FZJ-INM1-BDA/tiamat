@@ -4,6 +4,7 @@ Reader for Stacks.
 
 import math
 from functools import cached_property, partial
+import re
 from typing import Any, Callable, Dict, Iterable, List
 from collections import defaultdict
 
@@ -22,10 +23,21 @@ def find_slices(fnames: str) -> List[str]:
     return sorted(glob.glob(fnames))
 
 
-def get_reader_identifier(fname, identifier):
-    import re
+def compile_identifier(identifier: str | None) -> re.Pattern:
+    if identifier is None:
+        return None
+    else:
+        # Parse the regex and see if there are any groups present
+        if '(' not in identifier:
+            # Add group if no group is present
+            identifier = f".*({identifier}).*"
+        return re.compile(identifier)
 
-    match = re.search(identifier, fname)
+
+def get_reader_identifier(fname: str, identifier: re.Pattern):
+    match = identifier.search(fname)
+    if not match:
+        raise ValueError(f"No match for identifier \"{identifier}\" in filename \"{fname}\"")
 
     return match.group(1)
 
@@ -103,7 +115,7 @@ class ImageStackReader(ImageReader):
 
         if isinstance(self.reader_factory, dict):
             assert reader_identifier is not None
-        self.reader_identifier = reader_identifier
+        self.compiled_identifier = compile_identifier(reader_identifier)
 
         self.slice_spacing = slice_spacing
         self.stack_dimension = stack_dimension
@@ -122,7 +134,7 @@ class ImageStackReader(ImageReader):
         else:
             return (*expand_to_length(spacing, 2), slice_spacing)
 
-    def _prepare_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
+    def selected_slice_handles(self, slice_ix: Iterable[int]) -> List[ImageReader]:
         from tiamat.readers.memory import ConstantReader
 
         selected_slices = [self.slices[i] for i in slice_ix]
@@ -137,15 +149,15 @@ class ImageStackReader(ImageReader):
                     reader_list.append(ConstantReader(self.missing_section_fill_value, self.prototype_metadata))
                 else:
                     # Existing section needs corresponding reader
-                    identifier = get_reader_identifier(fname, self.reader_identifier)
+                    identifier = get_reader_identifier(fname, self.compiled_identifier)
                     factory = self.reader_factory[identifier]
                     reader_list.append(factory(fname))
 
         elif isinstance(self.reader_factory, (tuple, list)):
             # Map each slice to reader at same slice index
             selected_readers = [self.reader_factory[i] for i in slice_ix]
-            for reader, fname in zip(selected_readers, selected_slices):
-                reader_list.append(reader(fname))
+            for factory, fname in zip(selected_readers, selected_slices):
+                reader_list.append(factory(fname))
 
         else:
             # Use same reader for all selected slices
@@ -157,18 +169,13 @@ class ImageStackReader(ImageReader):
 
         return reader_list
 
-    def access_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
-        selected_readers = self._prepare_slices(slice_ix)
-
-        return selected_readers
-
     @property
     def ordered_slice_handles(self):
-        return self.access_slices(range(len(self.slices)))
+        return self.selected_slice_handles(range(len(self.slices)))
 
     @property
     def prototype_slice_handle(self) -> ImageReader:
-        selected_handles = self._prepare_slices([0])
+        selected_handles = self.selected_slice_handles([0])
 
         return selected_handles[0]
 
@@ -210,7 +217,7 @@ class ImageStackReader(ImageReader):
 
         # Request only subset of slice handles neded for the requested scale
         selected_slice_ix = select_slice_ix(accessor, metadata, self.num_slices)
-        slice_handles = self.access_slices(selected_slice_ix)
+        slice_handles = self.selected_slice_handles(selected_slice_ix)
 
         if len(slice_handles) == 0:
             raise Exception("Requested empty stack")
@@ -276,7 +283,7 @@ class ImageStackReader(ImageReader):
         else:
             available_slices = find_slices(fnames=self.fnames)
 
-        if self.reader_identifier is None:
+        if self.compiled_identifier is None:
             if isinstance(self.reader_factory, dict):
                 raise Exception("Using a dictionary as reader_factory requires a reader_identifier to be provided")
             if self.missing_section_interpolation is None:
@@ -290,10 +297,10 @@ class ImageStackReader(ImageReader):
             if isinstance(self.reader_factory, dict):
                 available_slices = [
                     f for f in available_slices
-                    if get_reader_identifier(f, self.reader_identifier) in self.reader_factory.keys()
+                    if get_reader_identifier(f, self.compiled_identifier) in self.reader_factory.keys()
                 ]
 
-            available_keys = [int(get_reader_identifier(f, self.reader_identifier)) for f in available_slices]
+            available_keys = [int(get_reader_identifier(f, self.compiled_identifier)) for f in available_slices]
             sorted_ix = np.argsort(available_keys)
 
             if self.missing_section_interpolation is None:
@@ -427,7 +434,7 @@ class VolumeStackReader(ImageReader):
 
         if isinstance(self.reader_factory, dict):
             assert reader_identifier is not None
-        self.reader_identifier = reader_identifier
+        self.compiled_identifier = compile_identifier(reader_identifier)
 
         self.reader_kwargs = reader_kwargs or {}
 
@@ -446,7 +453,7 @@ class VolumeStackReader(ImageReader):
     def _file_names_per_reader_identifier(self):
         file_matches = defaultdict(list)
         for fname in self.slices:
-            file_matches[get_reader_identifier(fname, self.reader_identifier)].append(fname)
+            file_matches[get_reader_identifier(fname, self.compiled_identifier)].append(fname)
         return file_matches
 
     @property
