@@ -16,7 +16,7 @@ def reader_cache(cls, file_name, **reader_kwargs):
 
 cached_reader_factory = partial(reader_cache, GenericReader)
 
-# We want to be able to access our image using physical coordinates, so we add a SpacingToScaleTransformer.
+# Define a simple pipeline
 pipeline = Pipeline(
     reader_factory=cached_reader_factory,
 )
