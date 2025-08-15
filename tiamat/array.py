@@ -18,7 +18,7 @@ def slice_to_interval(array_slice, shape):
         raise IndexError(
             f"Encountered invalid slice with {len(array_slice)} dimensions, but array has dimension {len(shape)}"
         )
-    
+
     # expand ellipsis (array[...])
     array_slice = list(array_slice)
     for i, sl in enumerate(array_slice):
@@ -52,7 +52,7 @@ def slice_to_interval(array_slice, shape):
         if stop and stop < 0:
             stop = shape[i] + stop
         array_intervals.append((start, stop))
-    
+
     return array_intervals, squeeze_dims
 
 
@@ -74,11 +74,13 @@ class Array(object):
         pipeline: Pipeline,
         scale: float | int | Iterable[float | int],
         reader_kwargs: dict | None = None,
+        shape_round_mode: str = "round",
     ) -> None:
         self.file_name = file_name
         self.pipeline = pipeline
         self.scale = scale
         self.reader_kwargs = reader_kwargs or {}
+        self.shape_round_mode = shape_round_mode
 
     @classmethod
     def create_arrays_for_scales(
@@ -107,13 +109,24 @@ class Array(object):
             file_name=self.file_name, **self.reader_kwargs
         )
 
-    @property
+    @cached_property
     def shape(self):
         """Shape of the image."""
         import numpy as np
 
+        shape_round_functions = {
+            "round": np.round,
+            "ceil": np.ceil,
+            "floor": np.floor,
+        }
+        shape_fn = shape_round_functions.get(self.shape_round_mode)
+        if shape_fn is None:
+            raise RuntimeError(
+                f"Invalid shape_round_mode {self.shape_round_mode}. Valid: {','.join(list(shape_round_functions.keys()))}"
+            )
+
         return tuple(
-            np.ceil(np.array(self.metadata.shape) * self.scale).astype(int).tolist()
+            shape_fn(np.array(self.metadata.shape) * self.scale).astype(int).tolist()
         )
 
     @property
@@ -134,19 +147,24 @@ class Array(object):
         return self.metadata.dtype
 
     def __getitem__(self, array_slice: slice | Tuple[slice] | None):
-
         array_intervals, squeeze_dims = slice_to_interval(array_slice, self.shape)
 
         # matching from slice to dimension names. We assume fixed (z, y, x) indexing
         dim_names = self.metadata.dimensions
 
-        accessor_kwargs = {
-            dim: ai for ai, dim in zip(array_intervals, dim_names)
-        }
+        accessor_kwargs = {dim: ai for ai, dim in zip(array_intervals, dim_names)}
 
         # consolidate channel access into a named dictionary
-        spatial_accessor_kwargs = {key: value for key, value in accessor_kwargs.items() if key in dimensions.SPATIAL_DIMENSIONS}
-        channel_accessor_kwargs = {key: value for key, value in accessor_kwargs.items() if key not in spatial_accessor_kwargs}
+        spatial_accessor_kwargs = {
+            key: value
+            for key, value in accessor_kwargs.items()
+            if key in dimensions.SPATIAL_DIMENSIONS
+        }
+        channel_accessor_kwargs = {
+            key: value
+            for key, value in accessor_kwargs.items()
+            if key not in spatial_accessor_kwargs
+        }
         if len(channel_accessor_kwargs) == 0:
             channel_accessor_kwargs = None
 
