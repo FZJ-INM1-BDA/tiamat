@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./resources/tiamat.png" />
+  <img src="https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/raw/develop/assets/logo512.png" />
 </p>
 
 # tiamat - Tiled Image Access, Manipulation, and Analysis Toolkit
