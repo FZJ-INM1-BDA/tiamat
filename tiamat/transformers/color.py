@@ -88,9 +88,10 @@ class GrayscaleTransformer(Transformer):
 
         # remove all color dimensions
         metadata = replace(metadata)
+        if dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions:
+            metadata.shape = metadata.shape[:-1]
         metadata.dimensions = [dimension for dimension in metadata.dimensions if dimension not in (dimensions.RGB, dimensions.RGBA)]
 
-        metadata.shape = metadata.shape[:-1]
            
         return metadata
 
