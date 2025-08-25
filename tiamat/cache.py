@@ -31,16 +31,20 @@ class instance_cached_property:
     def __get__(self, instance, owner):
         if instance is None:
             return self
-        
+
         if instance not in self._values:
             value = self.func(instance)
             self._values[instance] = value
 
         return self._values[instance]
-    
+
     def __set__(self, instance, value):
         self._values[instance] = value
 
     def __delete__(self, instance):
         if instance in self._values:
-            del self._values[instance]
+            try:
+                del self._values[instance]
+            except KeyError:
+                # necessary for thread-safety
+                pass
