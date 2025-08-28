@@ -4,6 +4,8 @@ Transformers that change the output view
 
 from typing import Tuple
 
+import numpy as np
+
 from tiamat.metadata import dimensions
 from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
@@ -64,11 +66,9 @@ class BoundingBoxTransformer(Transformer):
         )
         return shape
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
 
-        metadata = accessor.metadata
-        assert metadata is not None, "BoundingBoxTransformer requires metadata."
         assert metadata.shape is not None, "BoundingBoxTransformer requires metadata.shape."
 
         accessor = replace(accessor)
@@ -117,19 +117,15 @@ class BoundingBoxTransformer(Transformer):
         return metadata
 
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
-        import numpy as np
-
-        accessor = image_result.accessor
-
-        residuals = image_result.accessor.history[id(self)]
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        residuals = accessor.history[id(self)]
 
         # Revert cropping from crop_coordinate with fill value padding
         if accessor.fill_value is not None:
             if any(any(p > 0 for p in pad) for pad in residuals):
-                padding = [(0, 0) for _ in range(len(accessor.metadata.dimensions))]
-                for i, dimension in enumerate(accessor.metadata.spatial_dimensions):
+                padding = [(0, 0) for _ in range(len(metadata.dimensions))]
+                for i, dimension in enumerate(metadata.spatial_dimensions):
                     padding[dimension] = residuals[i]
-                image_result.image = np.pad(image_result.image, padding, constant_values=accessor.fill_value)
+                image = np.pad(image, padding, constant_values=accessor.fill_value)
 
-        return image_result
+        return image

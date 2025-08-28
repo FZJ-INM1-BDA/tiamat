@@ -2,10 +2,16 @@
 Reader that delegates image reading to a processing pipeline.
 """
 from collections.abc import Callable
-from functools import  partial
+from functools import partial
+
+from functools import partial
 from typing import Any, Dict
+
+import numpy as np
+
+from tiamat.cache import instance_cache
 from .protocol import ImageReader
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
@@ -15,7 +21,8 @@ class PipelineReader(ImageReader):
 
     This allows pipelines to be used as drop-in replacements for standard image readers.
     """
-    def __init__(self, fname: str, pipeline: Callable, **reader_kwargs:Any):
+
+    def __init__(self, fname: str, pipeline: Callable, **reader_kwargs: Any):
         """
         Initializes a PipelineReader.
 
@@ -28,7 +35,7 @@ class PipelineReader(ImageReader):
         self.pipeline = pipeline
         self.reader_kwargs = reader_kwargs
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         """
         Reads and processes the image using the pipeline.
 
@@ -40,9 +47,9 @@ class PipelineReader(ImageReader):
         """
         return self.pipeline(
             file_name=self.fname, accessor=accessor, **self.reader_kwargs
-        )
+        ).image
 
-
+    @instance_cache
     def read_metadata(self) -> ImageMetadata:
         """
         Reads metadata using the pipeline.
@@ -51,8 +58,6 @@ class PipelineReader(ImageReader):
             ImageMetadata: Metadata read from the pipeline.
         """
         return self.pipeline.read_metadata(file_name=self.fname, **self.reader_kwargs)
-
-
 
     @classmethod
     def check_file(cls, fname:str) -> bool:
@@ -86,7 +91,7 @@ class PipelineReader(ImageReader):
 
         pipeline = load_pipeline_from_config(args["pipeline"], reader_post_creation_hook=reader_post_creation_hook)
 
-        #TODO: Handle kwargs
+        # TODO: Handle kwargs
         return partial(
             cls,
             pipeline=pipeline,

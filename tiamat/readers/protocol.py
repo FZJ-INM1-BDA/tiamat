@@ -4,15 +4,25 @@ Protocol for readers.
 
 from typing import Protocol, Union
 from ..io import ImageAccessor, ImageResult
+from typing import Protocol
+
+import numpy as np
+
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 CheckResult = Union[bool, int, float]
 
 class ImageReader(Protocol):
     """
-    Interface for image readers used to load image data and metadata.
+    Protocol for reading image data and metadata from a source.
+
+    Expected call order in a pipeline:
+        1. `read_metadata` → supplies metadata to the first transformer's `transform_metadata`
+        2. `read_image` → supplies image data to the first transformer's `transform_image`
     """
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         """
         Read and return the image content.
 
@@ -20,7 +30,7 @@ class ImageReader(Protocol):
             accessor (ImageAccessor): Accessor defining which part of the image to read.
 
         Returns:
-            ImageResult: The resulting image data.
+            np.ndarray: The resulting image data as a Numpy array.
         """
         ...
 
@@ -29,12 +39,13 @@ class ImageReader(Protocol):
         Read and return metadata associated with the image.
 
         Returns:
-            ImageMetadata: The metadata of the image.
+            ImageMetadata: The metadata of the image containing shape, spatial and channel dimensions, spacing,
+            and other properties.
         """
     ...
 
     @classmethod
-    def check_file(cls, fname:str) -> CheckResult:
+    def check_file(cls, fname:str) ->  bool | int | float:
         """
         Check if the reader is compatible with the given file.
 
@@ -42,6 +53,7 @@ class ImageReader(Protocol):
             fname (str): The file path or identifier.
 
         Returns:
-            CheckResult: True (0), or a priority (int/float) if compatible, or False/<0> if not.
+             Truthy value if the file is supported. Can return a numeric
+            score indicating priority among multiple readers.
         """
         ...
