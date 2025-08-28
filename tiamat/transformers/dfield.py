@@ -148,7 +148,7 @@ class DeformationFieldTransformer(Transformer):
         return out_image
 
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
         import math
 
@@ -156,8 +156,8 @@ class DeformationFieldTransformer(Transformer):
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         image_scale = expand_to_length(accessor.scale, 2)[:2]
-        image_spacing = expand_to_length(accessor.metadata.spacing, 2)[:2]
-        image_shape = accessor.metadata.shape
+        image_spacing = expand_to_length(metadata.spacing, 2)[:2]
+        image_shape = metadata.shape
 
         coord_scale = expand_to_length(accessor.coordinate_scale, 2)
 
@@ -165,7 +165,7 @@ class DeformationFieldTransformer(Transformer):
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
 
-        spatial_dims = accessor.metadata.spatial_dimensions
+        spatial_dims = metadata.spatial_dimensions
         x_from, x_to = resolve_coordinate_slice(x, image_shape[spatial_dims[-1]])
         y_from, y_to = resolve_coordinate_slice(y, image_shape[spatial_dims[-2]])
 
@@ -199,7 +199,6 @@ class DeformationFieldTransformer(Transformer):
 
         # Build temporary accessor to read dfield vectors
         tmp_accessor = replace(accessor)
-        tmp_accessor.metadata = self.dfield_metadata
         tmp_accessor.scale = target_scale
         tmp_accessor.coordinate_scale = tmp_coord_scale
         tmp_accessor.interpolation = 'linear'
@@ -221,10 +220,10 @@ class DeformationFieldTransformer(Transformer):
         # Crop the output to valid pixels not affected by the margin
         # TODO: Check if rounding up or down here
         offset = (
-            math.floor((dfield_crop.image.shape[0] - target_shape[0]) / 2),
-            math.floor((dfield_crop.image.shape[1] - target_shape[1]) / 2),
+            math.floor((dfield_crop.shape[0] - target_shape[0]) / 2),
+            math.floor((dfield_crop.shape[1] - target_shape[1]) / 2),
         )
-        dfield_vectors = dfield_crop.image[
+        dfield_vectors = dfield_crop[
             offset[0]:(offset[0] + target_shape[0]),
             offset[1]:(offset[1] + target_shape[1])
         ]
@@ -284,18 +283,21 @@ class DeformationFieldTransformer(Transformer):
 
         return metadata
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         try:
-            px_coordinates = image_result.accessor.history[id(self)]
+            px_coordinates = accessor.history[id(self)]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
         if self.fill_value is None:
-            fill_value = image_result.accessor.fill_value
+            if accessor.fill_value is None:
+                fill_value = 0
+            else:
+                fill_value = accessor.fill_value
         else:
             fill_value = self.fill_value
 
-        ch_dim = image_result.metadata.channel_dimensions
+        ch_dim = metadata.channel_dimensions
         if len(ch_dim) > 1:
             raise Exception(f"Multiple channels {ch_dim} not supported in DeformationField Transformer")
         elif len(ch_dim) == 1:
@@ -303,14 +305,14 @@ class DeformationFieldTransformer(Transformer):
         else:
             ch_dim = None
 
-        spatial_dimensions = image_result.metadata.spatial_dimensions
+        spatial_dimensions = metadata.spatial_dimensions
         if len(spatial_dimensions) > 2:
             result_imgs = []
             # Loop over first spatial dimension
-            for i in range(image_result.image.shape[spatial_dimensions[0]]):
+            for i in range(image.shape[spatial_dimensions[0]]):
                 result_imgs.append(
                     DeformationFieldTransformer.apply_deformation(
-                        image=image_result.image[i],
+                        image=image[i],
                         coordinates=px_coordinates,
                         channel_dim=ch_dim,
                         fill_value=fill_value,
@@ -318,17 +320,17 @@ class DeformationFieldTransformer(Transformer):
                     )
                 )
             result_image = np.stack(result_imgs, axis=0)
-            image_result.image = result_image
+            image = result_image
         else:
-            image_result.image = DeformationFieldTransformer.apply_deformation(
-                image=image_result.image,
+            image = DeformationFieldTransformer.apply_deformation(
+                image=image,
                 coordinates=px_coordinates,
                 channel_dim=ch_dim,
                 fill_value=fill_value,
                 interpolation=self.interpolation,
             )
 
-        return image_result
+        return image
 
     @classmethod
     def from_json(cls, args: Dict[str, Any]):

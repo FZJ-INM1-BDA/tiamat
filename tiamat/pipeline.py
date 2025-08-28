@@ -46,12 +46,12 @@ class Pipeline:
 
         # For convenience, access transformers and image transformers can be specified separately.
         # This saves users from thinking about the (maybe) unintuitive order of coordinate transformers.
-        if access_transformers:
-            # Access transformers are applied first, but in reverse order. Make sure that access_transformers is reversable first.
-            access_transformers = list(access_transformers)
-            self.transformers.extend(access_transformers[::-1])
         if image_transformers:
             self.transformers.extend(image_transformers)
+        if access_transformers:
+            # Access transformers are applied in reverse order. Make sure that access_transformers is reversable first.
+            access_transformers = list(access_transformers)
+            self.transformers.extend(access_transformers[::-1])
 
         self.reader_factory = reader_factory or get_reader
         self.auto_register_default_readers = auto_register_default_readers
@@ -60,7 +60,6 @@ class Pipeline:
             self,
             file_name: str,
             accessor: ImageAccessor,
-            read_metadata: bool = True,
             **reader_kwargs: Any
     ) -> ImageResult:
 
@@ -76,28 +75,51 @@ class Pipeline:
         Returns:
             ImageResult: The final image result after all transformations.
         """
+        from dataclasses import replace
+
         if self.auto_register_default_readers:
             from tiamat.readers import register_all_readers
 
             register_all_readers()
         reader = self.reader_factory(file_name, **reader_kwargs)
-        if not accessor.metadata and read_metadata:
-            accessor.metadata = reader.read_metadata()
 
-        # backwards pass through the transformers to transform the accessor
-        for transformer in self.transformers[::-1]:
-            accessor = transformer.transform_access(accessor=accessor)
+        # Forward rollout of metadata through transformers
+        metadata = [reader.read_metadata()]
+
+        for transformer in self.transformers:
+            # Check for transformers that do not implement transform_metadata
+            if hasattr(transformer, "transform_metadata"):
+                metadata.append(transformer.transform_metadata(
+                    metadata=replace(metadata[-1])),
+                )
+            else:
+                metadata.append(metadata=replace(metadata[-1]))
+
+        # Backwards rollout of accessor through transformers and metadata
+        accessors = [accessor]
+        for transformer, meta in zip(self.transformers[::-1], metadata[::-1][:-1]):
+            accessor = transformer.transform_access(
+                accessor=replace(accessors[-1]),
+                metadata=meta
+            )
+            accessors.append(accessor)
 
         # Read image data
-        image_result = reader.read_image(accessor=accessor)
+        image = reader.read_image(accessor=accessors[-1])
 
-        # forward pass through the transformers
-        for transformer in self.transformers:
-            image_result = transformer.transform_image(image_result=image_result)
-            if hasattr(transformer, "transform_metadata") and image_result.metadata is not None:
-                image_result.metadata = transformer.transform_metadata(image_result.metadata)
+        # Forward pass through the transformers to get final image result
+        for transformer, meta, acc in zip(self.transformers, metadata[:-1], accessors[::-1][1:]):
+            image = transformer.transform_image(
+                image=image,
+                metadata=meta,
+                accessor=acc,
+            )
 
-        return image_result
+        # Associate final output image with output metadata
+        return ImageResult(
+            image=image,
+            metadata=metadata[-1],
+        )
 
     def read_metadata(self, file_name:str, **reader_kwargs:Any) -> ImageMetadata:
         """
@@ -110,11 +132,15 @@ class Pipeline:
         Returns:
             ImageMetadata: The (possibly transformed) metadata.
         """
+        from dataclasses import replace
+
         reader = self.reader_factory(file_name, **reader_kwargs)
         metadata = reader.read_metadata()
         # backwards pass through the transformers to transform the accessor
         for transformer in self.transformers:
             if hasattr(transformer, "transform_metadata"):
                 # check for transformers that do not implement transform_metadata
-                metadata = transformer.transform_metadata(metadata=metadata)
+                metadata = transformer.transform_metadata(
+                    metadata=replace(metadata)
+                )
         return metadata

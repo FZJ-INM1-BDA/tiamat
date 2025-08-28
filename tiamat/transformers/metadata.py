@@ -5,8 +5,11 @@ Transformers to specifically modify metadata.
 from abc import ABC
 from typing import Callable
 from dataclasses import fields
+
+import numpy as np
+
 from .protocol import Transformer
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
@@ -15,13 +18,13 @@ class _MetadataTransformer(ABC, Transformer):
     Base class for metadata transformers to ensure they only modify metadata.
     """
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         # noop, no access transformation
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         # noop, no image transformation
-        return image_result
+        return image
 
 
 class MetadataKwargsTransformer(_MetadataTransformer):

@@ -4,7 +4,9 @@ Reader for Stacks.
 
 import math
 from functools import cached_property, partial
+import re
 from typing import Any, Callable, Dict, Iterable, List
+from collections import defaultdict
 
 import numpy as np
 
@@ -21,24 +23,35 @@ def find_slices(fnames: str) -> List[str]:
     return sorted(glob.glob(fnames))
 
 
-def get_reader_identifier(fname, identifier):
-    import re
+def compile_identifier(identifier: str | None) -> re.Pattern:
+    if identifier is None:
+        return None
+    else:
+        # Parse the regex and see if there are any groups present
+        if '(' not in identifier:
+            # Add group if no group is present
+            identifier = f".*({identifier}).*"
+        return re.compile(identifier)
 
-    match = re.search(identifier, fname)
+
+def get_reader_identifier(fname: str, identifier: re.Pattern):
+    match = identifier.search(fname)
+    if not match:
+        raise ValueError(f"No match for identifier \"{identifier}\" in filename \"{fname}\"")
 
     return match.group(1)
 
 
-def select_slice_ix(accessor, num_slices, slice_spacing=1.0):
+def select_slice_ix(accessor, metadata, num_slices, slice_spacing=1.0):
     from tiamat.readers.processing import expand_to_length
     from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-    spatial_dims = accessor.metadata.spatial_dimensions
+    spatial_dims = metadata.spatial_dimensions
 
     assert len(spatial_dims) == 3, "Only able to perform stack slicing for 3D images"
 
     z_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
-    z_shape = accessor.metadata.shape[spatial_dims[0]]
+    z_shape = metadata.shape[spatial_dims[0]]
     z_from, z_to = resolve_coordinate_slice(accessor.z, z_shape)
 
     # Calculate minimum and maximum slice index to use
@@ -102,7 +115,7 @@ class ImageStackReader(ImageReader):
 
         if isinstance(self.reader_factory, dict):
             assert reader_identifier is not None
-        self.reader_identifier = reader_identifier
+        self.compiled_identifier = compile_identifier(reader_identifier)
 
         self.slice_spacing = slice_spacing
         self.stack_dimension = stack_dimension
@@ -121,7 +134,7 @@ class ImageStackReader(ImageReader):
         else:
             return (*expand_to_length(spacing, 2), slice_spacing)
 
-    def _prepare_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
+    def selected_slice_handles(self, slice_ix: Iterable[int]) -> List[ImageReader]:
         from tiamat.readers.memory import ConstantReader
 
         selected_slices = [self.slices[i] for i in slice_ix]
@@ -136,15 +149,15 @@ class ImageStackReader(ImageReader):
                     reader_list.append(ConstantReader(self.missing_section_fill_value, self.prototype_metadata))
                 else:
                     # Existing section needs corresponding reader
-                    identifier = get_reader_identifier(fname, self.reader_identifier)
+                    identifier = get_reader_identifier(fname, self.compiled_identifier)
                     factory = self.reader_factory[identifier]
                     reader_list.append(factory(fname))
 
         elif isinstance(self.reader_factory, (tuple, list)):
             # Map each slice to reader at same slice index
             selected_readers = [self.reader_factory[i] for i in slice_ix]
-            for reader, fname in zip(selected_readers, selected_slices):
-                reader_list.append(reader(fname))
+            for factory, fname in zip(selected_readers, selected_slices):
+                reader_list.append(factory(fname))
 
         else:
             # Use same reader for all selected slices
@@ -156,18 +169,13 @@ class ImageStackReader(ImageReader):
 
         return reader_list
 
-    def access_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
-        selected_readers = self._prepare_slices(slice_ix)
-
-        return selected_readers
-
     @property
     def ordered_slice_handles(self):
-        return self.access_slices(range(len(self.slices)))
+        return self.selected_slice_handles(range(len(self.slices)))
 
     @property
     def prototype_slice_handle(self) -> ImageReader:
-        selected_handles = self._prepare_slices([0])
+        selected_handles = self.selected_slice_handles([0])
 
         return selected_handles[0]
 
@@ -202,12 +210,14 @@ class ImageStackReader(ImageReader):
 
         return metadata
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         from dataclasses import replace
 
+        metadata = self.read_metadata()
+
         # Request only subset of slice handles neded for the requested scale
-        selected_slice_ix = select_slice_ix(accessor, self.num_slices)
-        slice_handles = self.access_slices(selected_slice_ix)
+        selected_slice_ix = select_slice_ix(accessor, metadata, self.num_slices)
+        slice_handles = self.selected_slice_handles(selected_slice_ix)
 
         if len(slice_handles) == 0:
             raise Exception("Requested empty stack")
@@ -223,41 +233,43 @@ class ImageStackReader(ImageReader):
             elif self.stack_dimension == dimensions.Z:
                 tmp_accessor.scale = tmp_accessor.scale[:2]
 
-        metadata = replace(tmp_accessor.metadata)
-        metadata.shape = metadata.shape[1:]
-        dimension_list = list(metadata.dimensions)
-        dimension_list.remove(self.stack_dimension)
+        # TODO: Check if unnecessary and remove
+        # metadata = replace(tmp_accessor.metadata)
+        # metadata.shape = metadata.shape[1:]
+        # dimension_list = list(metadata.dimensions)
+        # dimension_list.remove(self.stack_dimension)
 
-        # for each scale, remove the z scale
-        scales = list(metadata.scales)
-        for i, s in enumerate(scales):
-            if self.stack_dimension == dimensions.X:
-                scales[i] = s[1:]
-            elif self.stack_dimension == dimensions.Y:
-                scales[i] = (s[0], *s[2:])
-            elif self.stack_dimension == dimensions.Z:
-                scales[i] = s[:2]
-            else:
-                raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+        # # for each scale, remove the z scale
+        # if metadata.scales is not None:
+        #     scales = list(metadata.scales)
+        #     for i, s in enumerate(scales):
+        #         if self.stack_dimension == dimensions.X:
+        #             scales[i] = s[1:]
+        #         elif self.stack_dimension == dimensions.Y:
+        #             scales[i] = (s[0], *s[2:])
+        #         elif self.stack_dimension == dimensions.Z:
+        #             scales[i] = s[:2]
+        #         else:
+        #             raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+        #     metadata.scales = tuple(scales)
 
-        metadata.dimensions = dimension_list
-        tmp_accessor.metadata = metadata
-        tmp_accessor.scales = tuple(scales)
+        # metadata.dimensions = dimension_list
+        # tmp_accessor.metadata = metadata
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
         image = np.empty(
-            shape=([len(slice_handles), *first_result.image.shape]),
-            dtype=first_result.image.dtype,
+            shape=([len(slice_handles), *first_result.shape]),
+            dtype=first_result.dtype,
         )
 
         # Reuse first result
-        image[0] = first_result.image
+        image[0] = first_result
         # Read and stack all remaining images.
         for i, handle in enumerate(slice_handles[1:], 1):
-            image[i] = handle.read_image(accessor=tmp_accessor).image
+            image[i] = handle.read_image(accessor=tmp_accessor)
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return image
 
     @property
     def file_handle(self) -> ImageReader:
@@ -271,7 +283,7 @@ class ImageStackReader(ImageReader):
         else:
             available_slices = find_slices(fnames=self.fnames)
 
-        if self.reader_identifier is None:
+        if self.compiled_identifier is None:
             if isinstance(self.reader_factory, dict):
                 raise Exception("Using a dictionary as reader_factory requires a reader_identifier to be provided")
             if self.missing_section_interpolation is None:
@@ -285,10 +297,10 @@ class ImageStackReader(ImageReader):
             if isinstance(self.reader_factory, dict):
                 available_slices = [
                     f for f in available_slices
-                    if get_reader_identifier(f, self.reader_identifier) in self.reader_factory.keys()
+                    if get_reader_identifier(f, self.compiled_identifier) in self.reader_factory.keys()
                 ]
 
-            available_keys = [int(get_reader_identifier(f, self.reader_identifier)) for f in available_slices]
+            available_keys = [int(get_reader_identifier(f, self.compiled_identifier)) for f in available_slices]
             sorted_ix = np.argsort(available_keys)
 
             if self.missing_section_interpolation is None:
@@ -422,7 +434,7 @@ class VolumeStackReader(ImageReader):
 
         if isinstance(self.reader_factory, dict):
             assert reader_identifier is not None
-        self.reader_identifier = reader_identifier
+        self.compiled_identifier = compile_identifier(reader_identifier)
 
         self.reader_kwargs = reader_kwargs or {}
 
@@ -437,6 +449,13 @@ class VolumeStackReader(ImageReader):
     def num_slices(self) -> int:
         return len(self.slices)
 
+    @cached_property
+    def _file_names_per_reader_identifier(self):
+        file_matches = defaultdict(list)
+        for fname in self.slices:
+            file_matches[get_reader_identifier(fname, self.compiled_identifier)].append(fname)
+        return file_matches
+
     @property
     def ordered_subvolume_handles(self):
         if isinstance(self.reader_factory, dict):
@@ -444,7 +463,7 @@ class VolumeStackReader(ImageReader):
             for k in sorted(self.reader_factory.keys()):
                 factory = self.reader_factory[k]
                 # Find all files that match k
-                file_matches = tuple(fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k)
+                file_matches = tuple(self._file_names_per_reader_identifier[k])
                 if len(file_matches) > 1:
                     reader_list.append(factory(file_matches))
                 if len(file_matches) == 1:
@@ -496,18 +515,18 @@ class VolumeStackReader(ImageReader):
 
         return metadata
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         import math
         from dataclasses import replace
 
         from tiamat.readers.processing import (
-            _prepare_coordinates,
             expand_to_length,
             prepare_coordinate,
         )
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-        z_dim, y_dim, x_dim = accessor.metadata.spatial_dimensions
+        metadata = self.read_metadata()
+        z_dim, y_dim, x_dim = metadata.spatial_dimensions
 
         image_z_size = self.shape[z_dim]
         image_scales = expand_to_length(accessor.scale, 3)  # x, y, z
@@ -556,7 +575,7 @@ class VolumeStackReader(ImageReader):
                 tmp_accessor = replace(accessor, z=(from_ix, to_ix))
 
                 # print("VolumeStackReader", accessor)
-                tmp_image = handle.read_image(accessor=tmp_accessor).image
+                tmp_image = handle.read_image(accessor=tmp_accessor)
 
                 # Position in the output array to place the image
                 scaled_z_offset = math.floor(max(cur_z_offset - z_from, 0) * image_scales[-1])
@@ -569,7 +588,7 @@ class VolumeStackReader(ImageReader):
             else:
                 cur_z_offset += z_size
 
-        return ImageResult(image=out_image, accessor=accessor, metadata=accessor.metadata)
+        return out_image
 
     @classmethod
     def check_file(cls, fname: str | List[str]) -> bool | int | float:

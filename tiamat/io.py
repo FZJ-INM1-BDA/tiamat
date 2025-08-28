@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from tiamat.metadata import ImageMetadata
 
-# Interpolation strategies for rescaling
+# interpolation strategies for rescaling
 INTERPOLATION_TYPE_NEAREST = "nearest"
 INTERPOLATION_TYPE_LINEAR = "linear"
 INTERPOLATION_TYPE_CUBIC = "cubic"
@@ -34,16 +34,11 @@ class ImageAccessor:
     # Coordinate scaling of the requested region
     coordinate_scale: float = 1.0
     coordinate_spacing: float = 1.0
-
-    # Associated metadata for the image
     metadata: ImageMetadata = None
-
-    # Interpolation strategy (e.g., cv2.INTER_LINEAR)
     interpolation: int = None
 
     # Wether to apply Gauss smoothing, default is False:
     anti_aliasing: bool = False
-
     # (Maybe not needed) Std of Gauss filter, default is (s - 1) / 2:
     # anti_aliasing_sigma: float = None
 
@@ -77,7 +72,9 @@ class ImageAccessor:
 
 @dataclass
 class ImageResult:
+    """
+    Stores an image with its corresponding metadata.
+    """
     image: np.ndarray
-    accessor: ImageAccessor
     metadata: ImageMetadata | None = None
-    additional_images: dict = field(default_factory=dict)
+
