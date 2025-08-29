@@ -99,13 +99,18 @@ def test_affine_pipeline(
 
     png_filename = f"tests/e2e/references/{request.node.callspec.id}--{filename}.png"
     npygz_filename = f"tests/e2e/references/{request.node.callspec.id}--{filename}.npy.gz"
+    npy_filename = f"tests/e2e/references/{request.node.callspec.id}--{filename}.npy"
     
     dst_png_filename = f"artefacts/tests/e2e/references/{request.node.callspec.id}--{filename}.png"
     dst_npy_filename = f"artefacts/tests/e2e/references/{request.node.callspec.id}--{filename}.npy"
     dst_npygz_filename = f"artefacts/tests/e2e/references/{request.node.callspec.id}--{filename}.npy.gz"
     
     uint8_img = np.array(result.image * 255, dtype=np.uint8)
-    expected_arr = np.load(npygz_filename)
+    
+    with gzip.open(npygz_filename, "rb") as gzip_file:
+        with open(npy_filename, "wb") as npy_file:
+            shutil.copyfileobj(gzip_file, npy_file)
+    expected_arr = np.load(npy_filename)
     np.testing.assert_equal(uint8_img, expected_arr)
 
     Path(dst_png_filename).parent.mkdir(exist_ok=True, parents=True)
