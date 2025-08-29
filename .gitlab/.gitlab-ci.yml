@@ -97,6 +97,10 @@ build-dev.python3.11:
 .test:
   stage: tests
   extends: .global-rules
+  artifacts:
+    paths:
+    - artefacts/**
+    expire_in: 72 hours
   script:
     - pip3 install .
     - pip3 install ".[dev]"
