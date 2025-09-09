@@ -2,12 +2,13 @@
 Helper functions for running a tiamat processing pipeline.
 """
 
-from typing import Iterable, Callable
-from .transformers.protocol import Transformer
-from .readers.protocol import ImageReader
-from .readers.factory import get_reader
+from typing import Callable, Iterable
+
 from .io import ImageAccessor, ImageResult
 from .metadata import ImageMetadata
+from .readers.factory import get_reader
+from .readers.protocol import ImageReader
+from .transformers.protocol import Transformer
 
 
 class Pipeline:
@@ -52,9 +53,7 @@ class Pipeline:
         self.reader_factory = reader_factory or get_reader
         self.auto_register_default_readers = auto_register_default_readers
 
-    def __call__(
-        self, file_name, accessor: ImageAccessor, **reader_kwargs
-    ) -> ImageResult:
+    def __call__(self, file_name, accessor: ImageAccessor, **reader_kwargs) -> ImageResult:
         from dataclasses import replace
 
         if self.auto_register_default_readers:
@@ -69,8 +68,8 @@ class Pipeline:
         for transformer in self.transformers:
             # Check for transformers that do not implement transform_metadata
             if hasattr(transformer, "transform_metadata"):
-                metadata.append(transformer.transform_metadata(
-                    metadata=replace(metadata[-1])),
+                metadata.append(
+                    transformer.transform_metadata(metadata=replace(metadata[-1])),
                 )
             else:
                 metadata.append(metadata=replace(metadata[-1]))
@@ -78,10 +77,7 @@ class Pipeline:
         # Backwards rollout of accessor through transformers and metadata
         accessors = [accessor]
         for transformer, meta in zip(self.transformers[::-1], metadata[::-1][:-1]):
-            accessor = transformer.transform_access(
-                accessor=replace(accessors[-1]),
-                metadata=meta
-            )
+            accessor = transformer.transform_access(accessor=replace(accessors[-1]), metadata=meta)
             accessors.append(accessor)
 
         # Read image data
@@ -110,7 +106,5 @@ class Pipeline:
         for transformer in self.transformers:
             if hasattr(transformer, "transform_metadata"):
                 # check for transformers that do not implement transform_metadata
-                metadata = transformer.transform_metadata(
-                    metadata=replace(metadata)
-                )
+                metadata = transformer.transform_metadata(metadata=replace(metadata))
         return metadata

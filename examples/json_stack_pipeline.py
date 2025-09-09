@@ -2,18 +2,18 @@
 Pipeline for color mapping.
 """
 
-import shutil
-import os
 import json
+import os
+import shutil
 
 import matplotlib.pyplot as plt
 
-from tiamat.transformers.axes import MirrorTransformer
+from tiamat.io import ImageAccessor
+from tiamat.readers import register_reader
 from tiamat.readers.pipeline import PipelineReader
 from tiamat.readers.stack import ImageStackReader
-from tiamat.io import ImageAccessor
 from tiamat.serialization import load_pipeline_from_config, register_class
-from tiamat.readers import register_reader
+from tiamat.transformers.axes import MirrorTransformer
 
 # register some classes as valid transformers and readers
 register_class(MirrorTransformer)
@@ -28,7 +28,5 @@ with open("./data/stack_pipeline.json", "r") as f:
 file_name = ["./data/Koala.jpg", "./data/Koala.jpg"]
 pipeline = load_pipeline_from_config(pipeline_config)
 
-result = pipeline(
-    file_name=file_name, accessor=ImageAccessor()
-)
+result = pipeline(file_name=file_name, accessor=ImageAccessor())
 print(result.image.shape)

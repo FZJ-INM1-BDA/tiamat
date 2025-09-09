@@ -23,7 +23,7 @@ class ImageReader(Protocol):
         """
         Read image data from the source according to the provided accessor.
 
-        The accessor passed to `read_image` may have been modified by 
+        The accessor passed to `read_image` may have been modified by
         upstream transformers via their `transform_access` method.
 
         Parameters
@@ -45,7 +45,7 @@ class ImageReader(Protocol):
         Returns
         -------
         ImageMetadata
-            Metadata containing shape, spatial and channel dimensions, spacing, 
+            Metadata containing shape, spatial and channel dimensions, spacing,
             and other properties.
         """
         raise NotImplementedError
@@ -63,7 +63,7 @@ class ImageReader(Protocol):
         Returns
         -------
         bool | int | float
-            Truthy value if the file is supported. Can return a numeric 
+            Truthy value if the file is supported. Can return a numeric
             score indicating priority among multiple readers.
         """
         raise NotImplementedError

@@ -1,6 +1,7 @@
 """
 Affine transformers.
 """
+
 import logging
 from itertools import product, repeat
 from typing import Any, Dict, List, Tuple
@@ -13,14 +14,15 @@ from .protocol import Transformer
 
 logger = logging.getLogger(__name__)
 
+
 class AffineTransformer(Transformer):
     # TODO: define a unit of affine matrix, e.g. microns, mm, ...
     def __init__(
-            self,
-            affine_matrix: np.array | List[List[float]],
-            request_margin: int = 2,
-            fill_value: int | float | None = None,
-        ):
+        self,
+        affine_matrix: np.array | List[List[float]],
+        request_margin: int = 2,
+        fill_value: int | float | None = None,
+    ):
         self.affine_matrix = np.array(affine_matrix)
 
         # If affine is of shape (2, 3), extent to its (3, 3) form
@@ -53,14 +55,14 @@ class AffineTransformer(Transformer):
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         target_spacing = metadata.spacing
-        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1.0, 1.0))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
         target_spacing = target_spacing[:2]  # TODO: general solution for 3D
 
         # Invert affine to find which coordinates we need to read
         affine = np.linalg.inv(self.affine_matrix)
-        affine[:2, -1] = affine[:2, -1] / target_spacing # Convert translation to pixel coordinates
+        affine[:2, -1] = affine[:2, -1] / target_spacing  # Convert translation to pixel coordinates
         # affine = self._make_corner_px_affine(affine)
 
         # Read coordinates for requested frame
@@ -109,7 +111,16 @@ class AffineTransformer(Transformer):
 
         # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
         # We need to scale the coordinates to obtain pixel coordinates
-        accessor.history[id(self)] = (x_from_input, y_from_input, x_from, x_to, offset_x_input, y_from, y_to, offset_y_input)
+        accessor.history[id(self)] = (
+            x_from_input,
+            y_from_input,
+            x_from,
+            x_to,
+            offset_x_input,
+            y_from,
+            y_to,
+            offset_y_input,
+        )
 
         return accessor
 
@@ -128,7 +139,7 @@ class AffineTransformer(Transformer):
 
         new_metadata = replace(metadata)
 
-        transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1,1,1,1])))[:2, :].T
+        transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1, 1, 1, 1])))[:2, :].T
 
         out_shape = (
             round(np.max(transformed_coords[:, 1]).item() - np.min(transformed_coords[:, 1]).item()),
@@ -157,21 +168,20 @@ class AffineTransformer(Transformer):
         target_scale = target_scale[:2]  # TODO: general solution for 3D
 
         target_spacing = metadata.spacing
-        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1.0, 1.0))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
         target_spacing = target_spacing[:2]  # TODO: general solution for 3D
 
         # Restore extent from requested frame
         try:
-            x_from_input, y_from_input, x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = accessor.history[id(self)]
+            x_from_input, y_from_input, x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = accessor.history[
+                id(self)
+            ]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
-        target_shape = rescale_shape(
-            ((y_to - y_from), (x_to - x_from)),
-            target_scale
-        )[::-1]
+        target_shape = rescale_shape(((y_to - y_from), (x_to - x_from)), target_scale)[::-1]
 
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.

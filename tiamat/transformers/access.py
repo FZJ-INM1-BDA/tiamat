@@ -1,13 +1,14 @@
 """
 Transformers that affect how files are accessed.
 """
+
 import math
 
 import numpy as np
 
-from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class SpacingToScaleTransformer(Transformer):
@@ -15,20 +16,30 @@ class SpacingToScaleTransformer(Transformer):
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         from dataclasses import replace
 
-        assert metadata.spacing is not None, f"SpacingToScaleTransformer requires spacing, but metadata does not provide it. Make sure to use a suitable reader, or provide the metadata yourself."
-        assert accessor.coordinate_spacing is not None, f"SpacingToScaleTransformer requires accessor.coordinate_spacing."
+        assert (
+            metadata.spacing is not None
+        ), f"SpacingToScaleTransformer requires spacing, but metadata does not provide it. Make sure to use a suitable reader, or provide the metadata yourself."
+        assert (
+            accessor.coordinate_spacing is not None
+        ), f"SpacingToScaleTransformer requires accessor.coordinate_spacing."
         assert accessor.spacing is not None, f"SpacingToScaleTransformer requires accessor.spacing."
 
         accessor = replace(accessor)
         # Compute the scale
         image_spacing = metadata.spacing
         if isinstance(image_spacing, (list, tuple)):
-            assert all(image_spacing[0] == i for i in image_spacing), f"SpacingToScaleTransformer does currently not support anisotropic image spacing (got {image_spacing}). PRs welcome."
+            assert all(
+                image_spacing[0] == i for i in image_spacing
+            ), f"SpacingToScaleTransformer does currently not support anisotropic image spacing (got {image_spacing}). PRs welcome."
             image_spacing = image_spacing[0]
 
         accessor.scale = image_spacing / accessor.spacing
-        accessor.x = self._scale_coordinate(coordinate=accessor.x, input_spacing=accessor.coordinate_spacing, output_spacing=image_spacing)
-        accessor.y = self._scale_coordinate(coordinate=accessor.y, input_spacing=accessor.coordinate_spacing, output_spacing=image_spacing)
+        accessor.x = self._scale_coordinate(
+            coordinate=accessor.x, input_spacing=accessor.coordinate_spacing, output_spacing=image_spacing
+        )
+        accessor.y = self._scale_coordinate(
+            coordinate=accessor.y, input_spacing=accessor.coordinate_spacing, output_spacing=image_spacing
+        )
 
         return accessor
 
@@ -47,7 +58,10 @@ class SpacingToScaleTransformer(Transformer):
             return int(math.ceil(coordinate * input_spacing / output_spacing))
         else:
             # assume tuple
-            return tuple(cls._scale_coordinate(coordinate_i, input_spacing=input_spacing, output_spacing=output_spacing) for coordinate_i in coordinate)
+            return tuple(
+                cls._scale_coordinate(coordinate_i, input_spacing=input_spacing, output_spacing=output_spacing)
+                for coordinate_i in coordinate
+            )
 
 
 class FractionTransformer(Transformer):
