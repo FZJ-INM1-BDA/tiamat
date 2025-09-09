@@ -1,9 +1,9 @@
-from typing import Iterable, Tuple
 from functools import cached_property
+from typing import Iterable, Tuple
 
-from .pipeline import Pipeline
-from .metadata import ImageMetadata, dimensions
 from .io import ImageAccessor
+from .metadata import ImageMetadata, dimensions
+from .pipeline import Pipeline
 
 
 def slice_to_interval(array_slice, shape):
@@ -98,16 +98,11 @@ class Array(object):
             scales = [
                 scales,
             ]
-        return tuple(
-            cls(file_name=file_name, pipeline=pipeline, scale=scale, **reader_kwargs)
-            for scale in scales
-        )
+        return tuple(cls(file_name=file_name, pipeline=pipeline, scale=scale, **reader_kwargs) for scale in scales)
 
     @cached_property
     def metadata(self) -> ImageMetadata:
-        return self.pipeline.read_metadata(
-            file_name=self.file_name, **self.reader_kwargs
-        )
+        return self.pipeline.read_metadata(file_name=self.file_name, **self.reader_kwargs)
 
     @cached_property
     def shape(self):
@@ -125,9 +120,7 @@ class Array(object):
                 f"Invalid shape_round_mode {self.shape_round_mode}. Valid: {','.join(list(shape_round_functions.keys()))}"
             )
 
-        return tuple(
-            shape_fn(np.array(self.metadata.shape) * self.scale).astype(int).tolist()
-        )
+        return tuple(shape_fn(np.array(self.metadata.shape) * self.scale).astype(int).tolist())
 
     @property
     def ndim(self):
@@ -156,14 +149,10 @@ class Array(object):
 
         # consolidate channel access into a named dictionary
         spatial_accessor_kwargs = {
-            key: value
-            for key, value in accessor_kwargs.items()
-            if key in dimensions.SPATIAL_DIMENSIONS
+            key: value for key, value in accessor_kwargs.items() if key in dimensions.SPATIAL_DIMENSIONS
         }
         channel_accessor_kwargs = {
-            key: value
-            for key, value in accessor_kwargs.items()
-            if key not in spatial_accessor_kwargs
+            key: value for key, value in accessor_kwargs.items() if key not in spatial_accessor_kwargs
         }
         if len(channel_accessor_kwargs) == 0:
             channel_accessor_kwargs = None
@@ -174,9 +163,7 @@ class Array(object):
             scale=self.scale,
             coordinate_scale=self.scale,
         )
-        result = self.pipeline(
-            file_name=self.file_name, accessor=accessor, **self.reader_kwargs
-        )
+        result = self.pipeline(file_name=self.file_name, accessor=accessor, **self.reader_kwargs)
         image = result.image
 
         squeeze_dims = [dim for dim in squeeze_dims if image.shape[dim] == 1]

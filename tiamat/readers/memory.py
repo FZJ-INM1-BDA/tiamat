@@ -7,9 +7,10 @@ from typing import Tuple
 import numpy as np
 
 from tiamat.cache import instance_cache
-from .protocol import ImageReader
+
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import ImageReader
 
 
 class MemoryReader(ImageReader):
@@ -30,7 +31,10 @@ class MemoryReader(ImageReader):
     def read_metadata(self) -> ImageMetadata:
         from tiamat import metadata as md
 
-        fallback_dimensions = [md.dimensions.Y, md.dimensions.X, ] + [md.dimensions.C for _ in range(len(self.image.shape) - 2)]
+        fallback_dimensions = [
+            md.dimensions.Y,
+            md.dimensions.X,
+        ] + [md.dimensions.C for _ in range(len(self.image.shape) - 2)]
 
         return md.ImageMetadata(
             image_type=self.metadata_kwargs.get("image_type", md.IMAGE_TYPE_IMAGE),
@@ -39,7 +43,8 @@ class MemoryReader(ImageReader):
             value_range=self.metadata_kwargs.get("value_range", (0, 255)),
             spacing=self.metadata_kwargs.get("spacing", None),
             dimensions=self.metadata_kwargs.get(
-                "dimenions", fallback_dimensions,
+                "dimenions",
+                fallback_dimensions,
             ),
         )
 
@@ -74,6 +79,7 @@ class ConstantImage:
 class ConstantReader(ImageReader):
     def __init__(self, fill_value, metadata: ImageMetadata):
         from dataclasses import replace
+
         self.fill_value = fill_value
         self.metadata = replace(metadata)
         self.metadata.file_path = None
@@ -85,10 +91,7 @@ class ConstantReader(ImageReader):
 
         # Read, crop, and rescale.
         image = access_and_rescale_image(
-            image=self.image,
-            metadata=self.read_metadata(),
-            accessor=accessor,
-            image_scale=accessor.scale
+            image=self.image, metadata=self.read_metadata(), accessor=accessor, image_scale=accessor.scale
         )
 
         return image

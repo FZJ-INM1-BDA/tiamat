@@ -4,9 +4,9 @@ Normalization transformers.
 
 import numpy as np
 
-from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class MinMaxNormalizationTransformer(Transformer):

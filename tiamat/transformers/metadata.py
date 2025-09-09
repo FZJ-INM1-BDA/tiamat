@@ -3,14 +3,14 @@ Transformers to specifically modify metadata.
 """
 
 from abc import ABC
-from typing import Callable
 from dataclasses import fields
+from typing import Callable
 
 import numpy as np
 
-from .protocol import Transformer
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class _MetadataTransformer(ABC, Transformer):

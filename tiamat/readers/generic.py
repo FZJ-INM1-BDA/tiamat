@@ -5,9 +5,10 @@ Reader for generic image formats.
 import numpy as np
 
 from tiamat.cache import instance_cache
-from .protocol import ImageReader
+
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import ImageReader
 
 
 class GenericReader(ImageReader):
@@ -20,9 +21,7 @@ class GenericReader(ImageReader):
     def _read_image(self):
         from imageio.v3 import imread
 
-        image = (
-            self._cached_image if self._cached_image is not None else imread(self.fname)
-        )
+        image = self._cached_image if self._cached_image is not None else imread(self.fname)
         if self.cache_image:
             self._cached_image = image
 

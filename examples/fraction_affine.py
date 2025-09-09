@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+
 from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
 from tiamat.transformers.access import FractionTransformer
@@ -42,7 +43,7 @@ result_pipeline = pipeline(
 
 axs[0, 0].imshow(result_pipeline.image)
 axs[0, 0].set_title("Original")
-axs[0, 1].axis('off') 
+axs[0, 1].axis("off")
 
 result_pipeline_affine = pipeline_affine(
     file_name=file_name,
@@ -54,10 +55,7 @@ axs[1, 0].set_title("Affine w FractionTransformer")
 
 result_pipeline_affine_wo_fraction = pipeline_affine_wo_fraction(
     file_name=file_name,
-    accessor=ImageAccessor(
-        x=(0, (result_pipeline.image).shape[1]),
-        y=(0, (result_pipeline.image).shape[0])
-    ),
+    accessor=ImageAccessor(x=(0, (result_pipeline.image).shape[1]), y=(0, (result_pipeline.image).shape[0])),
 )
 
 axs[1, 1].imshow(result_pipeline_affine_wo_fraction.image)
