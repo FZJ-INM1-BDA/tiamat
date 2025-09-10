@@ -215,7 +215,7 @@ def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
     if hasattr(coord, '__iter__'):
         # tuple of values
         prepared_coord = tuple(
-            math.floor(c * factor + 0.5) if c is not None else None
+            math.floor((0.5 + c) * factor) if c is not None else None
             for c in coord
         )
     elif coord is None:
@@ -223,7 +223,7 @@ def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
         prepared_coord = (0, None)
     else:
         # A single element in the given dimension
-        coord = math.floor(coord * factor + 0.5)
+        coord = math.floor((0.5 + coord) * factor)
         prepared_coord = (coord, coord + 1)
 
     return prepared_coord
