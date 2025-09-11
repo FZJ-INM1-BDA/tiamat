@@ -218,11 +218,13 @@ class DeformationFieldTransformer(Transformer):
         dfield_crop = self.dfield_file_handle.read_image(tmp_accessor)
 
         # Crop the output to valid pixels not affected by the margin
-        # TODO: Check if rounding up or down here
         offset = (
             math.floor((dfield_crop.shape[0] - target_shape[0]) / 2),
             math.floor((dfield_crop.shape[1] - target_shape[1]) / 2),
         )
+
+        assert offset[0] >= 0 and offset[1] >= 0, "target_shape can not be larger than dfield_crop shape"
+
         dfield_vectors = dfield_crop[
             offset[0]:(offset[0] + target_shape[0]),
             offset[1]:(offset[1] + target_shape[1])
