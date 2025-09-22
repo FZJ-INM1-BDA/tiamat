@@ -1,17 +1,19 @@
 """
 Pipeline serialization and instantiation from configuration dictionaries.
 """
+from __future__ import annotations
 
 from functools import partial
-from typing import Dict, Any, Type, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from tiamat.readers.protocol import ImageReader
 
 # Example class registry
-class_registry: Dict[str, Type] = {}
+class_registry: dict[str, type] = {}
 
 
-def register_class(cls: Type) -> Type:
+def register_class(cls: type) -> type:
     """
     Decorator to register a class for safe instantiation from configuration.
 
@@ -26,8 +28,8 @@ def register_class(cls: Type) -> Type:
 
 
 def create_instance(
-    class_name: str,
-    args: Dict[str, Any]
+        class_name: str,
+        args: dict[str, Any]
 ) -> Any:
     """
     Safely instantiate a registered class with arguments from a configuration dictionary.
@@ -68,6 +70,9 @@ def make_object_from_config(config_entry: dict) -> Any:
 
     Returns:
         Any: Instantiated object.
+
+    Raises:
+        ValueError: If the config entry is missing the "class" key.
     """
     class_name = config_entry.get("class")
     args = config_entry.get("args", {})
@@ -78,20 +83,19 @@ def make_object_from_config(config_entry: dict) -> Any:
 
 
 def get_reader_from_config(
-    config_reader: Optional[dict],
-    reader_post_creation_hook: Optional[Callable]=None
-) -> Callable[...,"ImageReader"]:
+        config_reader: dict | None,
+        reader_post_creation_hook: Callable | None = None
+) -> Callable[..., "ImageReader"]:
     """
     Get a reader constructor from configuration.
 
     Args:
-        config_reader (Optional[dict]): Configuration dictionary for the reader.
-        reader_post_creation_hook (Optional[Callable]): Hook to modify the reader after construction.
+        config_reader dict | None: Configuration dictionary for the reader.
+        reader_post_creation_hook Callable | None: Hook to modify the reader after construction.
 
     Returns:
         Callable[..., Any]: A reader constructor (possibly a partial).
     """
-
 
     if config_reader is None:
         from tiamat.readers.factory import get_reader
@@ -124,17 +128,17 @@ def get_reader_from_config(
 
 
 def load_pipeline_from_config(
-    config: dict,
-    auto_register_default_readers: bool=True,
-    reader_post_creation_hook:Optional[Callable]=None
-    ) -> Any:
+        config: dict,
+        auto_register_default_readers: bool = True,
+        reader_post_creation_hook: Callable | None = None
+) -> Any:
     """
     Construct a pipeline from a configuration dictionary.
 
     Args:
         config (dict): Configuration dictionary defining transformers and reader.
         auto_register_default_readers (bool): If True, registers built-in readers.
-        reader_post_creation_hook (Optional[Callable]): Optional hook for customizing the reader.
+        reader_post_creation_hook (Callable | None): Optional hook for customizing the reader.
 
     Returns:
         Pipeline: The constructed pipeline.
