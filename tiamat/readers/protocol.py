@@ -2,16 +2,13 @@
 Protocol for readers.
 """
 
-from typing import Protocol, Union
 from ..io import ImageAccessor, ImageResult
 from typing import Protocol
-
 import numpy as np
-
-from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
-CheckResult = Union[bool, int, float]
+CheckResult = bool | int | float
+
 
 class ImageReader(Protocol):
     """
@@ -42,10 +39,11 @@ class ImageReader(Protocol):
             ImageMetadata: The metadata of the image containing shape, spatial and channel dimensions, spacing,
             and other properties.
         """
+
     ...
 
     @classmethod
-    def check_file(cls, fname:str) ->  bool | int | float:
+    def check_file(cls, fname: str) -> bool | int | float:
         """
         Check if the reader is compatible with the given file.
 

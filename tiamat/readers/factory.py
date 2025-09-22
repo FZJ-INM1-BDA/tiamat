@@ -2,15 +2,13 @@
 Factory for managing and instantiating ImageReader classes.
 """
 
-from typing import List, Type, Union, Tuple
 from ..readers.protocol import ImageReader
 
-
 # Registry of registered ImageReader classes
-_READER_REGISTRY: List[Type[ImageReader]] = []
+_READER_REGISTRY: list[type[ImageReader]] = []
 
 
-def register_reader(*reader_classes: Type[ImageReader])-> None:
+def register_reader(*reader_classes: type[ImageReader]) -> None:
     """
     Register one or more ImageReader classes to the global registry.
 
@@ -32,7 +30,7 @@ def get_reader_for_file_type(file_type):
         raise UnknownFileError(f"Could not find reader for file type {file_type}")
 
 
-def get_reader_from_registry(reader_name:str) -> Type[ImageReader]:
+def get_reader_from_registry(reader_name: str) -> type[ImageReader]:
     """
     Get a registered ImageReader class by its class name.
 
@@ -51,7 +49,7 @@ def get_reader_from_registry(reader_name:str) -> Type[ImageReader]:
     raise KeyError(f"No reader found with name {reader_name}")
 
 
-def get_reader(fname: str, auto_register_default_readers:bool=True, **kwargs) -> ImageReader:
+def get_reader(fname: str, auto_register_default_readers: bool = True, **kwargs) -> ImageReader:
     """
     Select and instantiate the best matching reader for a given file.
 
@@ -79,7 +77,7 @@ def get_reader(fname: str, auto_register_default_readers:bool=True, **kwargs) ->
         try:
             reader_priority = reader.check_file(fname)
         except Exception as ex:
-            #Ignore errors in check_file, but keep track of them for diagnostics
+            # Ignore errors in check_file, but keep track of them for diagnostics
             reader_errors.append((reader, ex))
             continue
         if isinstance(reader_priority, bool):

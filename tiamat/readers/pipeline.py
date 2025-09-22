@@ -2,10 +2,9 @@
 Reader that delegates image reading to a processing pipeline.
 """
 from collections.abc import Callable
-from functools import partial
 
 from functools import partial
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 
@@ -43,7 +42,7 @@ class PipelineReader(ImageReader):
             accessor (ImageAccessor): Accessor specifying what to read.
 
         Returns:
-            ImageResult: The result after applying the pipeline.
+            np.ndarray: The image array after applying the pipeline.
         """
         return self.pipeline(
             file_name=self.fname, accessor=accessor, **self.reader_kwargs
@@ -60,7 +59,7 @@ class PipelineReader(ImageReader):
         return self.pipeline.read_metadata(file_name=self.fname, **self.reader_kwargs)
 
     @classmethod
-    def check_file(cls, fname:str) -> bool:
+    def check_file(cls, fname: str) -> bool:
         """
         This implementation always returns False (not implemented).
 
@@ -73,7 +72,8 @@ class PipelineReader(ImageReader):
         return False
 
     @classmethod
-    def from_json(cls, args: Dict[str, Any], reader_post_creation_hook: Callable | None=None) -> Callable[..., "PipelineReader"]:
+    def from_json(cls, args: dict[str, Any], reader_post_creation_hook: Callable | None = None) -> Callable[
+        ..., "PipelineReader"]:
         """
         Creates a PipelineReader from a JSON-like configuration.
 
