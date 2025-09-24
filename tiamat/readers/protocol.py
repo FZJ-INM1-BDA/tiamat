@@ -29,7 +29,7 @@ class ImageReader(Protocol):
         Returns:
             np.ndarray: The resulting image data as a Numpy array.
         """
-        ...
+        raise NotImplementedError
 
     def read_metadata(self) -> ImageMetadata:
         """
@@ -40,7 +40,7 @@ class ImageReader(Protocol):
             and other properties.
         """
 
-    ...
+        raise NotImplementedError
 
     @classmethod
     def check_file(cls, fname: str) -> bool | int | float:
@@ -54,4 +54,4 @@ class ImageReader(Protocol):
              Truthy value if the file is supported. Can return a numeric
             score indicating priority among multiple readers.
         """
-        ...
+        raise NotImplementedError
