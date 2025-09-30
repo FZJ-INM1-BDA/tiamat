@@ -1,8 +1,9 @@
 """
 Deformation field transformers.
 """
-from typing import Any
+
 from __future__ import annotations
+from typing import Any
 from collections.abc import Callable
 from tiamat.cache import instance_cached_property
 
