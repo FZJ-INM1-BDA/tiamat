@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 
+from dataclasses import replace
 from .protocol import Transformer
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
@@ -37,6 +38,16 @@ class ImageToVolumeTransformer(Transformer):
         Returns:
             The unchanged accessor.
         """
+        # dimensional metadata has to be removed
+        accessor = replace(accessor)
+        accessor.z = None
+
+        if accessor.scale is not None and hasattr(accessor.scale, "__len__"):
+            accessor.scale = accessor.scale[:2]
+
+        if accessor.spacing is not None and hasattr(accessor.spacing, "__len__"):
+            accessor.spacing = accessor.spacing[:2]
+
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
