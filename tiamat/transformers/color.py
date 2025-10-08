@@ -185,7 +185,7 @@ class GrayscaleToRGBTransformer(Transformer):
     Convert grayscale images to RGB.
     """
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         """
         Leave accessor unchanged.
 
