@@ -116,12 +116,13 @@ class AffineTransformer(Transformer):
         prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
 
-        # TODO: Account for spacing and coordinate scale
+        # TODO: Account for coordinate scale
         spatial_dims = metadata.spatial_dimensions
         x_from, x_to = resolve_coordinate_slice(x, metadata.shape[spatial_dims[-1]])
         y_from, y_to = resolve_coordinate_slice(y, metadata.shape[spatial_dims[-2]])
 
         # Transform all four corners of the frame
+        # Assume corner pixel coordinate system
         x1, y1 = self._transform_point(x_from, y_from, affine)
         x2, y2 = self._transform_point(x_to, y_from, affine)
         x3, y3 = self._transform_point(x_to, y_to, affine)
@@ -262,7 +263,7 @@ class AffineTransformer(Transformer):
 
         # Transform affine to pixel coordinates and make it corner pixel aligned
         px_affine[:2, -1] = px_affine[:2, -1] * target_scale
-        # px_affine = self._make_corner_px_affine(px_affine)
+        px_affine = self._make_corner_px_affine(px_affine)
 
         # Step 1: Shift towards input.
         input_origin_affine = np.eye(3)
