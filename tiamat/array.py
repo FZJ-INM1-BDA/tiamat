@@ -1,4 +1,5 @@
-from typing import Iterable, Tuple
+from __future__ import annotations
+from collections.abc import Iterable
 from functools import cached_property
 
 from .pipeline import Pipeline
@@ -6,7 +7,25 @@ from .metadata import ImageMetadata, dimensions
 from .io import ImageAccessor
 
 
-def slice_to_interval(array_slice, shape):
+def slice_to_interval(
+        array_slice: int | slice | tuple[int | slice | Ellipsis, ...] | None,
+        shape: tuple[int, ...],
+) -> tuple[list[tuple[int, int]], list[int]]:
+    """
+        Convert a given slice or index into intervals usable for image access.
+
+        Args:
+            array_slice: Slice, integer, ellipsis or tuple of them. Can also be None to expand to full slice.
+            shape: The shape of the array to index into.
+
+        Returns:
+            A tuple containing:
+            - A list of (start, stop) intervals for each dimension.
+            - A list of dimensions to be squeezed after slicing.
+
+        Raises:
+            IndexError: If the number of slice dimensions exceeds the array's dimensions.
+        """
     if array_slice is None:
         # expand None slice
         array_slice = tuple([slice(None) for _ in range(len(shape))])
@@ -33,10 +52,8 @@ def slice_to_interval(array_slice, shape):
     array_intervals = []
     squeeze_dims = []
     for i, sl in enumerate(array_slice):
-        # integer/float indices
         if isinstance(sl, int):
             if sl < 0:
-                # negative indices
                 sl = slice(shape[i] + sl, shape[i] + sl + 1)
             else:
                 sl = slice(sl, sl + 1)
@@ -46,7 +63,6 @@ def slice_to_interval(array_slice, shape):
             start = 0
         if not stop:
             stop = shape[i]
-        # negative indices
         if start and start < 0:
             start = shape[i] + start
         if stop and stop < 0:
@@ -69,13 +85,24 @@ class Array(object):
     """
 
     def __init__(
-        self,
-        file_name,
-        pipeline: Pipeline,
-        scale: float | int | Iterable[float | int],
-        reader_kwargs: dict | None = None,
-        shape_round_mode: str = "round",
+            self,
+            file_name,
+            pipeline: Pipeline,
+            scale: float | int | Iterable[float | int],
+            reader_kwargs: dict | None = None,
+            shape_round_mode: str = "round",
     ) -> None:
+        """
+        Initialize an Array instance.
+
+        Args:
+            file_name: Path to the image file.
+            pipeline: Pipeline used to read/process the image.
+            scale: Scale factor(s) to apply to the image.
+            reader_kwargs: Additional kwargs to pass to the pipeline when reading.
+            shape_round_mode: Determines how shape values are rounded.
+                              Valid options: "round", "ceil", "floor".
+        """
         self.file_name = file_name
         self.pipeline = pipeline
         self.scale = scale
@@ -84,11 +111,22 @@ class Array(object):
 
     @classmethod
     def create_arrays_for_scales(
-        cls,
-        file_name,
-        pipeline: Pipeline,
-        reader_kwargs: dict | None = None,
-    ) -> Tuple:
+            cls,
+            file_name: str,
+            pipeline: Pipeline,
+            reader_kwargs: dict | None = None,
+    ) -> tuple:
+        """
+        Factory method to create `Array` instances for all scales of an image.
+
+        Args:
+            file_name: Path to the image file.
+            pipeline: Pipeline used to read/process the image.
+            reader_kwargs: Additional kwargs for the pipeline.
+
+        Returns:
+            Tuple of Array instances for each available scale.
+        """
         reader_kwargs = reader_kwargs or {}
         metadata = pipeline.read_metadata(file_name=file_name, **reader_kwargs)
         scales = metadata.scales or [
@@ -105,12 +143,13 @@ class Array(object):
 
     @cached_property
     def metadata(self) -> ImageMetadata:
+        """Read and cache image metadata."""
         return self.pipeline.read_metadata(
             file_name=self.file_name, **self.reader_kwargs
         )
 
     @cached_property
-    def shape(self):
+    def shape(self) -> tuple[int, ...]:
         """Shape of the image."""
         import numpy as np
 
@@ -130,23 +169,33 @@ class Array(object):
         )
 
     @property
-    def ndim(self):
+    def ndim(self) -> int:
         """Number of dimensions."""
         return len(self.shape)
 
     @property
-    def size(self):
-        """Size of the array."""
+    def size(self) -> int:
+        """Total number of elements in the array."""
         import math
 
         return math.prod(self.shape)
 
     @property
-    def dtype(self):
-        """Dtype of the image."""
+    def dtype(self) -> str:
+        """"Dtype of the image."""
         return self.metadata.dtype
 
-    def __getitem__(self, array_slice: slice | Tuple[slice] | None):
+    def __getitem__(self, array_slice: slice | tuple[slice] | None):
+        """
+        Retrieve image data using numpy-like slicing.
+
+        Args:
+            array_slice: Slice object(s), integer index, ellipsis, or None.
+
+        Returns:
+            The image data as returned by the pipeline.
+        """
+
         array_intervals, squeeze_dims = slice_to_interval(array_slice, self.shape)
 
         # matching from slice to dimension names. We assume fixed (z, y, x) indexing

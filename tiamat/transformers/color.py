@@ -5,20 +5,52 @@ Color transformers.
 import numpy as np
 
 from .protocol import Transformer
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
 class LUTTransformer(Transformer):
-    def __init__(self, color_map):
+    """
+    Apply a look-up table (LUT) or color map to an image.
+    """
+
+    def __init__(self, color_map: str | np.ndarray | list | tuple) -> None:
+        """
+        Initialize a LUTTransformer.
+
+        Args:
+            color_map: Colormap to apply. Can be a string (matplotlib name), numpy array,
+                list, or tuple.
+        """
         self.color_map = color_map
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
+        """
+        Leave accessor unchanged.
+
+        Args:
+            accessor: Accessor of the image.
+            metadata: Metadata of the image.
+
+        Returns:
+            The unchanged accessor.
+        """
         return accessor
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        """
+        Apply the LUT or colormap to the image.
+
+        Args:
+            image: Input image.
+            metadata: Metadata of the image, must provide `value_range`.
+            accessor: Accessor of the image.
+
+        Returns:
+            Color-mapped image as ndarray.
+        """
         assert (
-            metadata.value_range is not None
+                metadata.value_range is not None
         ), f"LUTTransformer requires metadata.value_range."
 
         image = self._apply_color_map(
@@ -27,7 +59,17 @@ class LUTTransformer(Transformer):
 
         return image
 
-    def _apply_color_map(self, image, value_range):
+    def _apply_color_map(self, image: np.ndarray, value_range: tuple[float, float]) -> np.ndarray:
+        """
+        Internal helper to apply the color map.
+
+        Args:
+            image: Input image array.
+            value_range: Tuple of (min, max) values for normalization.
+
+        Returns:
+            Color-mapped image as ndarray.
+        """
         import numpy as np
 
         if isinstance(self.color_map, str):
@@ -48,6 +90,15 @@ class LUTTransformer(Transformer):
             raise RuntimeError(f"Unknown type for color map: {type(self.color_map)}")
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        """
+        Update metadata shape for 3-channel color output.
+
+        Args:
+            metadata: Original ImageMetadata.
+
+        Returns:
+            Updated ImageMetadata.
+        """
         from dataclasses import replace
 
         metadata = replace(metadata)
@@ -67,11 +118,35 @@ class LUTTransformer(Transformer):
 
 
 class GrayscaleTransformer(Transformer):
+    """
+    Convert RGB/RGBA images to grayscale.
+    """
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
+        """
+        Leave accessor unchanged.
+
+        Args:
+            accessor: Accessor of the image.
+            metadata: Metadata of the image.
+
+        Returns:
+            The unchanged accessor.
+        """
         return accessor
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        """
+        Convert RGB/RGBA image to grayscale using OpenCV.
+
+        Args:
+            image: Image to transform.
+            metadata: Metadata of the image.
+            accessor: Accessor of the image.
+
+        Returns:
+            Grayscale image as ndarray.
+        """
         import cv2
         from tiamat.metadata import dimensions
 
@@ -83,6 +158,15 @@ class GrayscaleTransformer(Transformer):
         return image
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        """
+        Remove RGB/RGBA dimensions from metadata.
+
+        Args:
+            metadata: Original ImageMetadata.
+
+        Returns:
+            Updated ImageMetadata without color channels.
+        """
         from dataclasses import replace
         from tiamat.metadata import dimensions
 
@@ -90,18 +174,41 @@ class GrayscaleTransformer(Transformer):
         metadata = replace(metadata)
         if dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions:
             metadata.shape = metadata.shape[:-1]
-        metadata.dimensions = [dimension for dimension in metadata.dimensions if dimension not in (dimensions.RGB, dimensions.RGBA)]
+        metadata.dimensions = [dimension for dimension in metadata.dimensions if
+                               dimension not in (dimensions.RGB, dimensions.RGBA)]
 
-           
         return metadata
 
 
 class GrayscaleToRGBTransformer(Transformer):
+    """
+    Convert grayscale images to RGB.
+    """
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
+        """
+        Leave accessor unchanged.
+
+        Args:
+            accessor: Accessor of the image.
+
+        Returns:
+            The unchanged accessor.
+        """
         return accessor
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        """
+        Convert grayscale image to RGB using OpenCV.
+
+        Args:
+            image: Image to transform.
+            metadata:
+            accessor:
+
+        Returns:
+            RGB ImageResult.
+        """
         import cv2
         from tiamat.metadata import dimensions
 
@@ -112,6 +219,15 @@ class GrayscaleToRGBTransformer(Transformer):
         return image
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        """
+        Update metadata shape and dimensions for RGB.
+
+        Args:
+            metadata: Original ImageMetadata.
+
+        Returns:
+            Updated ImageMetadata.
+        """
         from dataclasses import replace
         from tiamat.metadata import dimensions
 
@@ -119,16 +235,40 @@ class GrayscaleToRGBTransformer(Transformer):
         if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
             metadata.shape = (*metadata.shape, 3)
             metadata.dimensions = list(metadata.dimensions) + [dimensions.RGB, ]
-        
+
         return metadata
 
 
 class FloatToByteTransformer(Transformer):
+    """
+    Convert floating-point images to 8-bit unsigned byte images.
+    """
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
+        """
+        Leave accessor unchanged.
+
+        Args:
+            accessor: Accessor of the image.
+            metadata: Metadata of the image.
+
+        Returns:
+            The unchanged accessor.
+        """
         return accessor
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        """
+        Convert float images to 8-bit uint images in range [0, 255].
+
+        Args:
+            image: Image to transform.
+            metadata: Metadata of the image.
+            accessor: Accessor of the image.
+
+        Returns:
+            Converted image as uint8.
+        """
         import numpy as np
 
         if np.issubdtype(image.dtype, np.floating):
@@ -137,5 +277,14 @@ class FloatToByteTransformer(Transformer):
         return image
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        """
+        Set metadata value_range to [0,255] after conversion.
+
+        Args:
+            metadata: Original ImageMetadata.
+
+        Returns:
+            Updated metadata with value_range 0–255.
+        """
         metadata.value_range = (0, 255)
         return metadata
