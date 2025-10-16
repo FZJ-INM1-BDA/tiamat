@@ -4,9 +4,9 @@ Color transformers.
 
 import numpy as np
 
-from .protocol import Transformer
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class LUTTransformer(Transformer):
@@ -49,13 +49,9 @@ class LUTTransformer(Transformer):
         Returns:
             Color-mapped image as ndarray.
         """
-        assert (
-                metadata.value_range is not None
-        ), f"LUTTransformer requires metadata.value_range."
+        assert metadata.value_range is not None, f"LUTTransformer requires metadata.value_range."
 
-        image = self._apply_color_map(
-            image=image, value_range=metadata.value_range
-        )
+        image = self._apply_color_map(image=image, value_range=metadata.value_range)
 
         return image
 
@@ -105,6 +101,7 @@ class LUTTransformer(Transformer):
 
         if isinstance(self.color_map, str):
             import matplotlib
+
             metadata.dtype = np.asarray(matplotlib.colormaps.get_cmap(self.color_map)(0)).dtype
             ldim = len(matplotlib.colormaps.get_cmap(self.color_map)(0))
         elif isinstance(self.color_map, (np.ndarray, (tuple, list))):
@@ -148,6 +145,7 @@ class GrayscaleTransformer(Transformer):
             Grayscale image as ndarray.
         """
         import cv2
+
         from tiamat.metadata import dimensions
 
         # Only do this if the image contains RGB/RGBA channels
@@ -168,14 +166,16 @@ class GrayscaleTransformer(Transformer):
             Updated ImageMetadata without color channels.
         """
         from dataclasses import replace
+
         from tiamat.metadata import dimensions
 
         # remove all color dimensions
         metadata = replace(metadata)
         if dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions:
             metadata.shape = metadata.shape[:-1]
-        metadata.dimensions = [dimension for dimension in metadata.dimensions if
-                               dimension not in (dimensions.RGB, dimensions.RGBA)]
+        metadata.dimensions = [
+            dimension for dimension in metadata.dimensions if dimension not in (dimensions.RGB, dimensions.RGBA)
+        ]
 
         return metadata
 
@@ -190,6 +190,7 @@ class GrayscaleToRGBTransformer(Transformer):
         Leave accessor unchanged.
 
         Args:
+            metadata: Metadata of the Image.
             accessor: Accessor of the image.
 
         Returns:
@@ -210,6 +211,7 @@ class GrayscaleToRGBTransformer(Transformer):
             RGB ImageResult.
         """
         import cv2
+
         from tiamat.metadata import dimensions
 
         # Only do something if the image is not already RGB.
@@ -229,12 +231,15 @@ class GrayscaleToRGBTransformer(Transformer):
             Updated ImageMetadata.
         """
         from dataclasses import replace
+
         from tiamat.metadata import dimensions
 
         metadata = replace(metadata)
         if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
             metadata.shape = (*metadata.shape, 3)
-            metadata.dimensions = list(metadata.dimensions) + [dimensions.RGB, ]
+            metadata.dimensions = list(metadata.dimensions) + [
+                dimensions.RGB,
+            ]
 
         return metadata
 
