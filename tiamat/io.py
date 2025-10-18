@@ -2,7 +2,6 @@
 IO objects.
 """
 
-from typing import Iterable
 from dataclasses import dataclass, field
 import numpy as np
 from tiamat.metadata import ImageMetadata
@@ -17,10 +16,28 @@ INTERPOLATION_TYPE_LANCZOS4 = "lanczos4"
 
 @dataclass
 class ImageAccessor:
+    """
+    Defines a region and settings for accessing an image.
+
+    Attributes:
+        x, y, z: Coordinates or slices for each dimension. Can be an int, float, or a tuple
+                  of (start, stop). Use None for unspecified.
+        c: Channel selection. Can be an int, a tuple of (start, stop), or a dictionary
+           mapping channel names to int or tuple.
+        scale: Scale factor to retrieve the image.
+        spacing: Spacing to retrieve the image. If None, original spacing is used.
+        coordinate_scale: Scale of coordinates relative to original image.
+        coordinate_spacing: Spacing of coordinates relative to original image.
+        interpolation: Interpolation strategy (use INTERPOLATION_TYPE_* constants).
+        anti_aliasing: Whether to apply Gaussian smoothing. Default is False.
+        fill_value: Value for out-of-bounds padding. None means no padding.
+        history: Dictionary storing history of operations or transformations.
+    """
     x: tuple[int | float | None, int | float | None] | int = None
     y: tuple[int | float | None, int | float | None] | int = None
     z: tuple[int | float | None, int | float | None] | int = None
-    c: (tuple[int | float | None, int | float | None] | int) | dict[str: tuple[int | float | None, int | float | None] | int] = None
+    c: tuple[int | float | None, int | float | None] | int | dict[
+        str: tuple[int | float | None, int | float | None] | int] = None
     # scale/spacing to retrieve
     scale: float = 1.0
     spacing: float = None
@@ -64,4 +81,4 @@ class ImageResult:
     Stores an image with its corresponding metadata.
     """
     image: np.ndarray
-    metadata: ImageMetadata = None
+    metadata: ImageMetadata | None = None

@@ -4,7 +4,7 @@ Metadata on images.
 
 from dataclasses import dataclass, field
 from itertools import product, repeat
-from typing import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -66,7 +66,8 @@ class ImageMetadata:
         """
         Returns indices of spatial axes, excluding channels
         """
-        return tuple(self.dimensions.index(dimension) for dimension in dimensions.SPATIAL_DIMENSIONS if dimension in self.dimensions)
+        return tuple(self.dimensions.index(dimension) for dimension in dimensions.SPATIAL_DIMENSIONS if
+                     dimension in self.dimensions)
 
     @property
     def channel_dimensions(self):
@@ -78,7 +79,7 @@ class ImageMetadata:
     @property
     def spatial_shape(self):
         return tuple(self.shape[i] for i in self.spatial_dimensions)
-    
+
     @spatial_shape.setter
     def spatial_shape(self, shape):
         shape_list = list(self.shape)
