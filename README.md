@@ -7,7 +7,7 @@
 
 ---
 
-**tiamat** is a modular Python toolkit for accessing, transforming, and exposing large scientific image datasets.
+**tiamat** is a modular Python toolkit for accessing, transforming, and exposing large scientific image datasets.  
 It provides a flexible, pluggable pipeline model that separates data access (readers), transformation (transformers), and delivery (interfaces) — allowing on-the-fly, tool-agnostic image workflows without data duplication or format conversion.
 
 Supported outputs include NumPy arrays, Napari, Neuroglancer, OpenSeadragon, and FUSE-mounted virtual filesystems.

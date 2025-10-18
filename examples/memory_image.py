@@ -3,9 +3,8 @@ Read a generic image.
 """
 
 from imageio.v3 import imread
-
-from tiamat.io import ImageAccessor
 from tiamat.readers import get_reader
+from tiamat.io import ImageAccessor
 
 array = imread("./data/Koala.jpg")
 reader = get_reader(array)
@@ -26,14 +25,22 @@ print(crop.shape)
 crop = reader.read_image(ImageAccessor(x=x, y=x, c=1, scale=1.0))
 print(crop.shape)
 
-crop = reader.read_image(ImageAccessor(x=(0, 100), y=y, c=1, scale=1.0))
+crop = reader.read_image(
+    ImageAccessor(x=(0, 100), y=y, c=1, scale=1.0)
+)
 print(crop.shape)
 
-crop = reader.read_image(ImageAccessor(x=(0, 100), y=(0, 100), c=1, scale=1.0))
+crop = reader.read_image(
+    ImageAccessor(x=(0, 100), y=(0, 100), c=1, scale=1.0)
+)
 print(crop.shape)
 
-crop = reader.read_image(ImageAccessor(x=(0, 100), y=(0, 100), c=(0, 2), scale=1.0))
+crop = reader.read_image(
+    ImageAccessor(x=(0, 100), y=(0, 100), c=(0, 2), scale=1.0)
+)
 print(crop.shape)
 
-crop = reader.read_image(ImageAccessor(x=(0, 100), y=(0, 100), scale=0.5))
+crop = reader.read_image(
+    ImageAccessor(x=(0, 100), y=(0, 100), scale=0.5)
+)
 print(crop.shape)

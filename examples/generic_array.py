@@ -2,8 +2,8 @@
 Simple example of using a pipeline.
 """
 
-from tiamat.array import Array
 from tiamat.pipeline import Pipeline
+from tiamat.array import Array
 
 array = Array(file_name="./data/Koala.jpg", pipeline=Pipeline(), scale=1.0)
 print(array.shape, array.dtype, array.ndim, array.size)

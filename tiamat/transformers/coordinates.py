@@ -2,9 +2,9 @@ import numpy as np
 
 
 def resolve_coordinate_slice(
-    coordinate_slice: tuple[int | float | None, int | float | None] | int,
-    image_dimension: int | float,
-) -> tuple[int | float, int | float] | int | float:
+        coordinate_slice: tuple[int | float | None, int | float | None] | int,
+        image_dimension: int | float,
+    ) -> tuple[int | float, int | float] | int | float:
     """Resolves None values in coordinate slices.
 
     Parameters
@@ -38,8 +38,8 @@ def resolve_coordinate_slice(
 
 
 def get_coordinate_bounds(
-    coordinate_slice: tuple[int | float | None, int | float | None] | int,
-    image_dimension: int | float,
+        coordinate_slice: tuple[int | float | None, int | float | None] | int,
+        image_dimension: int | float,
 ) -> tuple[int | float, int | float]:
     coord_fromto = resolve_coordinate_slice(coordinate_slice, image_dimension)
 

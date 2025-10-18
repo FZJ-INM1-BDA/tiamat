@@ -1,29 +1,28 @@
 """
 Deformation field transformers.
 """
+from typing import Any, Dict, Tuple, Callable
+from tiamat.cache import instance_cached_property
 
-from typing import Any, Callable, Dict, Tuple
+from tiamat.readers.protocol import ImageReader
+from tiamat.transformers.protocol import Transformer
+from tiamat.io import ImageResult, ImageAccessor
+from tiamat.metadata import ImageMetadata
 
 import numpy as np
 
-from tiamat.cache import instance_cached_property
-from tiamat.io import ImageAccessor, ImageResult
-from tiamat.metadata import ImageMetadata
-from tiamat.readers.protocol import ImageReader
-from tiamat.transformers.protocol import Transformer
-
 
 class DeformationFieldTransformer(Transformer):
-
+    
     def __init__(
-        self,
-        dfield_file: str,
-        request_margin: int = 2,
-        interpolation="linear",
-        fill_value: int | float | None = None,
-        xy_coordinates=True,
-        reader_factory: Callable[[str], ImageReader] | None = None,
-    ):
+            self,
+            dfield_file: str,
+            request_margin: int = 2,
+            interpolation = 'linear',
+            fill_value: int | float | None = None,
+            xy_coordinates = True,
+            reader_factory: Callable[[str], ImageReader] | None = None,
+        ):
         """Creates an instance of DeformationFieldTransformer
 
         Parameters
@@ -41,7 +40,7 @@ class DeformationFieldTransformer(Transformer):
         self.reader_factory = reader_factory or get_reader
 
         self.xy_coordinates = xy_coordinates
-
+        
         self.request_margin = request_margin
         self.interpolation = interpolation
         self.fill_value = fill_value
@@ -85,6 +84,7 @@ class DeformationFieldTransformer(Transformer):
         # to @property to manage caching of open file handles at a central location
         return self.reader_factory(self.dfield_file)
 
+
     @instance_cached_property
     def dfield_metadata(self) -> ImageMetadata:
         return self.dfield_file_handle.read_metadata()
@@ -97,23 +97,23 @@ class DeformationFieldTransformer(Transformer):
 
     @instance_cached_property
     def dfield_origin(self) -> Tuple[float, float]:
-        dfield_origin = (0.0, 0.0)
+        dfield_origin = (0., 0.)
         if self.dfield_metadata.additional_metadata is not None:
-            if "dfield_origin" in self.dfield_metadata.additional_metadata.keys():
-                dfield_origin = self.dfield_metadata.additional_metadata["dfield_origin"]
+            if 'dfield_origin' in self.dfield_metadata.additional_metadata.keys():
+                dfield_origin = self.dfield_metadata.additional_metadata['dfield_origin']
 
         return dfield_origin
+
 
     @staticmethod
     def apply_deformation(
         image: np.ndarray,
         coordinates: np.ndarray,
         channel_dim: int = None,
-        fill_value=0,
-        interpolation="nearest",
+        fill_value = 0,
+        interpolation = "nearest",
     ):
         from scipy.ndimage import map_coordinates
-
         from tiamat.readers.processing import SCIPY_INTERPOLATION_CODES
 
         if channel_dim is None:
@@ -121,7 +121,7 @@ class DeformationFieldTransformer(Transformer):
                 image,
                 coordinates,
                 order=SCIPY_INTERPOLATION_CODES[interpolation],
-                mode="constant",
+                mode='constant',
                 cval=fill_value,
             )
         else:
@@ -139,23 +139,20 @@ class DeformationFieldTransformer(Transformer):
                     image_channel,
                     coordinates,
                     order=SCIPY_INTERPOLATION_CODES[interpolation],
-                    mode="constant",
+                    mode='constant',
                     cval=fill_value,
                 )
 
             out_image = np.moveaxis(result, -1, channel_dim)
-
+    
         return out_image
 
-    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
-        import math
-        from dataclasses import replace
 
-        from tiamat.readers.processing import (
-            _prepare_coordinates,
-            expand_to_length,
-            rescale_shape,
-        )
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
+        from dataclasses import replace
+        import math
+
+        from tiamat.readers.processing import _prepare_coordinates, expand_to_length, rescale_shape
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         image_scale = expand_to_length(accessor.scale, 2)[:2]
@@ -172,7 +169,10 @@ class DeformationFieldTransformer(Transformer):
         x_from, x_to = resolve_coordinate_slice(x, image_shape[spatial_dims[-1]])
         y_from, y_to = resolve_coordinate_slice(y, image_shape[spatial_dims[-2]])
 
-        scale_factor = (self.dfield_spacing[0] / image_spacing[0], self.dfield_spacing[1] / image_spacing[1])
+        scale_factor = (
+            self.dfield_spacing[0] / image_spacing[0],
+            self.dfield_spacing[1] / image_spacing[1]
+        )
 
         # Request fitting scale of dfield that matches physical resolution of the request
         target_scale = (
@@ -188,25 +188,31 @@ class DeformationFieldTransformer(Transformer):
         # Target shape of coordinates is same as image shape
         target_shape = rescale_shape(
             ((y_to - y_from), (x_to - x_from)),
-            (target_scale[0] / tmp_coord_scale[0], target_scale[1] / tmp_coord_scale[1]),
+            (target_scale[0] / tmp_coord_scale[0] , target_scale[1] / tmp_coord_scale[1])
         )
 
         # Request more coordinates if dfield needs to be upscaled to avoid artifacts at corners
         tmp_margin = (
-            tmp_coord_scale[0] if target_scale[0] > 1.0 else 0,
-            tmp_coord_scale[1] if target_scale[1] > 1.0 else 0,
+            tmp_coord_scale[0] if target_scale[0] > 1. else 0,
+            tmp_coord_scale[1] if target_scale[1] > 1. else 0,
         )
 
         # Build temporary accessor to read dfield vectors
         tmp_accessor = replace(accessor)
         tmp_accessor.scale = target_scale
         tmp_accessor.coordinate_scale = tmp_coord_scale
-        tmp_accessor.interpolation = "linear"
+        tmp_accessor.interpolation = 'linear'
         tmp_accessor.fill_value = -1
 
         # Request margin if dfield needs upscaling to avoid artifacts
-        tmp_accessor.x = (x_from - tmp_margin[0], x_to + tmp_margin[0])
-        tmp_accessor.y = (y_from - tmp_margin[1], y_to + tmp_margin[1])
+        tmp_accessor.x = (
+            x_from - tmp_margin[0],
+            x_to + tmp_margin[0]
+        )
+        tmp_accessor.y = (
+            y_from - tmp_margin[1],
+            y_to + tmp_margin[1]
+        )
 
         # Read the corresponding crop from dfield
         dfield_crop = self.dfield_file_handle.read_image(tmp_accessor)
@@ -218,7 +224,8 @@ class DeformationFieldTransformer(Transformer):
             math.floor((dfield_crop.shape[1] - target_shape[1]) / 2),
         )
         dfield_vectors = dfield_crop[
-            offset[0] : (offset[0] + target_shape[0]), offset[1] : (offset[1] + target_shape[1])
+            offset[0]:(offset[0] + target_shape[0]),
+            offset[1]:(offset[1] + target_shape[1])
         ]
 
         # Convert pixel coordinates to physical coordinates
@@ -254,16 +261,13 @@ class DeformationFieldTransformer(Transformer):
 
         # Store pixel coordinates for transforming image
         coord_origin = np.array((accessor.y[0], accessor.x[0]), dtype=float)
-        px_coordinates = (coordinates - coord_origin[:, np.newaxis, np.newaxis]) * np.array(image_scale)[
-            :, np.newaxis, np.newaxis
-        ]
+        px_coordinates = (coordinates - coord_origin[:, np.newaxis, np.newaxis]) * np.array(image_scale)[:, np.newaxis, np.newaxis]
         accessor.history[id(self)] = px_coordinates
 
         return accessor
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
-
         from tiamat.readers.processing import expand_to_length
 
         metadata = replace(metadata)
@@ -335,7 +339,7 @@ class DeformationFieldTransformer(Transformer):
         return cls(
             dfield_file=args["dfield_file"],
             request_margin=args.get("request_margin", 2),
-            interpolation=args.get("interpolation", "linear"),
+            interpolation=args.get("interpolation", 'linear'),
             fill_value=args.get("fill_value"),
             xy_coordinates=args.get("xy_coordinates", True),
             reader_factory=get_reader_from_config(args.get("reader_factory")),

@@ -2,19 +2,21 @@
 Example for transforming metadata.
 """
 
-import tiamat.metadata.dimensions as d
-from tiamat.io import ImageAccessor
+from tiamat.transformers.metadata import MetadataLambdaTransformer, MetadataKwargsTransformer
 from tiamat.pipeline import Pipeline
-from tiamat.transformers.metadata import (
-    MetadataKwargsTransformer,
-    MetadataLambdaTransformer,
-)
+from tiamat.io import ImageAccessor
+import tiamat.metadata.dimensions as d
+
 
 fname = "./data/Koala.jpg"
 
 
 # Change interpretation of channels
-pipeline = Pipeline(transformers=[MetadataKwargsTransformer(dimensions=(d.Y, d.X, d.C))])
+pipeline = Pipeline(
+    transformers=[
+        MetadataKwargsTransformer(dimensions=(d.Y, d.X, d.C))
+    ]
+)
 
 result = pipeline(
     file_name=fname,

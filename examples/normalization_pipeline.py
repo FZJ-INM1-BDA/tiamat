@@ -1,13 +1,11 @@
 """
 Pipeline for image normalization.
 """
-
 import matplotlib.pyplot as plt
-
+from tiamat.transformers.normalization import MinMaxNormalizationTransformer
+from tiamat.transformers.access import FractionTransformer
 from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
-from tiamat.transformers.access import FractionTransformer
-from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 
 # Convert an image to grayscale, then apply a colormap.
 # Let's also combine it with some coordinate transformers.

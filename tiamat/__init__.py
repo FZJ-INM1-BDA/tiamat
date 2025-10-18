@@ -1,4 +1,5 @@
-"""Top-level package for Tiamat."""
+""" Top-level package for Tiamat.
+"""
 
 import importlib.metadata
 

@@ -1,9 +1,8 @@
 """
 Read a generic image.
 """
-
-from tiamat.io import ImageAccessor
 from tiamat.readers import get_reader
+from tiamat.io import ImageAccessor
 
 fname = "./data/Koala.jpg"
 reader = get_reader(fname)

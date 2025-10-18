@@ -1,21 +1,16 @@
 """
 Demonstration of reading out of bounds images.
 """
-
 import matplotlib.pyplot as plt
-
+from tiamat.transformers.normalization import MinMaxNormalizationTransformer
+from tiamat.transformers.access import FractionTransformer
 from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
-from tiamat.transformers.access import FractionTransformer
-from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 
 # Convert an image to grayscale, then apply a colormap.
 # Let's also combine it with some coordinate transformers.
 pipeline = Pipeline(
-    transformers=[
-        FractionTransformer(),
-        MinMaxNormalizationTransformer(),
-    ],
+    transformers=[FractionTransformer(), MinMaxNormalizationTransformer(), ],
 )
 result_0 = pipeline(file_name="./data/Koala.jpg", accessor=ImageAccessor(x=(-0.1, 0.1), y=(-0.1, 0.1)))
 print(result_0.image.shape)
