@@ -5,9 +5,10 @@ Transformers that change the output view
 import numpy as np
 
 from tiamat.metadata import dimensions
-from .protocol import Transformer
+
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class BoundingBoxTransformer(Transformer):
@@ -19,10 +20,10 @@ class BoundingBoxTransformer(Transformer):
     """
 
     def __init__(
-            self,
-            bounds_x: tuple[int | float | None, int | float | None] | int = None,
-            bounds_y: tuple[int | float | None, int | float | None] | int = None,
-            bounds_z: tuple[int | float | None, int | float | None] | int = None,
+        self,
+        bounds_x: tuple[int | float | None, int | float | None] | int = None,
+        bounds_y: tuple[int | float | None, int | float | None] | int = None,
+        bounds_z: tuple[int | float | None, int | float | None] | int = None,
     ):
         """
         Initialize a bounding box transformer.
@@ -37,7 +38,7 @@ class BoundingBoxTransformer(Transformer):
         self.bounds_z = bounds_z
 
     @staticmethod
-    def crop_coordinate(coord_slice, bounds_slice, image_dimension, coord_scale: float = 1.):
+    def crop_coordinate(coord_slice, bounds_slice, image_dimension, coord_scale: float = 1.0):
         """
         Compute the cropped coordinate range and residual padding.
 
@@ -53,8 +54,9 @@ class BoundingBoxTransformer(Transformer):
                 - (res_from, res_to): Residual padding needed for reconstruction.
         """
         import math
-        from tiamat.transformers.coordinates import get_coordinate_bounds
+
         from tiamat.readers.processing import prepare_coordinate
+        from tiamat.transformers.coordinates import get_coordinate_bounds
 
         # Here image_scale=coord_scale scales bounds to slice scale
         bounds_slice = prepare_coordinate(bounds_slice, image_scale=coord_scale)
@@ -84,6 +86,7 @@ class BoundingBoxTransformer(Transformer):
             Length of the coordinate slice.
         """
         import math
+
         from tiamat.readers.processing import prepare_coordinate
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
@@ -108,8 +111,7 @@ class BoundingBoxTransformer(Transformer):
         if len(spatial_shape) > 2:
             bounds = (self.bounds_z, *bounds)
         shape = tuple(
-            BoundingBoxTransformer.get_coordinate_shape(bounds[i], spatial_shape[i])
-            for i in range(len(spatial_shape))
+            BoundingBoxTransformer.get_coordinate_shape(bounds[i], spatial_shape[i]) for i in range(len(spatial_shape))
         )
         return shape
 
@@ -119,7 +121,7 @@ class BoundingBoxTransformer(Transformer):
 
         Args:
             accessor: The input accessor.
-            metadata: The metedata.
+            metadata: The metadata.
 
         Returns:
             Updated accessor cropped to the bounding box.
