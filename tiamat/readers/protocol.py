@@ -2,12 +2,12 @@
 Protocol for readers.
 """
 
+from ..io import ImageAccessor, ImageResult
 from typing import Protocol
-
 import numpy as np
-
-from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+
+CheckResult = bool | int | float
 
 
 class ImageReader(Protocol):
@@ -21,49 +21,37 @@ class ImageReader(Protocol):
 
     def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         """
-        Read image data from the source according to the provided accessor.
+        Read and return the image content.
 
-        The accessor passed to `read_image` may have been modified by 
-        upstream transformers via their `transform_access` method.
+        Args:
+            accessor (ImageAccessor): Accessor defining which part of the image to read.
 
-        Parameters
-        ----------
-        accessor : ImageAccessor
-            Access configuration specifying region, scale, and retrieval options.
-
-        Returns
-        -------
-        np.ndarray
-            Image data as a NumPy array.
+        Returns:
+            np.ndarray: The resulting image data as a Numpy array.
         """
         raise NotImplementedError
 
     def read_metadata(self) -> ImageMetadata:
         """
-        Read metadata describing the image without loading the image data itself.
+        Read and return metadata associated with the image.
 
-        Returns
-        -------
-        ImageMetadata
-            Metadata containing shape, spatial and channel dimensions, spacing, 
+        Returns:
+            ImageMetadata: The metadata of the image containing shape, spatial and channel dimensions, spacing,
             and other properties.
         """
+
         raise NotImplementedError
 
     @classmethod
-    def check_file(cls, fname) -> bool | int | float:
+    def check_file(cls, fname: str) -> bool | int | float:
         """
-        Determine whether the given file is supported by this reader.
+        Check if the reader is compatible with the given file.
 
-        Parameters
-        ----------
-        fname : str or Path
-            Path to the file to check.
+        Args:
+            fname (str): The file path or identifier.
 
-        Returns
-        -------
-        bool | int | float
-            Truthy value if the file is supported. Can return a numeric 
+        Returns:
+             Truthy value if the file is supported. Can return a numeric
             score indicating priority among multiple readers.
         """
         raise NotImplementedError

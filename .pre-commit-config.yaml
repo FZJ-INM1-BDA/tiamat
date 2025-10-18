@@ -1,7 +1,7 @@
 repos:
   # general
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-json
@@ -18,18 +18,19 @@ repos:
       - id: trailing-whitespace
   # python hooks
   - repo: https://github.com/psf/black
-    rev: 24.2.0
+    rev: 25.1.0
     hooks:
       - id: black
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
   - repo: https://github.com/pycqa/flake8
-    rev: ''
+    rev: 7.3.0
     hooks:
-    - id: flake8
+      - id: flake8
+        args: [--max-line-length=120] # not sure, why it does not pick it up from pyproject.toml
   - repo: local
     hooks:
       - id: pylint
