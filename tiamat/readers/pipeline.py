@@ -8,10 +8,9 @@ from typing import Any, Dict
 import numpy as np
 
 from tiamat.cache import instance_cache
-
+from .protocol import ImageReader
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
-from .protocol import ImageReader
 
 
 class PipelineReader(ImageReader):
@@ -21,7 +20,9 @@ class PipelineReader(ImageReader):
         self.reader_kwargs = reader_kwargs
 
     def read_image(self, accessor: ImageAccessor) -> np.ndarray:
-        return self.pipeline(file_name=self.fname, accessor=accessor, **self.reader_kwargs).image
+        return self.pipeline(
+            file_name=self.fname, accessor=accessor, **self.reader_kwargs
+        ).image
 
     @instance_cache
     def read_metadata(self) -> ImageMetadata:
@@ -37,7 +38,7 @@ class PipelineReader(ImageReader):
 
         pipeline = load_pipeline_from_config(args["pipeline"], reader_post_creation_hook=reader_post_creation_hook)
 
-        # TODO: Handle kwargs
+        #TODO: Handle kwargs
         return partial(
             cls,
             pipeline=pipeline,

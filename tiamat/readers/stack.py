@@ -3,10 +3,10 @@ Reader for Stacks.
 """
 
 import math
-import re
-from collections import defaultdict
 from functools import cached_property, partial
+import re
 from typing import Any, Callable, Dict, Iterable, List
+from collections import defaultdict
 
 import numpy as np
 
@@ -28,7 +28,7 @@ def compile_identifier(identifier: str | None) -> re.Pattern:
         return None
     else:
         # Parse the regex and see if there are any groups present
-        if "(" not in identifier:
+        if '(' not in identifier:
             # Add group if no group is present
             identifier = f".*({identifier}).*"
         return re.compile(identifier)
@@ -37,7 +37,7 @@ def compile_identifier(identifier: str | None) -> re.Pattern:
 def get_reader_identifier(fname: str, identifier: re.Pattern):
     match = identifier.search(fname)
     if not match:
-        raise ValueError(f'No match for identifier "{identifier}" in filename "{fname}"')
+        raise ValueError(f"No match for identifier \"{identifier}\" in filename \"{fname}\"")
 
     return match.group(1)
 
@@ -81,18 +81,16 @@ def select_slice_ix(accessor, metadata, num_slices, slice_spacing=1.0):
 class ImageStackReader(ImageReader):
 
     def __init__(
-        self,
-        fnames: str | Iterable[str],
-        reader_identifier: str = None,
-        reader_factory: (
-            Callable[[str], ImageReader] | List[Callable[[str], ImageReader]] | Dict[str, Callable[[str], ImageReader]]
-        ) = None,
-        slice_spacing: float = None,
-        stack_dimension: str = dimensions.Z,
-        missing_section_interpolation=None,
-        missing_section_fill_value=0,
-        **reader_kwargs,
-    ):
+            self,
+            fnames: str | Iterable[str],
+            reader_identifier: str = None,
+            reader_factory: Callable[[str], ImageReader] | List[Callable[[str], ImageReader]] | Dict[str, Callable[[str], ImageReader]] = None,
+            slice_spacing: float = None,
+            stack_dimension: str = dimensions.Z,
+            missing_section_interpolation = None,
+            missing_section_fill_value = 0,
+            **reader_kwargs
+        ):
         """_summary_
 
         Parameters
@@ -131,9 +129,7 @@ class ImageStackReader(ImageReader):
 
         if slice_spacing is None:
             spacing_2d = expand_to_length(spacing, 2)
-            assert (
-                spacing_2d[0] == spacing_2d[1]
-            ), "StackReader assumes isotropic image spacing if slice_spacing is not provided"
+            assert spacing_2d[0] == spacing_2d[1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
             return (*spacing_2d, spacing_2d[0])
         else:
             return (*expand_to_length(spacing, 2), slice_spacing)
@@ -208,9 +204,7 @@ class ImageStackReader(ImageReader):
         # Set scales
         metadata.scales = self.scales
 
-        metadata.dimensions = [
-            self.stack_dimension,
-        ] + list(metadata.dimensions)
+        metadata.dimensions = [self.stack_dimension, ] + list(metadata.dimensions)
 
         metadata.additional_metadata["stack_dimension"] = self.stack_dimension
 
@@ -229,7 +223,7 @@ class ImageStackReader(ImageReader):
             raise Exception("Requested empty stack")
 
         # Remove z axis for 2D access from metadata
-        tmp_accessor = replace(accessor, z=None)
+        tmp_accessor = replace(accessor, z = None)
         # if scale is tuple, remove z scale
         if isinstance(tmp_accessor.scale, (tuple, list)):
             if self.stack_dimension == dimensions.X:
@@ -284,7 +278,7 @@ class ImageStackReader(ImageReader):
     @cached_property
     def slices(self) -> List[str]:
         # Find available slices with filenames
-        if hasattr(self.fnames, "__iter__") and not isinstance(self.fnames, str):
+        if hasattr(self.fnames, '__iter__') and not isinstance(self.fnames, str):
             available_slices = list(self.fnames)
         else:
             available_slices = find_slices(fnames=self.fnames)
@@ -297,15 +291,12 @@ class ImageStackReader(ImageReader):
                 return available_slices
             else:
                 # Can't interpolate without ordering by a reader_identifier
-                raise Exception(
-                    f"{self.missing_section_interpolation} missing_section_interpolation requires reader_identifier to be provided"
-                )
+                raise Exception(f"{self.missing_section_interpolation} missing_section_interpolation requires reader_identifier to be provided")
         else:
             # Sort available slices by their reader_identifier
             if isinstance(self.reader_factory, dict):
                 available_slices = [
-                    f
-                    for f in available_slices
+                    f for f in available_slices
                     if get_reader_identifier(f, self.compiled_identifier) in self.reader_factory.keys()
                 ]
 
@@ -324,17 +315,15 @@ class ImageStackReader(ImageReader):
                     missing = max(gap - 1, 0)
 
                     if missing >= 1:
-                        if self.missing_section_interpolation.lower() == "nearest":
+                        if self.missing_section_interpolation.lower() == 'nearest':
                             # Nearest neighbor interplation of missing slices
                             ordered_slices += [available_slices[sorted_ix[i]]] * math.ceil(missing / 2)
                             ordered_slices += [available_slices[sorted_ix[i + 1]]] * math.floor(missing / 2)
-                        elif self.missing_section_interpolation.lower() == "constant":
+                        elif self.missing_section_interpolation.lower() == 'constant':
                             # Fill gaps with None (will be filled with fill value later)
                             ordered_slices += [None] * missing
                         else:
-                            raise AttributeError(
-                                f"Unknown missing_section_interpolation: {self.missing_section_interpolation}"
-                            )
+                            raise AttributeError(f"Unknown missing_section_interpolation: {self.missing_section_interpolation}")
 
                     ordered_slices.append(available_slices[sorted_ix[i + 1]])
 
@@ -363,14 +352,9 @@ class ImageStackReader(ImageReader):
                 reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
             else:
                 # Stack of readers
-                reader = dict(
-                    (k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook))
-                    for k, r in reader_factory.items()
-                )
-        elif hasattr(reader_factory, "__iter__"):
-            reader = tuple(
-                get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory
-            )
+                reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+        elif hasattr(reader_factory, '__iter__'):
+            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         elif reader_factory is None:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
         else:
@@ -419,7 +403,7 @@ class ImageStackReader(ImageReader):
         # TODO: make shure position of z is correct
         scales = metadata_first_slice.scales
 
-        min_scale = 1.0 / self.num_slices
+        min_scale = 1. / self.num_slices
 
         if isinstance(scales[0], Iterable):
             scales = [(*s[:2], max(min((slice_spacing * s[0]) / spacing, 1.0), min_scale), *s[2:]) for s in scales]
@@ -456,7 +440,7 @@ class VolumeStackReader(ImageReader):
 
     @cached_property
     def slices(self) -> List[str]:
-        if hasattr(self.fnames, "__iter__") and not isinstance(self.fnames, str):
+        if hasattr(self.fnames, '__iter__') and not isinstance(self.fnames, str):
             return [fname for fname in self.fnames]
         else:
             return find_slices(fnames=self.fnames)
@@ -486,7 +470,7 @@ class VolumeStackReader(ImageReader):
                     reader_list.append(factory(file_matches[0]))
             return reader_list
 
-        elif hasattr(self.reader_factory, "__iter__"):
+        elif hasattr(self.reader_factory, '__iter__'):
             return [factory(fname, **self.reader_kwargs) for fname, factory in zip(self.slices, self.reader_factory)]
 
         else:
@@ -600,7 +584,7 @@ class VolumeStackReader(ImageReader):
                 insert_array(tmp_image, scaled_z_offset)
 
                 # Output image might cover more than z_size
-                cur_z_offset += z_size  # tmp_image.shape[z_dim] / image_scales[-1]
+                cur_z_offset += z_size # tmp_image.shape[z_dim] / image_scales[-1]
             else:
                 cur_z_offset += z_size
 
@@ -625,14 +609,9 @@ class VolumeStackReader(ImageReader):
                 reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
             else:
                 # Stack of readers
-                reader = dict(
-                    (k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook))
-                    for k, r in reader_factory.items()
-                )
-        elif hasattr(reader_factory, "__iter__"):
-            reader = tuple(
-                get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory
-            )
+                reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+        elif hasattr(reader_factory, '__iter__'):
+            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         elif reader_factory is None:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
         else:

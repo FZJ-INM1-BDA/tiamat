@@ -2,9 +2,9 @@
 Pipeline serialization.
 """
 
-import json
 from functools import partial
-from typing import Any, Dict, Type
+import json
+from typing import Dict, Any, Type
 
 # Example class registry
 class_registry: Dict[str, Type] = {}
@@ -27,7 +27,9 @@ def create_instance(class_name: str, args: Dict[str, Any]) -> Any:
         return cls.from_json(args)
     else:
         # Validate provided arguments
-        allowed_args = cls.__init__.__code__.co_varnames[1 : cls.__init__.__code__.co_argcount]
+        allowed_args = cls.__init__.__code__.co_varnames[
+            1 : cls.__init__.__code__.co_argcount
+        ]
         filtered_args = {k: v for k, v in args.items() if k in allowed_args}
 
         return cls(**filtered_args)
@@ -54,9 +56,11 @@ def get_reader_from_config(config_reader: dict, reader_post_creation_hook=None):
 
     if hasattr(cls, "from_json"):
         return cls.from_json(args, reader_post_creation_hook=reader_post_creation_hook)
-    else:
+    else:        
         # Validate provided arguments
-        allowed_args = cls.__init__.__code__.co_varnames[1 : cls.__init__.__code__.co_argcount]
+        allowed_args = cls.__init__.__code__.co_varnames[
+            1 : cls.__init__.__code__.co_argcount
+        ]
         filtered_args = {k: v for k, v in args.items() if k in allowed_args}
 
         if reader_post_creation_hook is None:
@@ -75,11 +79,17 @@ def load_pipeline_from_config(config: dict, auto_register_default_readers=True, 
         register_all_readers()
 
     return Pipeline(
-        transformers=[make_object_from_config(item) for item in config.get("transformers", [])],
-        access_transformers=[make_object_from_config(item) for item in config.get("access_transformers", [])],
-        image_transformers=[make_object_from_config(item) for item in config.get("image_transformers", [])],
-        reader_factory=get_reader_from_config(
-            config.get("reader", None), reader_post_creation_hook=reader_post_creation_hook
-        ),
+        transformers=[
+            make_object_from_config(item) for item in config.get("transformers", [])
+        ],
+        access_transformers=[
+            make_object_from_config(item)
+            for item in config.get("access_transformers", [])
+        ],
+        image_transformers=[
+            make_object_from_config(item)
+            for item in config.get("image_transformers", [])
+        ],
+        reader_factory=get_reader_from_config(config.get("reader", None), reader_post_creation_hook=reader_post_creation_hook),
         auto_register_default_readers=False,
     )

@@ -1,4 +1,4 @@
-from .factory import get_reader, register_reader
+from .factory import register_reader, get_reader
 
 
 def register_all_readers():

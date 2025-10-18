@@ -1,12 +1,11 @@
 """
 Simple example of using a pipeline.
 """
-
 from functools import lru_cache, partial
 
-from tiamat.io import ImageAccessor
-from tiamat.pipeline import Pipeline
 from tiamat.readers.generic import GenericReader
+from tiamat.pipeline import Pipeline
+from tiamat.io import ImageAccessor
 
 
 @lru_cache(maxsize=10)
@@ -14,7 +13,6 @@ def reader_cache(cls, file_name, **reader_kwargs):
     # This print should appear only once
     print(f"Create reader from class {cls} for file {file_name}")
     return cls(file_name, **reader_kwargs)
-
 
 cached_reader_factory = partial(reader_cache, GenericReader)
 

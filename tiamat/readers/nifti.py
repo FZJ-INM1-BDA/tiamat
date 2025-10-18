@@ -4,7 +4,6 @@ import numpy as np
 
 from tiamat.cache import instance_cache
 from tiamat.io import ImageAccessor
-
 from .protocol import ImageReader
 
 
@@ -20,8 +19,8 @@ class NiftiReader(ImageReader):
         return nib.load(self.fname)
 
     def read_image(self, accessor: ImageAccessor) -> np.ndarray:
-        from ..io import ImageResult
         from .processing import access_and_rescale_image
+        from ..io import ImageResult
 
         data = self.handle.get_fdata()
 

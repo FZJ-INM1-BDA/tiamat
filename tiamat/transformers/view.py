@@ -7,14 +7,13 @@ from typing import Tuple
 import numpy as np
 
 from tiamat.metadata import dimensions
-
+from .protocol import Transformer
 from ..io import ImageAccessor, ImageResult
 from ..metadata import ImageMetadata
-from .protocol import Transformer
 
 
 class BoundingBoxTransformer(Transformer):
-
+        
     def __init__(
         self,
         bounds_x: Tuple[int | float | None, int | float | None] | int = None,
@@ -26,11 +25,10 @@ class BoundingBoxTransformer(Transformer):
         self.bounds_z = bounds_z
 
     @staticmethod
-    def crop_coordinate(coord_slice, bounds_slice, image_dimension, coord_scale=1.0):
+    def crop_coordinate(coord_slice, bounds_slice, image_dimension, coord_scale=1.):
         import math
-
-        from tiamat.readers.processing import prepare_coordinate
         from tiamat.transformers.coordinates import get_coordinate_bounds
+        from tiamat.readers.processing import prepare_coordinate
 
         # Here image_scale=coord_scale scales bounds to slice scale
         bounds_slice = prepare_coordinate(bounds_slice, image_scale=coord_scale)
@@ -46,9 +44,8 @@ class BoundingBoxTransformer(Transformer):
         return (out_from, out_to), (res_from, res_to)
 
     @staticmethod
-    def get_coordinate_shape(coord, image_dimension, coord_scale=1.0, image_scale=1.0):
+    def get_coordinate_shape(coord, image_dimension, coord_scale=1., image_scale=1.):
         import math
-
         from tiamat.readers.processing import prepare_coordinate
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
@@ -64,7 +61,8 @@ class BoundingBoxTransformer(Transformer):
         if len(spatial_shape) > 2:
             bounds = (self.bounds_z, *bounds)
         shape = tuple(
-            BoundingBoxTransformer.get_coordinate_shape(bounds[i], spatial_shape[i]) for i in range(len(spatial_shape))
+            BoundingBoxTransformer.get_coordinate_shape(bounds[i], spatial_shape[i])
+            for i in range(len(spatial_shape))
         )
         return shape
 
@@ -103,6 +101,7 @@ class BoundingBoxTransformer(Transformer):
 
         return accessor
 
+
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         from dataclasses import replace
 
@@ -110,12 +109,13 @@ class BoundingBoxTransformer(Transformer):
 
         # create the new shape by copying the new spatial shape, but keeping the channels
         shape = list(metadata.shape)
-        for i, dimension in enumerate(metadata.spatial_dimensions):
+        for i, dimension in enumerate(metadata.spatial_dimensions): 
             shape[dimension] = spatial_shape[i]
 
         metadata = replace(metadata, shape=shape)
 
         return metadata
+
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         residuals = accessor.history[id(self)]
