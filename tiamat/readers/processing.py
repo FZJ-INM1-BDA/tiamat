@@ -3,9 +3,12 @@ Processing required by readers.
 """
 
 # Try to import OpenCV and use scikit-image as a fallback
+from __future__ import annotations
 import warnings
 
 import numpy as np
+from typing import Any
+from collections.abc import Sequence
 
 from tiamat.metadata.metadata import ImageMetadata
 
@@ -44,7 +47,19 @@ except ImportError:
     CV2_AVAILABLE = False
 
 
-def _expand_to_dimension(value, image_shape):
+def _expand_to_dimension(
+        value: int | float | Sequence[int | float], image_shape: Sequence[int]
+) -> list[float]:
+    """
+    Expand scalar or sequence to match image dimensions.
+
+    Args:
+        value: Scalar or sequence to expand.
+        image_shape: Target image shape.
+
+    Returns:
+        Expanded list of floats.
+    """
     if not isinstance(value, (list, tuple, np.ndarray)):
         return [value for _ in image_shape]
     elif len(value) == 1:
@@ -52,7 +67,17 @@ def _expand_to_dimension(value, image_shape):
     return value
 
 
-def expand_to_length(value, length):
+def expand_to_length(value: Any, length: int) -> list[Any]:
+    """
+    Expand scalar or sequence to a list of given length.
+
+    Args:
+        value: Input scalar or sequence.
+        length: Desired output length.
+
+    Returns:
+        List of length `length`.
+    """
     if not isinstance(value, (list, tuple, np.ndarray)):
         return [value] * length
     elif len(value) == 1:
@@ -60,25 +85,46 @@ def expand_to_length(value, length):
     return value
 
 
-def rescale_shape(shape, scale):
+def rescale_shape(shape: Sequence[int], scale: float | Sequence[float]) -> np.ndarray:
+    """
+    Compute the target shape of an array when scaled.
+
+    Args:
+        shape: Original shape of the array.
+        scale: Scaling factor (scalar or sequence) for each dimension.
+
+    Returns:
+        Array of integers representing the scaled shape.
+    """
+
     # Assume scale is scalar or (x_scale, y_scale)
     scale = _expand_to_dimension(scale, shape)[:len(shape)][::-1]
     assert all(s > 0 for s in scale), f"Scale must be greater than zero, got {scale}."
 
-    # Round to closest integer to avoid floating precision errors
-    target_shape =  np.array([dim * s for dim, s in zip(shape, scale)], dtype=float)
+    target_shape = np.array([dim * s for dim, s in zip(shape, scale)], dtype=float)
     target_shape = np.maximum(np.round(target_shape).astype(int), 1)
 
     return target_shape
 
 
 def _rescale(
-    image: np.ndarray,
-    scale: float | tuple[float, ...],
-    interpolation: str = INTERPOLATION_TYPE_CUBIC,
-    anti_aliasing: bool = False,
+        image: np.ndarray,
+        scale: float | tuple[float, ...],
+        interpolation: str = INTERPOLATION_TYPE_CUBIC,
+        anti_aliasing: bool = False,
 ) -> np.ndarray:
-    import numpy as np
+    """
+    Rescale a 2D or 3D image according to specified scale factors.
+
+    Args:
+        image: Input image as a numpy array.
+        scale: Scaling factor(s) for each spatial dimension.
+        interpolation: Interpolation method to use.
+        anti_aliasing: Apply Gaussian smoothing before downscaling if True.
+
+    Returns:
+        Rescaled image as a numpy array.
+    """
 
     # check valid size of image
     if min(image.shape) == 0:
@@ -114,20 +160,21 @@ def _rescale(
         )
 
 
-def resize_2d(
-    img,
-    shape,
-    interpolation=INTERPOLATION_TYPE_CUBIC,
-    anti_aliasing: bool = False,
-):
-    """Resize the image to specified shape using the given interpolation.
-    If anti-alias is defined, a gauss filter will smooth the image before downsizing.
-    If interpolation is NEAREST, anti-aliasing is turned of.
+def resize_2d(img: np.ndarray,
+              shape: Sequence[int],
+              interpolation: str = INTERPOLATION_TYPE_CUBIC,
+              anti_aliasing: bool = False) -> np.ndarray:
+    """
+    Resize a 2D image to the specified shape using the given interpolation.
 
     Args:
-        img (array-like): image to resize.
-        shape (tuple): shape of the resized image.
-        interpolation (str): interpolation strategy.
+        img: Image to resize (height x width or height x width x channels).
+        shape: Target shape (height, width) or (height, width, channels).
+        interpolation: Interpolation strategy to use.
+        anti_aliasing: If True, apply Gaussian smoothing before downsizing.
+
+    Returns:
+        Resized 2D image as a numpy array.
     """
     import cv2
 
@@ -160,20 +207,24 @@ def resize_2d(
     return res.astype(img.dtype)
 
 
-def resize_3d(
-    img,
-    shape,
-    interpolation=INTERPOLATION_TYPE_CUBIC,
-    anti_aliasing: bool = False,
-):
-    """Resize the image to specified shape using the given interpolation.
-    If anti-alias is defined, a gauss filter will smooth the image before downsizing.
-    If interpolation is NEAREST, anti-aliasing is turned of.
+def resize_3d(img: np.ndarray,
+              shape: Sequence[int],
+              interpolation: str = INTERPOLATION_TYPE_CUBIC,
+              anti_aliasing: bool = False) -> np.ndarray:
+    """
+    Resize a 3D image stack to the specified shape using the given interpolation.
 
     Args:
-        img (array-like): image to resize.
-        shape (tuple): shape of the resized image.
-        interpolation (str): interpolation strategy.
+        img: 3D image stack to resize.
+        shape: Target shape for the stack.
+        interpolation: Interpolation strategy to use.
+        anti_aliasing: Apply Gaussian smoothing before downsizing if True.
+
+    Returns:
+        Resized 3D image stack as a numpy array.
+
+    Raises:
+        NotImplementedError: Full 3D resizing not implemented if all dimensions need rescaling.
     """
 
     # Scaling factors per dimension
@@ -185,16 +236,12 @@ def resize_3d(
         # pick first dimension with factor 1
         idx = np.where(np.isclose(factors, 1.0))[0][0]
 
-        # create new shape
         img_rescaled = np.empty(shape, dtype=img.dtype)
-        shape_2d = (*shape[:idx], *shape[idx + 1 :])
+        shape_2d = (*shape[:idx], *shape[idx + 1:])
 
         for i in range(img.shape[idx]):
-            # create slice
             slices = [slice(None)] * len(img.shape)
             slices[idx] = i
-
-            # resize image
             img_rescaled[i] = resize_2d(
                 img=img[tuple(slices)],
                 shape=shape_2d,
@@ -206,15 +253,29 @@ def resize_3d(
     raise NotImplementedError("Full 3D resizing not supported yet")
 
 
-def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
+def prepare_coordinate(coord: int | Sequence[int] | None,
+                       image_scale: float = 1.0,
+                       coordinate_scale: float = 1.0) -> tuple[int, int]:
+    """
+    Prepare coordinates for image access by applying scaling and flooring.
+
+    Args:
+        coord: Single coordinate, sequence, or None for full dimension.
+        image_scale: Scale factor of the image.
+        coordinate_scale: Scale factor of the coordinates.
+
+    Returns:
+        Tuple of (start, end) indices corresponding to the prepared coordinate.
+    """
     import math
 
     factor = image_scale / coordinate_scale
 
+    # Add 0.5 to coordinates for rounding integer coordinates in a pixel center aligned grid
     if hasattr(coord, '__iter__'):
         # tuple of values
         prepared_coord = tuple(
-            math.floor(c * factor) if c is not None else None
+            math.floor((0.5 + c) * factor) if c is not None else None
             for c in coord
         )
     elif coord is None:
@@ -222,17 +283,28 @@ def prepare_coordinate(coord, image_scale=1.0, coordinate_scale=1.0):
         prepared_coord = (0, None)
     else:
         # A single element in the given dimension
-        coord = math.floor(coord * factor)
+        coord = math.floor((0.5 + coord) * factor)
         prepared_coord = (coord, coord + 1)
 
     return prepared_coord
 
 
-def _prepare_coordinates(
-    image_scale=(1.0, 1.0), coordinate_scale=(1.0, 1.0), **coordinates
-):
+def _prepare_coordinates(image_scale=(1.0, 1.0),
+                         coordinate_scale=(1.0, 1.0),
+                         **coordinates) -> dict[str, tuple[int, int]]:
+    """
+    Prepare multiple coordinates for image access.
+
+    Args:
+        image_scale: Scale factors for each image dimension.
+        coordinate_scale: Scale factors for each coordinate dimension.
+        coordinates: Keyword arguments for coordinates (x, y, z, c, ...).
+
+    Returns:
+        Dictionary mapping coordinate names to (start, end) tuples.
+    """
     prepared = {}
-    for i, (key,coord) in enumerate(coordinates.items()):
+    for i, (key, coord) in enumerate(coordinates.items()):
         i_scale = image_scale[i] if i < len(image_scale) else 1.0
         c_scale = coordinate_scale[i] if i < len(coordinate_scale) else 1.0
         prepared[key] = prepare_coordinate(coord, i_scale, c_scale)
@@ -240,35 +312,36 @@ def _prepare_coordinates(
     return prepared
 
 
-def _zero_clip(values):
+def _zero_clip(values: Sequence[int | None]) -> list[int]:
+    """
+    Clip values to be zero or positive, preserving None values.
+
+    Args:
+        values: Sequence of values to clip.
+
+    Returns:
+        List of clipped values.
+    """
     return [max(value, 0) if value is not None else None for value in values]
 
 
 def access_image(
-    image: np.ndarray,
-    metadata: ImageMetadata,
-    accessor: ImageAccessor,
-    image_scale: float | tuple[float, ...],
+        image: np.ndarray,
+        metadata: ImageMetadata,
+        accessor: ImageAccessor,
+        image_scale: float | tuple[float, ...],
 ) -> np.ndarray:
-    """Access image content.
+    """
+    Extract a subregion of an image, with padding if needed.
 
-    Assume a row-major coordinate system of image (z, y, x).
+    Args:
+        image: Input array (row-major).
+        metadata: Metadata describing dimensions.
+        accessor: Requested coordinates.
+        image_scale: Scaling of each image dimension.
 
-    Parameters
-    ----------
-    image : np.ndarray
-        Row-major image content as numpy array
-    accessor : ImageAccessor
-        Requested image coordinates
-    image_scale : float | tuple[float, ...]
-        Scaling of each image dimension
-    default_value: float or int
-        Fill value for out of bounds request
-
-    Returns
-    -------
-    np.ndarray
-        Requested image content
+    Returns:
+        The requested subregion as an array (with optional padding).
     """
 
     coordinate_scale = _expand_to_dimension(accessor.coordinate_scale, metadata.spatial_shape)
@@ -339,9 +412,9 @@ def access_image(
         coord_from, coord_to = coord
 
         if (
-            accessor.fill_value is not None
-            and (coord_to is not None and coord_to < 0)
-            or coord_from >= max_coord
+                accessor.fill_value is not None
+                and (coord_to is not None and coord_to < 0)
+                or coord_from >= max_coord
         ):
             # The image will be empty, just return an empty array
             return np.full(
@@ -361,7 +434,7 @@ def access_image(
 
     # Only do padding if fill_value is set and necessary
     if accessor.fill_value is not None and any(
-        any(p > 0 for p in pad) for pad in padding
+            any(p > 0 for p in pad) for pad in padding
     ):
         result = np.pad(result, padding, constant_values=accessor.fill_value)
 
@@ -369,11 +442,23 @@ def access_image(
 
 
 def access_and_rescale_image(
-    image: np.ndarray,
-    metadata: ImageMetadata,
-    accessor: ImageAccessor,
-    image_scale: float | tuple[float, ...] = 1.0,
+        image: np.ndarray,
+        metadata: ImageMetadata,
+        accessor: ImageAccessor,
+        image_scale: float | tuple[float, ...] = 1.0,
 ):
+    """
+    Access an image region and rescale it according to accessor.
+
+    Args:
+        image: Input array.
+        metadata: Metadata describing dimensions.
+        accessor: Requested access details.
+        image_scale: Scaling of each image dimension.
+
+    Returns:
+        The requested and rescaled image.
+    """
     image_scale = _expand_to_dimension(image_scale, metadata.spatial_dimensions)
     image = access_image(image=image, metadata=metadata, accessor=accessor, image_scale=image_scale)
 
@@ -394,7 +479,17 @@ def access_and_rescale_image(
     return image
 
 
-def get_interpolation_for_accessor(accessor: ImageAccessor, metadata: ImageMetadata):
+def get_interpolation_for_accessor(accessor: ImageAccessor, metadata: ImageMetadata) -> int:
+    """
+    Determine interpolation type from accessor or metadata.
+
+    Args:
+        accessor: Image accessor with optional interpolation setting.
+        metadata: Metadata including image type.
+
+    Returns:
+        Interpolation identifier string.
+    """
     if accessor.interpolation:
         interpolation = accessor.interpolation
     elif metadata and metadata.image_type:
@@ -408,7 +503,19 @@ def get_interpolation_for_accessor(accessor: ImageAccessor, metadata: ImageMetad
     return interpolation
 
 
-def get_interpolation_for_image_type(image_type: str) -> int:
+def get_interpolation_for_image_type(image_type: str) -> str:
+    """
+    Get a default interpolation method for a given image type.
+
+    Args:
+        image_type: Type of the image (e.g., IMAGE, SEGMENTATION).
+
+    Returns:
+        Interpolation identifier string.
+
+    Raises:
+        AssertionError: If the image type is unknown.
+    """
     from .. import metadata as md
 
     image_type_to_interpolation = {
@@ -417,7 +524,7 @@ def get_interpolation_for_image_type(image_type: str) -> int:
     }
 
     assert (
-        image_type in image_type_to_interpolation
+            image_type in image_type_to_interpolation
     ), f"Encountered unknown image type while determining interpolation: {image_type}"
 
     return image_type_to_interpolation[image_type]

@@ -2,7 +2,10 @@
 Helper functions for running a tiamat processing pipeline.
 """
 
-from typing import Iterable, Callable
+from __future__ import annotations
+from typing import Any
+from collections.abc import Iterable, Callable
+
 from .transformers.protocol import Transformer
 from .readers.protocol import ImageReader
 from .readers.factory import get_reader
@@ -12,32 +15,36 @@ from .metadata import ImageMetadata
 
 class Pipeline:
     """
-    Processing pipeline to read and transform images.
-    A pipeline can be used to read an image and transform it.
+    A processing pipeline to read and transform images.
+
+    The pipeline first transforms the image accessor (e.g. coordinates),
+    reads image data using the appropriate reader, and then applies image transformations.
     """
 
     def __init__(
-        self,
-        transformers: Iterable[Transformer] | None = None,
-        access_transformers: Iterable[Transformer] | None = None,
-        image_transformers: Iterable[Transformer] | None = None,
-        reader_factory: Callable[[str], ImageReader] | None = None,
-        auto_register_default_readers: bool = True,
+            self,
+            transformers: Iterable[Transformer] | None = None,
+            access_transformers: Iterable[Transformer] | None = None,
+            image_transformers: Iterable[Transformer] | None = None,
+            reader_factory: Callable[[str], ImageReader] | None = None,
+            auto_register_default_readers: bool = True,
     ):
         """
+        Initializes the Pipeline.
+
         Args:
-            transformers (iterable of Transformer): A list of transformers to apply to each image.
-            access_transformers(iterable of Transformer): A list of transformers to modify the access, defined from coordinates to reading the image.
-                                                          May not be used with transformers argument.
-            image_transformers(iterable of Transformer): A list of transformers to modify images, defined from read image to result.
-                                                         May not be used with transformers argument.
-            reader_factory (callable): A function returning a reader for a given file name.
-            register_default_readers (bool): Register default readers on pipeline call.
+            transformers (Iterable[Transformer] | None): Transformers applied to both access and image.
+            access_transformers (Iterable[Transformer] | None): Transformers for modifying image access (coordinates).
+                Cannot be used together with `transformers`.
+            image_transformers (Iterable[Transformer] | None): Transformers for modifying image data.
+                Cannot be used together with `transformers`.
+            reader_factory (Callable[[str], ImageReader] | None): Function returning a reader for a given file name.
+            auto_register_default_readers (bool): Whether to auto-register default readers on pipeline call.
         """
         if transformers:
             assert (
-                not access_transformers and not image_transformers
-            ), "access_transformers and image_transformers may ne be used together with transformers argument."
+                    not access_transformers and not image_transformers
+            ), "access_transformers and image_transformers may not be used together with transformers argument."
         self.transformers = list(transformers or [])
 
         # For convenience, access transformers and image transformers can be specified separately.
@@ -53,8 +60,23 @@ class Pipeline:
         self.auto_register_default_readers = auto_register_default_readers
 
     def __call__(
-        self, file_name, accessor: ImageAccessor, **reader_kwargs
+            self,
+            file_name: str,
+            accessor: ImageAccessor,
+            **reader_kwargs: Any
     ) -> ImageResult:
+        """
+        Runs the pipeline on a file and returns the processed result.
+
+        Args:
+            file_name (str): Path to the image file.
+            accessor (ImageAccessor): Image accessor specifying region and resolution.
+            read_metadata (bool): Whether to read metadata if not already set.
+            **reader_kwargs: Additional keyword arguments passed to the reader.
+
+        Returns:
+            ImageResult: The final image result after all transformations.
+        """
         from dataclasses import replace
 
         if self.auto_register_default_readers:
@@ -73,7 +95,7 @@ class Pipeline:
                     metadata=replace(metadata[-1])),
                 )
             else:
-                metadata.append(metadata=replace(metadata[-1]))
+                metadata.append(replace(metadata[-1]))
 
         # Backwards rollout of accessor through transformers and metadata
         accessors = [accessor]
@@ -101,7 +123,17 @@ class Pipeline:
             metadata=metadata[-1],
         )
 
-    def read_metadata(self, file_name, **reader_kwargs) -> ImageMetadata:
+    def read_metadata(self, file_name: str, **reader_kwargs: Any) -> ImageMetadata:
+        """
+        Reads and transforms image metadata.
+
+        Args:
+            file_name (str): Path to the image file.
+            **reader_kwargs: Additional keyword arguments passed to the reader.
+
+        Returns:
+            ImageMetadata: The (possibly transformed) metadata.
+        """
         from dataclasses import replace
 
         reader = self.reader_factory(file_name, **reader_kwargs)
