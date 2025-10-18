@@ -53,14 +53,22 @@ docker:build-python3.11:
       CI_JOB_TOKEN=$CI_JOB_TOKEN --build-arg BASE_IMAGE=python:3.11-slim .
     - docker push $IMAGE_NAME:python3.11
 
-format:
+pre-commit-hooks:
+  stage: format
+  image: $IMAGE_NAME:python3.11
+  script:
+    - pip3 install pylint pre-commit
+    - pre-commit install
+    - pre-commit run --all-files
+
+pre-commit-hooks-soft:
   stage: format
   image: $IMAGE_NAME:python3.11
   allow_failure: true
   script:
     - pip3 install pylint pre-commit
     - pre-commit install
-    - pre-commit run --all-files
+    - pre-commit run --all-files --config .pre-commit-config-soft.yaml
 
 .build:
   stage: build

@@ -1,15 +1,22 @@
 """
-Error handling.
+Custom error types used across the Tiamat image processing library.
 """
+class TiamatError(Exception):
+    """
+    Base class for all custom exceptions in the Tiamat library.
+    """
+    pass
 
 
-class UnknownFileError(Exception):
+class UnknownFileError(TiamatError):
     """
-    Error that is raised in case an unknown file type is encountered.
+    Raised when no compatible reader is found for a given file type or file name.
     """
+    pass
 
 
-class ReaderExistsError(Exception):
+class ReaderExistsError(TiamatError):
     """
-    Error that is raised if a reader already exists during registration.
+    Raised when attempting to register a reader that already exists in the registry.
     """
+    pass
