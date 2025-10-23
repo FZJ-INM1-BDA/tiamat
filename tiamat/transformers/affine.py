@@ -113,10 +113,13 @@ class AffineTransformer(Transformer):
         affine = np.linalg.inv(self.affine_matrix)
         affine[:2, -1] = affine[:2, -1] / target_spacing  # Convert translation to pixel coordinates
 
-        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y)
+        coordinate_scale = np.array(accessor.coordinate_scale)
+        if coordinate_scale.size == 1:
+            coordinate_scale = np.array([coordinate_scale, coordinate_scale])
+
+        prepared_coordinates = _prepare_coordinates(x=accessor.x, y=accessor.y, coordinate_scale=coordinate_scale)
         x, y = prepared_coordinates["x"], prepared_coordinates["y"]
 
-        # TODO: Account for coordinate scale
         spatial_dims = metadata.spatial_dimensions
         x_from, x_to = resolve_coordinate_slice(x, metadata.shape[spatial_dims[-1]])
         y_from, y_to = resolve_coordinate_slice(y, metadata.shape[spatial_dims[-2]])
@@ -156,6 +159,9 @@ class AffineTransformer(Transformer):
             accessor.fill_value = self.fill_value
         elif accessor.fill_value is None:
             accessor.fill_value = 0
+
+        # Affine transformation is always applied at full coordinate scale
+        accessor.coordinate_scale = 1.0
 
         # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
         # We need to scale the coordinates to obtain pixel coordinates
