@@ -25,6 +25,12 @@ cache:
     - if: $CI_COMMIT_MESSAGE =~ /.*(RUN-CI).*/
       when: on_success
 
+# only applies when PR is made against master
+.final-qa-rules:
+  rules:
+  - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+    when: on_success
+
 docker:build-python3.10:
   stage: docker
   image: docker:20.10.16
@@ -55,6 +61,7 @@ docker:build-python3.11:
 
 pre-commit-hooks:
   stage: format
+  extends: .final-qa-rules
   image: $IMAGE_NAME:python3.11
   script:
     - pip3 install pylint pre-commit
