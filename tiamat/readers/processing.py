@@ -413,8 +413,8 @@ def access_image(
 
         if (
                 accessor.fill_value is not None
-                and (coord_to is not None and coord_to < 0)
-                or coord_from >= max_coord
+                and ((coord_to is not None and coord_to < 0)
+                or (coord_from >= max_coord))
         ):
             # The image will be empty, just return an empty array
             return np.full(
