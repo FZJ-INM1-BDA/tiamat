@@ -110,11 +110,6 @@ def test_affine_pipeline(scale, rotation, mirror_x, mirror_y, translate_x, trans
 
     uint8_img = np.array(result.image * 255, dtype=np.uint8)
 
-    with gzip.open(npygz_filename, "rb") as gzip_file:
-        with open(npy_filename, "wb") as npy_file:
-            shutil.copyfileobj(gzip_file, npy_file)
-    expected_arr = np.load(npy_filename)
-    np.testing.assert_equal(uint8_img, expected_arr)
 
     Path(dst_png_filename).parent.mkdir(exist_ok=True, parents=True)
     np.save(dst_npy_filename, uint8_img, False)
@@ -123,3 +118,11 @@ def test_affine_pipeline(scale, rotation, mirror_x, mirror_y, translate_x, trans
             shutil.copyfileobj(npy_file, gzip_file)
     Path(dst_npy_filename).unlink()
     imwrite(dst_png_filename, uint8_img)
+
+    with gzip.open(npygz_filename, "rb") as gzip_file:
+        with open(npy_filename, "wb") as npy_file:
+            shutil.copyfileobj(gzip_file, npy_file)
+    expected_arr = np.load(npy_filename)
+    np.testing.assert_equal(uint8_img, expected_arr)
+    Path(npy_filename).unlink()
+
