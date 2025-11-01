@@ -271,19 +271,28 @@ def prepare_coordinate(coord: int | Sequence[int] | None,
 
     factor = image_scale / coordinate_scale
 
-    # Add 0.5 to coordinates for rounding integer coordinates in a pixel center aligned grid
     if hasattr(coord, '__iter__'):
-        # tuple of values
-        prepared_coord = tuple(
-            math.floor((0.5 + c) * factor) if c is not None else None
-            for c in coord
-        )
+        # Assume the coordinate stores an half-open interval [start, stop)
+        assert len(coord) == 2, "prepare_coordinate accepts only coordinate intervals [start, stop] of length 2"
+        
+        # Simply scale the start by the interval by the factor
+        start = math.floor(coord[0] * factor)
+        if coord[1] is None:
+            # If the second coordinate is None, use None
+            stop = None
+        else:
+            # Otherwise, estimate the length of the scaled interval
+            length = math.ceil((coord[1] - coord[0]) * factor)
+            # Compute the stop index by the length
+            stop = start + length
+
+        prepared_coord = (start, stop)
     elif coord is None:
         # All elements in the given dimension
         prepared_coord = (0, None)
     else:
         # A single element in the given dimension
-        coord = math.floor((0.5 + coord) * factor)
+        coord = math.floor(coord[0] * factor)
         prepared_coord = (coord, coord + 1)
 
     return prepared_coord
