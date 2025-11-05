@@ -4,8 +4,6 @@ Transformers that change the output view
 
 import numpy as np
 
-from tiamat.metadata import dimensions
-
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 from .protocol import Transformer
@@ -126,11 +124,7 @@ class BoundingBoxTransformer(Transformer):
         Returns:
             Updated accessor cropped to the bounding box.
         """
-        from dataclasses import replace
-
         assert metadata.shape is not None, "BoundingBoxTransformer requires metadata.shape."
-
-        accessor = replace(accessor)
 
         spatial_shape = self.bounds_spatial_shape(metadata.spatial_shape)
 
@@ -170,8 +164,6 @@ class BoundingBoxTransformer(Transformer):
         Returns:
             Updated metadata with new shape.
         """
-        from dataclasses import replace
-
         spatial_shape = list(self.bounds_spatial_shape(metadata.spatial_shape))
 
         # create the new shape by copying the new spatial shape, but keeping the channels
@@ -179,7 +171,7 @@ class BoundingBoxTransformer(Transformer):
         for i, dimension in enumerate(metadata.spatial_dimensions):
             shape[dimension] = spatial_shape[i]
 
-        metadata = replace(metadata, shape=shape)
+        metadata.shape = metadata
 
         return metadata
 

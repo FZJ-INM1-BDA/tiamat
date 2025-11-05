@@ -35,8 +35,8 @@ class GenericReader(ImageReader):
                 a tuple of floats (anisotropic), or None if not specified.
         """
         self.fname = fname
-        self.cache_image = cache_image
         self.image_spacing = image_spacing
+        self._cache_image = cache_image
         self._cached_image: np.ndarray | None = None
 
     def _read_image(self) -> np.ndarray:
@@ -50,7 +50,7 @@ class GenericReader(ImageReader):
         image = (
             self._cached_image if self._cached_image is not None else imread(self.fname)
         )
-        if self.cache_image:
+        if self._cache_image:
             self._cached_image = image
 
         return image
@@ -86,6 +86,7 @@ class GenericReader(ImageReader):
             dimensions, spacing, and value range.
         """
         from tiamat import metadata as md
+        from tiamat.readers.processing import get_value_range_from_dtype
 
         image = self._read_image()
         dims = [md.dimensions.Y, md.dimensions.X]
@@ -100,12 +101,16 @@ class GenericReader(ImageReader):
         else:
             dims.extend([md.dimensions.C for _ in range(max(len(image.shape) - 2, 0))])
 
+        shape = image.shape
+        dtype = image.dtype
+        value_range = get_value_range_from_dtype(dtype)
+
         return md.ImageMetadata(
             image_type=md.IMAGE_TYPE_IMAGE,
-            shape=image.shape,
-            dtype=image.dtype,
+            shape=shape,
+            dtype=dtype,
             file_path=self.fname,
-            value_range=(0, 255),
+            value_range=value_range,
             spacing=self.image_spacing,
             dimensions=dims,
         )
@@ -122,7 +127,7 @@ class GenericReader(ImageReader):
 
         extensions: list[str] = []
         for fmt in imageio.formats:
-            extensions.extend(fmt.extensions)
+            extensions.extend(fmt.extensions.lower())
         return extensions
 
     @classmethod
@@ -139,4 +144,4 @@ class GenericReader(ImageReader):
         import os
 
         _, ext = os.path.splitext(fname)
-        return ext in cls.supported_extensions()
+        return ext.lower() in cls.supported_extensions()

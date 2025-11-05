@@ -24,19 +24,6 @@ class LUTTransformer(Transformer):
         """
         self.color_map = color_map
 
-    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
-        """
-        Leave accessor unchanged.
-
-        Args:
-            accessor: Accessor of the image.
-            metadata: Metadata of the image.
-
-        Returns:
-            The unchanged accessor.
-        """
-        return accessor
-
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
         Apply the LUT or colormap to the image.
@@ -66,8 +53,6 @@ class LUTTransformer(Transformer):
         Returns:
             Color-mapped image as ndarray.
         """
-        import numpy as np
-
         if isinstance(self.color_map, str):
             # Matplotlib colormap
             import matplotlib
@@ -95,10 +80,6 @@ class LUTTransformer(Transformer):
         Returns:
             Updated ImageMetadata.
         """
-        from dataclasses import replace
-
-        metadata = replace(metadata)
-
         if isinstance(self.color_map, str):
             import matplotlib
 
@@ -118,19 +99,6 @@ class GrayscaleTransformer(Transformer):
     """
     Convert RGB/RGBA images to grayscale.
     """
-
-    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
-        """
-        Leave accessor unchanged.
-
-        Args:
-            accessor: Accessor of the image.
-            metadata: Metadata of the image.
-
-        Returns:
-            The unchanged accessor.
-        """
-        return accessor
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
@@ -165,12 +133,9 @@ class GrayscaleTransformer(Transformer):
         Returns:
             Updated ImageMetadata without color channels.
         """
-        from dataclasses import replace
-
         from tiamat.metadata import dimensions
 
         # remove all color dimensions
-        metadata = replace(metadata)
         if dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions:
             metadata.shape = metadata.shape[:-1]
         metadata.dimensions = [
@@ -184,19 +149,6 @@ class GrayscaleToRGBTransformer(Transformer):
     """
     Convert grayscale images to RGB.
     """
-
-    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
-        """
-        Leave accessor unchanged.
-
-        Args:
-            metadata: Metadata of the Image.
-            accessor: Accessor of the image.
-
-        Returns:
-            The unchanged accessor.
-        """
-        return accessor
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
@@ -230,11 +182,8 @@ class GrayscaleToRGBTransformer(Transformer):
         Returns:
             Updated ImageMetadata.
         """
-        from dataclasses import replace
-
         from tiamat.metadata import dimensions
 
-        metadata = replace(metadata)
         if not (dimensions.RGB in metadata.dimensions or dimensions.RGBA in metadata.dimensions):
             metadata.shape = (*metadata.shape, 3)
             metadata.dimensions = list(metadata.dimensions) + [
@@ -249,19 +198,6 @@ class FloatToByteTransformer(Transformer):
     Convert floating-point images to 8-bit unsigned byte images.
     """
 
-    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
-        """
-        Leave accessor unchanged.
-
-        Args:
-            accessor: Accessor of the image.
-            metadata: Metadata of the image.
-
-        Returns:
-            The unchanged accessor.
-        """
-        return accessor
-
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
         Convert float images to 8-bit uint images in range [0, 255].
@@ -274,8 +210,6 @@ class FloatToByteTransformer(Transformer):
         Returns:
             Converted image as uint8.
         """
-        import numpy as np
-
         if np.issubdtype(image.dtype, np.floating):
             image = (image * 255).astype(np.uint8)
 
