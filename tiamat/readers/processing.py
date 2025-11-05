@@ -271,18 +271,19 @@ def prepare_coordinate(coord: int | Sequence[int] | None,
 
     factor = image_scale / coordinate_scale
 
+    # Note: We round here very slightly (10 digits) whenever we multiply the factor, as minimal floating errors can mess the length up quite badly when applying math.ceil or math.floor
     if hasattr(coord, '__iter__'):
         # Assume the coordinate stores an half-open interval [start, stop)
         assert len(coord) == 2, "prepare_coordinate accepts only coordinate intervals [start, stop] of length 2"
         
         # Simply scale the start by the interval by the factor
-        start = math.floor(coord[0] * factor)
+        start = math.floor(np.round(coord[0] * factor, 10))
         if coord[1] is None:
             # If the second coordinate is None, use None
             stop = None
         else:
             # Otherwise, estimate the length of the scaled interval
-            length = math.ceil((coord[1] - coord[0]) * factor)
+            length = math.ceil(np.round((coord[1] - coord[0]) * factor, 10))
             # Compute the stop index by the length
             stop = start + length
 
@@ -292,7 +293,7 @@ def prepare_coordinate(coord: int | Sequence[int] | None,
         prepared_coord = (0, None)
     else:
         # A single element in the given dimension
-        coord = math.floor(coord[0] * factor)
+        coord = math.floor(np.round(coord[0] * factor), 10)
         prepared_coord = (coord, coord + 1)
 
     return prepared_coord
