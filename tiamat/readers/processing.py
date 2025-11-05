@@ -11,39 +11,9 @@ from typing import Any
 
 import numpy as np
 
+from tiamat.constants import INTERPOLATION_TYPE_CUBIC, INTERPOLATION_TYPE_NEAREST, OPENCV_INTERPOLATION_CODES
 from tiamat.metadata.metadata import ImageMetadata
-
-from ..io import (
-    INTERPOLATION_TYPE_AREA,
-    INTERPOLATION_TYPE_CUBIC,
-    INTERPOLATION_TYPE_LANCZOS4,
-    INTERPOLATION_TYPE_LINEAR,
-    INTERPOLATION_TYPE_NEAREST,
-    ImageAccessor,
-)
-
-SCIPY_INTERPOLATION_CODES = {
-    INTERPOLATION_TYPE_NEAREST: 0,
-    INTERPOLATION_TYPE_LINEAR: 1,
-    INTERPOLATION_TYPE_CUBIC: 3,
-}
-
-try:
-    # noinspection PyUnresolvedReferences
-    import cv2
-
-    CV2_AVAILABLE = True
-
-    OPENCV_INTERPOLATION_CODES = {
-        INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
-        INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
-        INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
-        INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
-        INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
-    }
-except ImportError:
-    warnings.warn("image: Module cv2 is not available, using scikit-image as a fallback")
-    CV2_AVAILABLE = False
+from tiamat.io import ImageAccessor
 
 
 def _expand_to_dimension(value: int | float | Sequence[int | float], image_shape: Sequence[int]) -> list[float]:
@@ -470,6 +440,19 @@ def access_and_rescale_image(
     )
 
     return image
+
+
+def get_value_range_from_dtype(dtype):
+    if np.issubdtype(dtype, np.integer):
+        info = np.iinfo(dtype)
+        value_range = (info.min, info.max)
+    elif np.issubdtype(dtype, np.floating):
+        info = np.finfo(dtype)
+        value_range = (info.min, info.max)
+    else:
+        raise ValueError(f"Cannot determine value range for unsupported dtype: {dtype}")
+
+    return value_range
 
 
 def get_interpolation_for_accessor(accessor: ImageAccessor, metadata: ImageMetadata) -> int:

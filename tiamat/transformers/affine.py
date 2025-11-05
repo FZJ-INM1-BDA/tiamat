@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from tiamat.constants import OPENCV_INTERPOLATION_CODES
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 from .protocol import Transformer
@@ -25,6 +26,7 @@ class AffineTransformer(Transformer):
     """
 
     # TODO: define a unit of affine matrix, e.g. microns, mm, ...
+    # TODO: allow to use center-pixel / corner-pixel aligned affine
     def __init__(
             self,
             affine_matrix: np.ndarray | list[list[float]],
@@ -98,7 +100,6 @@ class AffineTransformer(Transformer):
             AssertionError: If metadata is missing.
         """
         import math
-        from dataclasses import replace
 
         from tiamat.readers.processing import _prepare_coordinates
         from tiamat.transformers.coordinates import resolve_coordinate_slice
@@ -149,7 +150,6 @@ class AffineTransformer(Transformer):
         offset_y_input = math.floor(y_from_t) - y_from_t
 
         # Replace accessor with new requested input
-        accessor = replace(accessor)
         # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
         x_from_input, x_to_input = (math.floor(x_from_t), math.ceil(x_to_t))
         accessor.x = x_from_input, x_to_input
@@ -180,10 +180,6 @@ class AffineTransformer(Transformer):
         Returns:
             Updated ImageMetadata with transformed shape.
         """
-        from dataclasses import replace
-
-        import numpy as np
-
         shape_tuple = metadata.spatial_shape[-2:]
 
         # converts shape to extents
@@ -192,8 +188,6 @@ class AffineTransformer(Transformer):
         extents = list(zip(repeat(0), shape_tuple[::-1]))
         extent_coords = list(product(*extents))
 
-        new_metadata = replace(metadata)
-
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1, 1, 1, 1])))[:2, :].T
 
         out_shape = (
@@ -201,9 +195,9 @@ class AffineTransformer(Transformer):
             round(np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item()),
         )
 
-        new_metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
+        metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
 
-        return new_metadata
+        return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
@@ -221,14 +215,8 @@ class AffineTransformer(Transformer):
             Exception: If transform_access has not been called first.
         """
         import cv2
-        import numpy as np
 
-        from tiamat.readers.processing import rescale_shape
-
-        from ..readers.processing import (
-            OPENCV_INTERPOLATION_CODES,
-            get_interpolation_for_accessor,
-        )
+        from tiamat.readers.processing import rescale_shape, get_interpolation_for_accessor
 
         target_scale = accessor.scale
         target_scale = np.array(target_scale) if target_scale is not None else np.array((1,))

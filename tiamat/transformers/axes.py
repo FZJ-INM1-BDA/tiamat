@@ -6,7 +6,6 @@ from typing import Any
 
 import numpy as np
 
-from dataclasses import replace
 from .protocol import Transformer
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
@@ -39,7 +38,6 @@ class ImageToVolumeTransformer(Transformer):
             The unchanged accessor.
         """
         # dimensional metadata has to be removed
-        accessor = replace(accessor)
         accessor.z = None
 
         if accessor.scale is not None and hasattr(accessor.scale, "__len__"):
@@ -60,11 +58,8 @@ class ImageToVolumeTransformer(Transformer):
         Returns:
             Updated ImageMetadata with new Z-axis.
         """
-        from dataclasses import replace
         from tiamat.metadata import dimensions
         from tiamat.readers.processing import expand_to_length
-
-        metadata = replace(metadata)
 
         # this transformer always expands y, x to z,y,x
         # we search for the position of y, then prepend a 1-dimension
@@ -182,10 +177,7 @@ class ReorderCoordinatesTransformer(Transformer):
         Returns:
             Updated ImageAccessor with reordered coordinates and scales.
         """
-        from dataclasses import replace
         from tiamat.readers.processing import expand_to_length
-
-        accessor = replace(accessor)
 
         scale = expand_to_length(accessor.scale, 3)
 
@@ -222,11 +214,8 @@ class ReorderCoordinatesTransformer(Transformer):
         Returns:
             Updated ImageMetadata.
         """
-        from dataclasses import replace
         from tiamat.readers.processing import expand_to_length
         from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
-
-        metadata = replace(metadata)
 
         # Adjust shape of image
         sp_dims = metadata.spatial_dimensions
@@ -355,18 +344,6 @@ class MirrorTransformer(Transformer):
             accessor.z = (z_size - z_to, z_size - z_from)
 
         return accessor
-
-    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
-        """
-        Mirroring does not affect metadata.
-
-        Args:
-           metadata: Metadata of the image.
-
-        Returns:
-           The unchanged metadata.
-        """
-        return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """

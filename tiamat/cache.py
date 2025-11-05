@@ -6,6 +6,31 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
+def make_hashable(obj: object):
+    """
+    Function to make lists, dictionary, sets or nested variants of these hashable.
+
+    This works by transforming each collection into a fixed size tuple.
+
+    Parameters
+    ----------
+    obj : object
+        Any python object to return a hashable version of.
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    if isinstance(obj, list):
+        return tuple(make_hashable(x) for x in obj)
+    elif isinstance(obj, dict):
+        return tuple(sorted((make_hashable(k), make_hashable(v)) for k, v in obj.items()))
+    elif isinstance(obj, set):
+        return frozenset(make_hashable(x) for x in obj)
+    return obj
+
+
 class instance_cache(Generic[T, R]):
     """
     Decorator to cache method results per instance and argument set.
@@ -48,7 +73,7 @@ class instance_cache(Generic[T, R]):
         @wraps(self.func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache = self._caches.setdefault(instance, {})
-            key = (args, tuple(sorted(kwargs.items())))
+            key = (make_hashable(args), make_hashable(kwargs))
             if key not in cache:
                 cache[key] = self.func(instance, *args, **kwargs)
             return cache[key]
