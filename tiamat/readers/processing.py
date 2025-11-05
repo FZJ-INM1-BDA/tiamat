@@ -268,7 +268,9 @@ def prepare_coordinate(
 
     # Note: We round to the 10 first significant digits here very slightly whenever we multiply the factor, as minimal floating errors can mess the length up quite badly when applying math.ceil or math.floor
     def round_sig(x, sig=10):
-        return np.round(x, sig - int(np.floor(np.log10(abs(x)))) - 1)
+        # we need a small eps to avoid infinity
+        eps = 1 / (10 ** (sig + 2))
+        return np.round(x, sig - int(np.floor(np.log10(abs(x + eps)))) - 1)
 
     if hasattr(coord, "__iter__"):
         # Assume the coordinate stores an half-open interval [start, stop)
@@ -370,7 +372,6 @@ def access_image(
         coordinate_scale=coordinate_scale,
         **access_channels,
     )
-    z, y, x = [access_channels[key] for key in ("z", "y", "x")]
 
     def _pad_left(coordinate):
         if coordinate is None:
@@ -399,15 +400,12 @@ def access_image(
 
     assert n_image_dims == 2 or n_image_dims == 3, "Only 2D or 3D images supported"
 
-    # Filter requested coordinates for each dim, assuming row major order
-    access_image_dims = [z, y, x][-n_image_dims:]
-    access_ch_dims = [value for key, value in access_channels.items() if key not in ("z", "y", "x")]
-
     # Loop over all dimensions to create request
     request_slices = [slice(None)] * len(image.shape)
     access_shape = np.ones((len(image.shape)), dtype=np.int64)
-    for dim, coord in zip(ch_dims[: len(access_ch_dims)] + image_dims, access_ch_dims + access_image_dims):
+    for dim, dimension_name in enumerate(metadata.dimensions):
         max_c = image.shape[dim]
+        coord = access_channels.get(dimension_name, (0, None))
         c_from, c_to = coord
 
         request_slices[dim] = slice(_clip(c_from, 0, max_c), _clip(c_to, 0, max_c))
@@ -415,7 +413,8 @@ def access_image(
 
     # Loop over image dimensions to determine padding
     padding = [(0, 0)] * len(image.shape)
-    for dim, coord in zip(image_dims, access_image_dims):
+    for dim in image_dims:
+        coord = access_channels.get(metadata.dimensions[dim], (0, None))
         max_coord = image.shape[dim]
         coord_from, coord_to = coord
 
