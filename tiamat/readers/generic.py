@@ -127,7 +127,7 @@ class GenericReader(ImageReader):
 
         extensions: list[str] = []
         for fmt in imageio.formats:
-            extensions.extend(fmt.extensions.lower())
+            extensions.extend(fmt.extensions)
         return extensions
 
     @classmethod
@@ -144,4 +144,4 @@ class GenericReader(ImageReader):
         import os
 
         _, ext = os.path.splitext(fname)
-        return ext.lower() in cls.supported_extensions()
+        return ext in cls.supported_extensions()
