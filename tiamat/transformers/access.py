@@ -34,6 +34,8 @@ class SpacingToScaleTransformer(Transformer):
             AssertionError: If metadata or required spacing fields are missing.
             AssertionError: If anisotropic image spacing is encountered (unsupported).
         """
+        from dataclasses import replace
+
         assert (
             metadata.spacing is not None
         ), f"SpacingToScaleTransformer requires spacing, but metadata does not provide it. Make sure to use a suitable reader, or provide the metadata yourself."
@@ -42,6 +44,7 @@ class SpacingToScaleTransformer(Transformer):
         ), f"SpacingToScaleTransformer requires accessor.coordinate_spacing."
         assert accessor.spacing is not None, f"SpacingToScaleTransformer requires accessor.spacing."
 
+        accessor = replace(accessor)
         # Compute the scale
         image_spacing = metadata.spacing
         if isinstance(image_spacing, (list, tuple)):
@@ -59,6 +62,24 @@ class SpacingToScaleTransformer(Transformer):
         )
 
         return accessor
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        """Return metadata unchanged."""
+        return metadata
+
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        """
+        Return the image unchanged.
+
+        Args:
+            image (np.ndarray): The input image.
+            metadata (ImageMetadata): The image metadata.
+            accessor (ImageAccessor): The accessor used for this transformation.
+
+        Returns:
+            np.ndarray: The unchanged image.
+        """
+        return image
 
     @classmethod
     def _scale_coordinate(
@@ -111,8 +132,11 @@ class FractionTransformer(Transformer):
         Raises:
             AssertionError: If `metadata.shape` is missing.
         """
+        from dataclasses import replace
+
         assert metadata.shape is not None, f"FractionTransformer requires metadata.shape."
 
+        accessor = replace(accessor)
         # Note the correct the dimensions for x and y.
         accessor.x = self._scale_coordinate(accessor.x, metadata.shape[1])
         accessor.y = self._scale_coordinate(accessor.y, metadata.shape[0])
@@ -125,6 +149,32 @@ class FractionTransformer(Transformer):
         accessor.coordinate_spacing = metadata.spacing
 
         return accessor
+
+    def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
+        """
+        Return metadata unchanged.
+
+        Args:
+            metadata (ImageMetadata): The metadata to process.
+
+        Returns:
+            ImageMetadata: The unchanged metadata.
+        """
+        return metadata
+
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+        """
+        Return the image unchanged.
+
+        Args:
+            image (np.ndarray): The input image.
+            metadata (ImageMetadata): The image metadata.
+            accessor (ImageAccessor): The accessor used for this transformation.
+
+        Returns:
+            np.ndarray: The unchanged image.
+        """
+        return image
 
     @classmethod
     def _scale_coordinate(

@@ -24,6 +24,19 @@ class MinMaxNormalizationTransformer(Transformer):
         """
         self.target_dtype = target_dtype
 
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
+        """
+        No changes to the accessor are needed for normalization.
+
+        Args:
+            accessor: ImageAccessor of the target image.
+            metadata: Metadata of the target image.
+
+        Returns:
+            The unmodified ImageAccessor.
+        """
+        return accessor
+
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         """
         Update metadata to reflect normalization.

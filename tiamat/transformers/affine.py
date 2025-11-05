@@ -100,6 +100,7 @@ class AffineTransformer(Transformer):
             AssertionError: If metadata is missing.
         """
         import math
+        from dataclasses import replace
 
         from tiamat.readers.processing import _prepare_coordinates
         from tiamat.transformers.coordinates import resolve_coordinate_slice
@@ -150,6 +151,7 @@ class AffineTransformer(Transformer):
         offset_y_input = math.floor(y_from_t) - y_from_t
 
         # Replace accessor with new requested input
+        accessor = replace(accessor)
         # TODO: Reconsider (math.floor(x_from_t), math.ceil(x_to_t) + 1)
         x_from_input, x_to_input = (math.floor(x_from_t), math.ceil(x_to_t))
         accessor.x = x_from_input, x_to_input
@@ -180,6 +182,8 @@ class AffineTransformer(Transformer):
         Returns:
             Updated ImageMetadata with transformed shape.
         """
+        from dataclasses import replace
+
         shape_tuple = metadata.spatial_shape[-2:]
 
         # converts shape to extents
@@ -188,6 +192,8 @@ class AffineTransformer(Transformer):
         extents = list(zip(repeat(0), shape_tuple[::-1]))
         extent_coords = list(product(*extents))
 
+        new_metadata = replace(metadata)
+
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1, 1, 1, 1])))[:2, :].T
 
         out_shape = (
@@ -195,9 +201,9 @@ class AffineTransformer(Transformer):
             round(np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item()),
         )
 
-        metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
+        new_metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
 
-        return metadata
+        return new_metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """

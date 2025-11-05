@@ -47,6 +47,10 @@ class MetadataKwargsTransformer(_MetadataTransformer):
         """
         Applied the transformation defined by the given lambda.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         field_names = {f.name for f in fields(metadata)}
 
         for key, value in self.metadata_kwargs.items():
