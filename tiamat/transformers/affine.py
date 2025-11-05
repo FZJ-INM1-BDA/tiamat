@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from tiamat.constants import OPENCV_INTERPOLATION_CODES
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 from .protocol import Transformer
@@ -25,6 +26,7 @@ class AffineTransformer(Transformer):
     """
 
     # TODO: define a unit of affine matrix, e.g. microns, mm, ...
+    # TODO: allow to use center-pixel / corner-pixel aligned affine
     def __init__(
             self,
             affine_matrix: np.ndarray | list[list[float]],
@@ -182,8 +184,6 @@ class AffineTransformer(Transformer):
         """
         from dataclasses import replace
 
-        import numpy as np
-
         shape_tuple = metadata.spatial_shape[-2:]
 
         # converts shape to extents
@@ -221,14 +221,8 @@ class AffineTransformer(Transformer):
             Exception: If transform_access has not been called first.
         """
         import cv2
-        import numpy as np
 
-        from tiamat.readers.processing import rescale_shape
-
-        from ..readers.processing import (
-            OPENCV_INTERPOLATION_CODES,
-            get_interpolation_for_accessor,
-        )
+        from tiamat.readers.processing import rescale_shape, get_interpolation_for_accessor
 
         target_scale = accessor.scale
         target_scale = np.array(target_scale) if target_scale is not None else np.array((1,))

@@ -64,7 +64,7 @@ class MinMaxNormalizationTransformer(Transformer):
         Returns:
             np.ndarray: Image normalized to the range [0, 1].
         """
-        assert metadata.value_range is not None, "LUTTransformer requires metadata.value_range."
+        assert metadata.value_range is not None, "MinMaxNormalizationTransformer requires metadata.value_range."
 
         vmin, vmax = metadata.value_range
         image = (image.astype(self.target_dtype) - vmin) / (vmax - vmin)

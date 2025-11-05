@@ -274,8 +274,6 @@ class FloatToByteTransformer(Transformer):
         Returns:
             Converted image as uint8.
         """
-        import numpy as np
-
         if np.issubdtype(image.dtype, np.floating):
             image = (image * 255).astype(np.uint8)
 

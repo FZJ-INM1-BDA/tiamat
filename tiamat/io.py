@@ -6,13 +6,6 @@ from dataclasses import dataclass, field
 import numpy as np
 from tiamat.metadata import ImageMetadata
 
-# interpolation strategies for rescaling
-INTERPOLATION_TYPE_NEAREST = "nearest"
-INTERPOLATION_TYPE_LINEAR = "linear"
-INTERPOLATION_TYPE_CUBIC = "cubic"
-INTERPOLATION_TYPE_AREA = "area"
-INTERPOLATION_TYPE_LANCZOS4 = "lanczos4"
-
 
 @dataclass
 class ImageAccessor:
@@ -28,7 +21,7 @@ class ImageAccessor:
         spacing: Spacing to retrieve the image. If None, original spacing is used.
         coordinate_scale: Scale of coordinates relative to original image.
         coordinate_spacing: Spacing of coordinates relative to original image.
-        interpolation: Interpolation strategy (use INTERPOLATION_TYPE_* constants).
+        interpolation: Interpolation strategy (use tiamat.constants.INTERPOLATION_TYPE_* constants).
         anti_aliasing: Whether to apply Gaussian smoothing. Default is False.
         fill_value: Value for out-of-bounds padding. None means no padding.
         history: Dictionary storing history of operations or transformations.
@@ -44,7 +37,8 @@ class ImageAccessor:
     # scale/spacing of coordinates
     coordinate_scale: float = 1.0
     coordinate_spacing: float = 1.0
-    interpolation: int = None
+    # One of the interpolation types in tiamat.constants
+    interpolation: str = None
     # Wether to apply Gauss smothing, default is False:
     anti_aliasing: bool = False
     # (Maybe not needed) Std of Gauss filter, default is (s - 1) / 2:
