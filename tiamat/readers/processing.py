@@ -268,7 +268,9 @@ def prepare_coordinate(
 
     # Note: We round to the 10 first significant digits here very slightly whenever we multiply the factor, as minimal floating errors can mess the length up quite badly when applying math.ceil or math.floor
     def round_sig(x, sig=10):
-        return np.round(x, sig - int(np.floor(np.log10(abs(x)))) - 1)
+        # we need a small eps to avoid infinity
+        eps = 1 / (10 ** (sig + 2))
+        return np.round(x, sig - int(np.floor(np.log10(abs(x + eps)))) - 1)
 
     if hasattr(coord, "__iter__"):
         # Assume the coordinate stores an half-open interval [start, stop)
