@@ -5,6 +5,8 @@ Reader for OME-Zarr (Zarr v3 / OME-NGFF ≥0.5).
 from __future__ import annotations
 
 import os
+import json
+import zipfile
 from functools import cached_property
 from typing import Any, Dict, List, Tuple
 
@@ -50,10 +52,56 @@ class OmeZarrReader(ImageReader):
         if not _ZARR_AVAILABLE:
             # zarr not installed, we cannot do anything.
             return False
+
         lower = str(fname).lower()
         is_zip = lower.endswith(".zarr.zip") or lower.endswith(".ome.zarr.zip")
         is_dir_like = lower.endswith(".zarr") or lower.endswith(".ome.zarr")
-        return 10 if (is_zip or is_dir_like) else False
+
+        if not (is_zip or is_dir_like):
+            return False
+
+        # Function to load zarr.json content
+        def load_zarr_json(json_bytes: bytes) -> dict | None:
+            try:
+                return json.loads(json_bytes)
+            except Exception:
+                return None
+
+        zarr_data = None
+
+        if is_zip:
+            # Check inside ZIP
+            try:
+                with zipfile.ZipFile(fname, "r") as zf:
+                    if "zarr.json" not in zf.namelist():
+                        return False
+                    with zf.open("zarr.json") as f:
+                        zarr_data = load_zarr_json(f.read())
+            except Exception:
+                return False
+
+        elif is_dir_like:
+            # Check inside directory
+            zarr_json_path = os.path.join(fname, "zarr.json")
+            if not os.path.exists(zarr_json_path):
+                return False
+            try:
+                with open(zarr_json_path, "r", encoding="utf-8") as f:
+                    zarr_data = json.load(f)
+            except Exception:
+                return False
+
+        # Validate JSON structure
+        if not isinstance(zarr_data, dict):
+            return False
+
+        attributes = zarr_data.get("attributes")
+        if not isinstance(attributes, dict):
+            return False
+
+        if "ome" in attributes:
+            return 10  # or True, depending on your scoring scheme
+        return False
 
     def read_image(self, accessor: ImageAccessor) -> np.ndarray:
         from tiamat.readers.processing import access_and_rescale_image
@@ -239,7 +287,7 @@ class OmeZarrReader(ImageReader):
         for i, _ in enumerate(self._datasets):
             a = self._get_level_array(i)
             if base_y is not None:
-                f = (base_y / float(a.shape[y_idx]))
+                f = base_y / float(a.shape[y_idx])
                 factors.append(float(f))
             else:
                 factors.append(1.0 if i == 0 else max(2.0, factors[-1] * 2))
@@ -303,4 +351,3 @@ class OmeZarrReader(ImageReader):
                 coarsest_score = score
                 coarsest = lvl
         return coarsest
-
