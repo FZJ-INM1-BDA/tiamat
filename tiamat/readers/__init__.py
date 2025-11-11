@@ -25,3 +25,7 @@ def register_all_readers():
     from .pipeline import PipelineReader
 
     register_reader(PipelineReader)
+
+    from .zarr import OmeZarrReader
+
+    register_reader(OmeZarrReader)

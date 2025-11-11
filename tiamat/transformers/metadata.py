@@ -3,25 +3,28 @@ Transformers to specifically modify metadata.
 """
 
 from abc import ABC
-from typing import Callable
+from typing import Callable, Any
 from dataclasses import fields
+
+import numpy as np
+
 from .protocol import Transformer
-from ..io import ImageAccessor, ImageResult
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 
 class _MetadataTransformer(ABC, Transformer):
     """
-    Base class for metadata transformers to ensure they only modify metadata.
+    Base class for transformers that only modify metadata.
     """
 
-    def transform_access(self, accessor: ImageAccessor) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         # noop, no access transformation
         return accessor
 
-    def transform_image(self, image_result: ImageResult) -> ImageResult:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         # noop, no image transformation
-        return image_result
+        return image
 
 
 class MetadataKwargsTransformer(_MetadataTransformer):
@@ -30,9 +33,14 @@ class MetadataKwargsTransformer(_MetadataTransformer):
     """
 
     def __init__(
-        self,
-        **kwargs,
+            self,
+            **kwargs: Any,
     ) -> None:
+
+        """
+        Args:
+            **kwargs: Field-value pairs to set in the metadata.
+        """
         self.metadata_kwargs = kwargs
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
@@ -60,13 +68,13 @@ class MetadataLambdaTransformer(_MetadataTransformer):
     """
 
     def __init__(
-        self,
-        metadata_lambda: Callable[
-            [
+            self,
+            metadata_lambda: Callable[
+                [
+                    ImageMetadata,
+                ],
                 ImageMetadata,
             ],
-            ImageMetadata,
-        ],
     ) -> None:
         self.metadata_lambda = metadata_lambda
 

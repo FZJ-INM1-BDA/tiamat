@@ -1,46 +1,105 @@
 """
-Reader for Stacks.
+Reader for image stacks and volume stacks.
 """
+from __future__ import annotations
 
 import math
 from functools import cached_property, partial
-from typing import Any, Callable, Dict, Iterable, List
-
+import re
+from typing import Any
+from collections.abc import Iterable, Callable
+from collections import defaultdict
 import numpy as np
 
 from tiamat.cache import instance_cache, instance_cached_property
-from tiamat.io import ImageAccessor, ImageResult
+from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata, dimensions
 from tiamat.readers.factory import get_reader
 from tiamat.readers.protocol import ImageReader
 
 
-def find_slices(fnames: str) -> List[str]:
+def find_slices(fnames: str) -> list[str]:
+    """Find and sort slice files matching a glob pattern.
+
+    Args:
+        fnames (str): Unix shell-compatible file pattern.
+
+
+    Returns:
+        list[str]: Sorted list of file paths.
+    """
     import glob
 
     return sorted(glob.glob(fnames))
 
 
-def get_reader_identifier(fname, identifier):
-    import re
+def compile_identifier(identifier: str | None) -> re.Pattern | None:  #
+    """
+    Compile a regex pattern for extracting identifiers from file names.
 
-    match = re.search(identifier, fname)
+    Args:
+        identifier (str | None): Regex pattern with a capture group, or None.
+
+    Returns:
+        re.Pattern | None: Compiled regex pattern, or None if input is None.
+    """
+    if identifier is None:
+        return None
+    else:
+        # Parse the regex and see if there are any groups present
+        if '(' not in identifier:
+            # Add group if no group is present
+            identifier = f".*({identifier}).*"
+        return re.compile(identifier)
+
+
+def get_reader_identifier(fname: str, identifier: re.Pattern) -> str:
+    """
+    Extract a reader identifier from a filename using a regex.
+
+    Args:
+        fname (str): Filename to match.
+        identifier (re.Pattern): Compiled regex pattern with a capture group.
+
+    Returns:
+        str: Extracted identifier.
+
+    Raises:
+        ValueError: If no match is found.
+    """
+    match = identifier.search(fname)
+    if not match:
+        raise ValueError(f"No match for identifier \"{identifier}\" in filename \"{fname}\"")
 
     return match.group(1)
 
 
-def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
-    import math
+def select_slice_ix(accessor: ImageAccessor, metadata: ImageMetadata, num_slices: int, slice_spacing: float = 1.0) -> \
+        list[int]:
+    """
+    Select slice indices for stack access given spacing and scale.
 
-    from tiamat.readers.processing import expand_to_length, prepare_coordinate
+    Args:
+        accessor (ImageAccessor): Accessor specifying slicing and scaling.
+        metadata (ImageMetadata): Metadata of the image stack.
+        num_slices (int): Number of available slices.
+        slice_spacing (float, optional): Spacing between slices. Defaults to 1.0.
+
+    Returns:
+        list[int]: Selected slice indices.
+
+    Raises:
+        AssertionError: If metadata does not represent a 3D image.
+    """
+    from tiamat.readers.processing import expand_to_length
     from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-    spatial_dims = accessor.metadata.spatial_dimensions
+    spatial_dims = metadata.spatial_dimensions
 
     assert len(spatial_dims) == 3, "Only able to perform stack slicing for 3D images"
 
     z_scale = expand_to_length(accessor.scale, 3)[-1]  # x, y, z
-    z_shape = accessor.metadata.shape[spatial_dims[0]]
+    z_shape = metadata.shape[spatial_dims[0]]
     z_from, z_to = resolve_coordinate_slice(accessor.z, z_shape)
 
     # Calculate minimum and maximum slice index to use
@@ -68,43 +127,39 @@ def _select_slice_ix(accessor, num_slices, slice_spacing=1.0):
 
 
 class ImageStackReader(ImageReader):
+    """Reader for stacks of 2D slices forming a 3D volume."""
 
     def __init__(
             self,
             fnames: str | Iterable[str],
             reader_identifier: str = None,
-            reader_factory: Callable[[str], ImageReader] | List[Callable[[str], ImageReader]] | Dict[str, Callable[[str], ImageReader]] = None,
+            reader_factory: Callable[[str], ImageReader] | list[Callable[[str], ImageReader]] | dict[
+                str, Callable[[str], ImageReader]] = None,
             slice_spacing: float = None,
             stack_dimension: str = dimensions.Z,
-            missing_section_interpolation = None,
-            missing_section_fill_value = 0,
-            **reader_kwargs
-        ):
-        """_summary_
+            missing_section_interpolation: str | None = None,
+            missing_section_fill_value: int | float = 0,
+            **reader_kwargs,
+    ) -> None:
+        """
+        Initialize an ImageStackReader.
 
-        Parameters
-        ----------
-        fnames : str | Iterable[str]
-            Can be a Unix shell compatible file pattern or an iterable object providing filenames
-        reader_factory : Callable[[str], ImageReader] | Iterable[Callable[[str], ImageReader]], optional
-            A reader factory function or specific image reader. By default search for registered readers
-        slice_spacing : float, optional
-            Slice spacing if volume spacing is not isotropic. By default assume same z spacing as for x, y
-        stack_dimension: str, optional
-            The type of dimension the stacking creates. Spatial Z by default.
-        missing_section_interplation: str, optional
-            The type of missing section interpolation: None, 'nearest', 'constant'
-        missing_section_fill_value: float, int, optional
-            The fill value for missing sections if using missing_section_interplation 'constant'
-        reader_kwargs:
-            Arguments passed to each reader from reader_factory
+        Args:
+            fnames (str | Iterable[str]): File pattern or iterable of filenames.
+            reader_identifier (str | None, optional): Regex identifier for slice grouping.
+            reader_factory (Callable | list | dict, optional): Factory for slice readers.
+            slice_spacing (float | None, optional): Slice spacing. Defaults to isotropic spacing.
+            stack_dimension (str, optional): Dimension along which slices are stacked. Defaults to Z.
+            missing_section_interpolation (str | None, optional): Strategy for missing slices.
+            missing_section_fill_value (int | float, optional): Fill value for missing slices.
+            **reader_kwargs: Extra kwargs passed to reader factory.
         """
         self.fnames = fnames
         self.reader_factory = reader_factory or get_reader
 
         if isinstance(self.reader_factory, dict):
             assert reader_identifier is not None
-        self.reader_identifier = reader_identifier
+        self.compiled_identifier = compile_identifier(reader_identifier)
 
         self.slice_spacing = slice_spacing
         self.stack_dimension = stack_dimension
@@ -113,17 +168,39 @@ class ImageStackReader(ImageReader):
         self.reader_kwargs = reader_kwargs
 
     @staticmethod
-    def fill_spacing(slice_spacing, spacing):
+    def fill_spacing(slice_spacing: float | None, spacing: Iterable[float]) -> tuple[float, float, float]:
+        """
+        Fill spacing for 3D stack.
+
+
+        Args:
+        slice_spacing (float | None): Explicit slice spacing.
+        spacing (Iterable[float]): In-plane spacing.
+
+
+        Returns:
+        tuple[float, float, float]: Full 3D spacing.
+        """
         from tiamat.readers.processing import expand_to_length
 
         if slice_spacing is None:
             spacing_2d = expand_to_length(spacing, 2)
-            assert spacing_2d[0] == spacing_2d[1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
+            assert spacing_2d[0] == spacing_2d[
+                1], "StackReader assumes isotropic image spacing if slice_spacing is not provided"
             return (*spacing_2d, spacing_2d[0])
         else:
             return (*expand_to_length(spacing, 2), slice_spacing)
 
-    def _prepare_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
+    def selected_slice_handles(self, slice_ix: Iterable[int]) -> list[ImageReader]:
+        """
+        select slice readers for given indices.
+
+        Args:
+        slice_ix (Iterable[int]): Slice indices.
+
+        Returns:
+        list[ImageReader]: Readers for selected slices.
+        """
         from tiamat.readers.memory import ConstantReader
 
         selected_slices = [self.slices[i] for i in slice_ix]
@@ -138,15 +215,15 @@ class ImageStackReader(ImageReader):
                     reader_list.append(ConstantReader(self.missing_section_fill_value, self.prototype_metadata))
                 else:
                     # Existing section needs corresponding reader
-                    identifier = get_reader_identifier(fname, self.reader_identifier)
+                    identifier = get_reader_identifier(fname, self.compiled_identifier)
                     factory = self.reader_factory[identifier]
                     reader_list.append(factory(fname))
 
         elif isinstance(self.reader_factory, (tuple, list)):
             # Map each slice to reader at same slice index
             selected_readers = [self.reader_factory[i] for i in slice_ix]
-            for reader, fname in zip(selected_readers, selected_slices):
-                reader_list.append(reader(fname))
+            for factory, fname in zip(selected_readers, selected_slices):
+                reader_list.append(factory(fname))
 
         else:
             # Use same reader for all selected slices
@@ -158,29 +235,28 @@ class ImageStackReader(ImageReader):
 
         return reader_list
 
-    def access_slices(self, slice_ix: Iterable[int]) -> List[ImageReader]:
-        selected_readers = self._prepare_slices(slice_ix)
-
-        return selected_readers
-
     @property
     def ordered_slice_handles(self):
-        return self.access_slices(range(len(self.slices)))
+        """All slice handles in order."""
+        return self.selected_slice_handles(range(len(self.slices)))
 
     @property
     def prototype_slice_handle(self) -> ImageReader:
-        selected_handles = self._prepare_slices([0])
+        """Prototype slice handle for metadata inspection."""
+        selected_handles = self.selected_slice_handles([0])
 
         return selected_handles[0]
 
     @instance_cached_property
-    def prototype_metadata(self):
+    def prototype_metadata(self) -> ImageMetadata:
+        """Metadata from a prototype slice."""
         metadata = self.prototype_slice_handle.read_metadata()
 
         return metadata
 
     @instance_cache
     def read_metadata(self) -> ImageMetadata:
+        """Read metadata for the stack."""
         from dataclasses import replace
 
         # Load metadata from an arbitrary prototype slice
@@ -200,22 +276,25 @@ class ImageStackReader(ImageReader):
 
         metadata.dimensions = [self.stack_dimension, ] + list(metadata.dimensions)
 
-        metadata.additional_metadata["stack_dimensions"] = self.stack_dimension
+        metadata.additional_metadata["stack_dimension"] = self.stack_dimension
 
         return metadata
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
+        """Read stacked image for given accessor."""
         from dataclasses import replace
 
+        metadata = self.read_metadata()
+
         # Request only subset of slice handles neded for the requested scale
-        selected_slice_ix = _select_slice_ix(accessor, self.num_slices)
-        slice_handles = self.access_slices(selected_slice_ix)
+        selected_slice_ix = select_slice_ix(accessor, metadata, self.num_slices)
+        slice_handles = self.selected_slice_handles(selected_slice_ix)
 
         if len(slice_handles) == 0:
             raise Exception("Requested empty stack")
 
         # Remove z axis for 2D access from metadata
-        tmp_accessor = replace(accessor, z = None)
+        tmp_accessor = replace(accessor, z=None)
         # if scale is tuple, remove z scale
         if isinstance(tmp_accessor.scale, (tuple, list)):
             if self.stack_dimension == dimensions.X:
@@ -225,72 +304,74 @@ class ImageStackReader(ImageReader):
             elif self.stack_dimension == dimensions.Z:
                 tmp_accessor.scale = tmp_accessor.scale[:2]
 
-        metadata = replace(tmp_accessor.metadata)
-        metadata.shape = metadata.shape[1:]
-        dimension_list = list(metadata.dimensions)
-        dimension_list.remove(self.stack_dimension)
+        # TODO: Check if unnecessary and remove
+        # metadata = replace(tmp_accessor.metadata)
+        # metadata.shape = metadata.shape[1:]
+        # dimension_list = list(metadata.dimensions)
+        # dimension_list.remove(self.stack_dimension)
 
-        # for each scale, remove the z scale
-        scales = list(metadata.scales)
-        for i, s in enumerate(scales):
-            if self.stack_dimension == dimensions.X:
-                scales[i] = s[1:]
-            elif self.stack_dimension == dimensions.Y:
-                scales[i] = (s[0], *s[2:])
-            elif self.stack_dimension == dimensions.Z:
-                scales[i] = s[:2]
-            else:
-                raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+        # # for each scale, remove the z scale
+        # if metadata.scales is not None:
+        #     scales = list(metadata.scales)
+        #     for i, s in enumerate(scales):
+        #         if self.stack_dimension == dimensions.X:
+        #             scales[i] = s[1:]
+        #         elif self.stack_dimension == dimensions.Y:
+        #             scales[i] = (s[0], *s[2:])
+        #         elif self.stack_dimension == dimensions.Z:
+        #             scales[i] = s[:2]
+        #         else:
+        #             raise ValueError(f"Unknown stack dimension {self.stack_dimension}")
+        #     metadata.scales = tuple(scales)
 
-        metadata.dimensions = dimension_list
-        tmp_accessor.metadata = metadata
-        tmp_accessor.scales = tuple(scales)
+        # metadata.dimensions = dimension_list
+        # tmp_accessor.metadata = metadata
 
         first_result = slice_handles[0].read_image(accessor=tmp_accessor)
         # For efficiency, create empty array first, then write remaining data into arrays.
         image = np.empty(
-            shape=([len(slice_handles), *first_result.image.shape]),
-            dtype=first_result.image.dtype,
+            shape=([len(slice_handles), *first_result.shape]),
+            dtype=first_result.dtype,
         )
 
         # Reuse first result
-        image[0] = first_result.image
+        image[0] = first_result
         # Read and stack all remaining images.
         for i, handle in enumerate(slice_handles[1:], 1):
-            image[i] = handle.read_image(accessor=tmp_accessor).image
+            image[i] = handle.read_image(accessor=tmp_accessor)
 
-        return ImageResult(image=image, accessor=accessor, metadata=accessor.metadata)
+        return image
 
     @property
     def file_handle(self) -> ImageReader:
+        """Representative file handle."""
         return self.prototype_slice_handle
 
     @cached_property
-    def slices(self) -> List[str]:
-        # Find available slices with filenames
+    def slices(self) -> list[str | None]:
+        """Return list of slices, optionally with interpolation for missing sections."""
         if hasattr(self.fnames, '__iter__') and not isinstance(self.fnames, str):
             available_slices = list(self.fnames)
         else:
             available_slices = find_slices(fnames=self.fnames)
 
-        if self.reader_identifier is None:
+        if self.compiled_identifier is None:
             if isinstance(self.reader_factory, dict):
                 raise Exception("Using a dictionary as reader_factory requires a reader_identifier to be provided")
             if self.missing_section_interpolation is None:
-                # No ordering or section interpolation happening
                 return available_slices
             else:
-                # Can't interpolate without ordering by a reader_identifier
-                raise Exception(f"{self.missing_section_interpolation} missing_section_interpolation requires reader_identifier to be provided")
+                raise Exception(
+                    f"{self.missing_section_interpolation} missing_section_interpolation requires reader_identifier to be provided")
         else:
             # Sort available slices by their reader_identifier
             if isinstance(self.reader_factory, dict):
                 available_slices = [
                     f for f in available_slices
-                    if get_reader_identifier(f, self.reader_identifier) in self.reader_factory.keys()
+                    if get_reader_identifier(f, self.compiled_identifier) in self.reader_factory.keys()
                 ]
 
-            available_keys = [int(get_reader_identifier(f, self.reader_identifier)) for f in available_slices]
+            available_keys = [int(get_reader_identifier(f, self.compiled_identifier)) for f in available_slices]
             sorted_ix = np.argsort(available_keys)
 
             if self.missing_section_interpolation is None:
@@ -313,7 +394,8 @@ class ImageStackReader(ImageReader):
                             # Fill gaps with None (will be filled with fill value later)
                             ordered_slices += [None] * missing
                         else:
-                            raise AttributeError(f"Unknown missing_section_interpolation: {self.missing_section_interpolation}")
+                            raise AttributeError(
+                                f"Unknown missing_section_interpolation: {self.missing_section_interpolation}")
 
                     ordered_slices.append(available_slices[sorted_ix[i + 1]])
 
@@ -321,17 +403,20 @@ class ImageStackReader(ImageReader):
 
     @cached_property
     def num_slices(self) -> int:
+        """Number of slices."""
+
         return len(self.slices)
 
     @classmethod
-    def check_file(cls, fname: str | List[str]) -> bool | int | float:
+    def check_file(cls, fname: str | list[str]) -> bool | int | float:
         # StackReader requires initialization before being able to check the files
         # TODO: Maybe check if fname refers to a list of files. Check if any readers
         # exists for this filetype and return this one
         return False
 
     @classmethod
-    def from_json(cls, args: Dict[str, Any], reader_post_creation_hook=None):
+    def from_json(cls, args: dict[str, Any], reader_post_creation_hook=None) -> Callable:
+        """Construct reader from JSON config."""
         from tiamat.serialization import get_reader_from_config
 
         reader_factory = args.get("reader_factory")
@@ -342,9 +427,12 @@ class ImageStackReader(ImageReader):
                 reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
             else:
                 # Stack of readers
-                reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+                reader = dict(
+                    (k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in
+                    reader_factory.items())
         elif hasattr(reader_factory, '__iter__'):
-            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
+            reader = tuple(
+                get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         elif reader_factory is None:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
         else:
@@ -373,7 +461,7 @@ class ImageStackReader(ImageReader):
             )
 
     @cached_property
-    def scales(self):
+    def scales(self) -> list[tuple[float, float, float]] | None:
         """Return scales of the image stack.
         To improve io, the scale along the stacked axis is set to 1.0
         """
@@ -393,28 +481,57 @@ class ImageStackReader(ImageReader):
         # TODO: make shure position of z is correct
         scales = metadata_first_slice.scales
 
+        min_scale = 1. / self.num_slices
+
         if isinstance(scales[0], Iterable):
-            scales = [(*s[:2], min((slice_spacing * s[0]) / spacing, 1.0), *s[2:]) for s in scales]
+            scales = [(*s[:2], max(min((slice_spacing * s[0]) / spacing, 1.0), min_scale), *s[2:]) for s in scales]
         elif isinstance(scales[0], (int, float)):
-            scales = [(s, s, min((slice_spacing * s) / spacing, 1.0)) for s in scales]
+            scales = [(s, s, max(min((slice_spacing * s) / spacing, 1.0), min_scale)) for s in scales]
 
         return scales
 
 
 class VolumeStackReader(ImageReader):
+    """
+    Reader for stacks of sub-volumes forming a larger 3D volume.
+
+
+    This reader concatenates multiple 3D sub-volumes along the Z axis (or, more
+    generally, along the first spatial dimension reported by the prototype
+    metadata), producing a single larger volume. Each sub-volume is read via a
+    provided reader factory and stitched together on-the-fly during reads.
+
+
+    Notes:
+    - If a mapping (``dict``) of reader factories is provided, files are
+    grouped by an identifier extracted from their filenames using
+    ``reader_identifier`` (a regex with a capture group).
+    - If multiple files match the same identifier key, the corresponding
+    factory is called with a ``tuple[str, ...]`` (see code comments).
+    """
 
     def __init__(
-        self,
-        fnames: str | Iterable[str],
-        flag_const_shape: bool = False,
-        reader_identifier: str = None,
-        reader_factory: (
-            Callable[[str], ImageReader]
-            | Iterable[Callable[[str], ImageReader]]
-            | Dict[str, Callable[[str], ImageReader]]
-        ) = None,
-        reader_kwargs=None,
-    ):
+            self,
+            fnames: str | Iterable[str],
+            flag_const_shape: bool = False,
+            reader_identifier: str | None = None,
+            reader_factory: (
+                    Callable[[str], ImageReader]
+                    | Iterable[Callable[[str], ImageReader]]
+                    | dict[str, Callable[[str], ImageReader]]
+            ) = None,
+            reader_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Initialize a VolumeStackReader.
+
+        Args:
+            fnames (str | Iterable[str]): File pattern or iterable of filenames.
+            flag_const_shape (bool, optional): Whether all sub-volumes have the same shape. Defaults to False.
+            reader_identifier (str | None, optional): Regex for identifying files in a dict of factories.
+            reader_factory (Callable | Iterable | Dict, optional): Factory or factories to create sub-volume readers.
+            reader_kwargs (dict[str, Any], optional): Additional arguments passed to the factories.
+        """
 
         self.fnames = fnames
         self.flag_const_shape = flag_const_shape
@@ -422,12 +539,21 @@ class VolumeStackReader(ImageReader):
 
         if isinstance(self.reader_factory, dict):
             assert reader_identifier is not None
-        self.reader_identifier = reader_identifier
+        self.compiled_identifier = compile_identifier(reader_identifier)
 
         self.reader_kwargs = reader_kwargs or {}
 
     @cached_property
-    def slices(self) -> List[str]:
+    def slices(self) -> list[str]:
+        """
+        Return an ordered list of sub-volume file specifications.
+
+        If ``fnames`` is an iterable (and not a string), it is returned as a
+        list. Otherwise, the glob pattern in ``fnames`` is expanded and sorted.
+
+        Returns:
+            list[str]: List of file paths (or path specs) for sub-volumes.
+        """
         if hasattr(self.fnames, '__iter__') and not isinstance(self.fnames, str):
             return [fname for fname in self.fnames]
         else:
@@ -435,18 +561,56 @@ class VolumeStackReader(ImageReader):
 
     @cached_property
     def num_slices(self) -> int:
+        """
+        Number of sub-volumes.
+
+        Returns:
+            int: Number of entries in :pyattr:`slices`.
+        """
         return len(self.slices)
 
+    @cached_property
+    def _file_names_per_reader_identifier(self):
+        """
+        Map files to their reader identifiers.
+
+        Returns:
+            dict[str, list[str]]: Mapping of identifier -> list of matching file paths.
+        """
+        file_matches = defaultdict(list)
+        for fname in self.slices:
+            file_matches[get_reader_identifier(fname, self.compiled_identifier)].append(fname)
+        return file_matches
+
     @property
-    def ordered_subvolume_handles(self):
+    def ordered_subvolume_handles(self) -> list[ImageReader]:
+        """
+        Create ImageReader handles for all sub-volumes, in order.
+
+        Behavior depends on `reader_factory` type:
+        - dict[str, Callable]: For each sorted key, find matching files.
+          Single or multiple files are passed to the factory.
+        - Iterable[Callable]: Zip slices and factories.
+        - Callable: Use the same factory for all slices.
+
+        Returns:
+            list[ImageReader]: List of instantiated sub-volume readers.
+
+        Notes:
+        - If a key maps to multiple files, the factory must accept a
+        sequence of paths.
+        # NOTE: This is implicit in the original code path.
+        """
         if isinstance(self.reader_factory, dict):
             reader_list = []
             for k in sorted(self.reader_factory.keys()):
                 factory = self.reader_factory[k]
                 # Find all files that match k
-                file_matches = tuple(fname for fname in self.slices if get_reader_identifier(fname, self.reader_identifier) == k)
-                if len(file_matches) > 0:
+                file_matches = tuple(self._file_names_per_reader_identifier[k])
+                if len(file_matches) > 1:
                     reader_list.append(factory(file_matches))
+                if len(file_matches) == 1:
+                    reader_list.append(factory(file_matches[0]))
             return reader_list
 
         elif hasattr(self.reader_factory, '__iter__'):
@@ -456,11 +620,23 @@ class VolumeStackReader(ImageReader):
             return [self.reader_factory(fname, **self.reader_kwargs) for fname in self.slices]
 
     @property
-    def prototype_subvolume_handle(self):
+    def prototype_subvolume_handle(self) -> ImageReader:
+        """
+        Return the first sub-volume handle as a prototype for metadata.
+
+        Returns:
+            ImageReader: The first instantiated sub-volume reader.
+        """
         return self.ordered_subvolume_handles[0]
 
     @cached_property
-    def subvolume_shapes(self):
+    def subvolume_shapes(self) -> list[tuple[int, ...]]:
+        """
+        Return the shapes of all sub-volumes.
+
+        Returns:
+            list[tuple[int, ...]]: A list of shape tuples for each sub-volume.
+        """
 
         subvolume_handles = self.ordered_subvolume_handles
 
@@ -472,7 +648,14 @@ class VolumeStackReader(ImageReader):
         return [handle.read_metadata().shape for handle in subvolume_handles]
 
     @cached_property
-    def shape(self):
+    def shape(self) -> tuple[int, ...]:
+        """
+        Compute the composite volume shape produced by concatenating all
+        sub-volumes along the Z dimension (first entry of spatial dims).
+
+        Returns:
+            tuple[int, ...]: Shape of the stitched volume.
+        """
         metadata = self.ordered_subvolume_handles[0].read_metadata()
         z_dim = metadata.spatial_dimensions[0]
 
@@ -484,6 +667,12 @@ class VolumeStackReader(ImageReader):
 
     @instance_cache
     def read_metadata(self) -> ImageMetadata:
+        """
+        Read and compose metadata for the stacked volume.
+
+        Returns:
+            ImageMetadata: Metadata of the stitched volume.
+        """
         from dataclasses import replace
 
         metadata = replace(self.ordered_subvolume_handles[0].read_metadata())
@@ -494,18 +683,35 @@ class VolumeStackReader(ImageReader):
 
         return metadata
 
-    def read_image(self, accessor: ImageAccessor) -> ImageResult:
+    def read_image(self, accessor: ImageAccessor) -> np.ndarray:
+        """
+        Read the stitched volume given an accessor.
+
+        The method determines the intersection of the requested Z-slice with
+        each sub-volume, reads those ranges, and inserts them into an output
+        buffer. The output shape along Z is determined by the requested range
+        and scale factor.
+
+        Args:
+            accessor (ImageAccessor): Accessor specifying coordinates (including Z-range) and scale.
+
+        Returns:
+            np.ndarray: Stitched image volume.
+
+        Raises:
+            ValueError: If no sub-volume handles are available.
+        """
         import math
         from dataclasses import replace
 
         from tiamat.readers.processing import (
-            _prepare_coordinates,
             expand_to_length,
             prepare_coordinate,
         )
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
-        z_dim, y_dim, x_dim = accessor.metadata.spatial_dimensions
+        metadata = self.read_metadata()
+        z_dim, y_dim, x_dim = metadata.spatial_dimensions
 
         image_z_size = self.shape[z_dim]
         image_scales = expand_to_length(accessor.scale, 3)  # x, y, z
@@ -554,7 +760,7 @@ class VolumeStackReader(ImageReader):
                 tmp_accessor = replace(accessor, z=(from_ix, to_ix))
 
                 # print("VolumeStackReader", accessor)
-                tmp_image = handle.read_image(accessor=tmp_accessor).image
+                tmp_image = handle.read_image(accessor=tmp_accessor)
 
                 # Position in the output array to place the image
                 scaled_z_offset = math.floor(max(cur_z_offset - z_from, 0) * image_scales[-1])
@@ -563,21 +769,35 @@ class VolumeStackReader(ImageReader):
                 insert_array(tmp_image, scaled_z_offset)
 
                 # Output image might cover more than z_size
-                cur_z_offset += z_size # tmp_image.shape[z_dim] / image_scales[-1]
+                cur_z_offset += z_size  # tmp_image.shape[z_dim] / image_scales[-1]
             else:
                 cur_z_offset += z_size
 
-        return ImageResult(image=out_image, accessor=accessor, metadata=accessor.metadata)
+        return out_image
 
     @classmethod
-    def check_file(cls, fname: str | List[str]) -> bool | int | float:
+    def check_file(cls, fname: str | list[str]) -> bool | int | float:
         # StackReader requires initialization before being able to check the files
         # TODO: Maybe check if fname refers to a list of files. Check if any readers
         # exists for this filetype and return this one
         return False
 
     @classmethod
-    def from_json(cls, args: Dict[str, Any], reader_post_creation_hook=None):
+    def from_json(cls, args: dict[str, Any], reader_post_creation_hook=None) -> Callable:
+        """
+        Construct a VolumeStackReader (or wrapper) from a JSON-like config.
+
+        Args:
+            args (dict): Configuration dictionary.
+            reader_post_creation_hook (Callable | None): Optional wrapper hook.
+
+        Returns:
+            Callable: Partial that instantiates the reader or invokes the hook.
+
+        Raises:
+            ValueError: If the ``reader_factory`` cannot be parsed.
+        """
+
         from tiamat.serialization import get_reader_from_config
 
         reader_factory = args.get("reader_factory")
@@ -588,9 +808,12 @@ class VolumeStackReader(ImageReader):
                 reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
             else:
                 # Stack of readers
-                reader = dict((k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in reader_factory.items())
+                reader = dict(
+                    (k, get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook)) for k, r in
+                    reader_factory.items())
         elif hasattr(reader_factory, '__iter__'):
-            reader = tuple(get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
+            reader = tuple(
+                get_reader_from_config(r, reader_post_creation_hook=reader_post_creation_hook) for r in reader_factory)
         elif reader_factory is None:
             reader = get_reader_from_config(reader_factory, reader_post_creation_hook=reader_post_creation_hook)
         else:
