@@ -80,7 +80,7 @@ affine_xform_img_args = [
     # this does not work, apparently scaling up is not as easy as scaling down
     (two_by_two, scale_double, four_by_four),
     (two_by_two,
-     [[-1, 0, 1],
+     [[-1, 0, 2],
       [0, 1, 0],
       [0, 0, 1]],
      [[2, 1],
@@ -102,6 +102,8 @@ def test_affine_transform_image(src_img, affine, exp_img):
     img_nd = np.array(src_img)
     exp_nd = np.array(exp_img)
 
+    print("Apply:\n", affine)
+
     # Backward path
     meta = ImageMetadata(image_type="image",
                          shape=img_nd.shape,
@@ -110,26 +112,28 @@ def test_affine_transform_image(src_img, affine, exp_img):
     output_accessor = ImageAccessor(
         x=(0, exp_nd.shape[1]),
         y=(0, exp_nd.shape[0]),
-        metadata=meta,
         interpolation="nearest"
     )
     xform = AffineTransformer(
         np.array(affine),
         request_margin=0,
     )
-    input_accessor = xform.transform_access(output_accessor)
+    input_accessor = xform.transform_access(output_accessor, metadata=meta)
 
     print("Request:\n", output_accessor)
     print("Reader:\n", input_accessor)
 
     # Forward path
-    src = ImageResult(img_nd, input_accessor, meta)
-    result = xform.transform_image(src)
+    result_nd = xform.transform_image(
+        img_nd,
+        metadata=meta,
+        accessor=input_accessor
+    )
 
-    print("Result:\n", result.image)
+    print("Result:\n", result_nd)
     print("Expected:\n", exp_nd)
 
-    assert np.all(result.image == exp_nd)
+    assert np.all(result_nd == exp_nd)
 
 
 IMG_SIZE = 100
@@ -166,20 +170,22 @@ def test_affine_transform_access(src_xy, affine, expected_xy):
         image_type="image",
         shape=img_nd.shape,
         value_range=(np.min(img_nd), np.max(img_nd)),
-        dtype=img_nd.dtype
+        dtype=img_nd.dtype,
     )
 
     print("Source xy:", *src_xy)
 
     accessor = ImageAccessor(
         *src_xy,
-        metadata=meta
     )
     xformer = AffineTransformer(
         np.array(affine),
-        request_margin=0
+        request_margin=0,
     )
-    result = xformer.transform_access(accessor)
+    result = xformer.transform_access(
+        accessor,
+        metadata=meta,
+    )
 
     print("Result xy:", result.x, result.y)
     print("Expected xy:", *expected_xy)

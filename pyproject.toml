@@ -23,6 +23,7 @@ dependencies = [
   "opencv-python-headless>=4.8.1",
   "imageio",
   "nibabel",
+  "scipy",
 ]
 
 [build-system]
@@ -45,6 +46,7 @@ tiamat = "tiamat.cli:cli"
 
 [project.optional-dependencies]
 dev = ["autopep8", "flake8", "pre-commit", "pytest"]
+zarr = ["zarr"]
 
 [project.urls]
 homepage = "https://www.fz-juelich.de/de/inm/inm-1"
@@ -70,3 +72,6 @@ line-length = 120
 
 [tool.isort]
 profile = "black"
+
+[tool.pylint]
+max-line-length = 120
