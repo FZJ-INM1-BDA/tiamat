@@ -2,8 +2,34 @@
 Constant values.
 """
 
+import cv2
+
+
 FILE_TYPES_GENERIC = ("png", "jpg", "jpeg", )
 FILE_TYPES_BIGTIFF = ("tif", "tiff")
 FILE_TYPES_BIGTIFF_ZSTACK = ("zstack", )
 FILE_TYPES_HDF5 = ("hdf5", "h5")
 FILE_TYPES_NIFTI = ("nii", "nii.gz",)
+
+# Supported intepolartion strategies in accessors
+INTERPOLATION_TYPE_NEAREST = "nearest"
+INTERPOLATION_TYPE_LINEAR = "linear"
+INTERPOLATION_TYPE_CUBIC = "cubic"
+INTERPOLATION_TYPE_AREA = "area"
+INTERPOLATION_TYPE_LANCZOS4 = "lanczos4"
+
+# Resolve interpolation strategis to scipy codes
+SCIPY_INTERPOLATION_CODES = {
+    INTERPOLATION_TYPE_NEAREST: 0,
+    INTERPOLATION_TYPE_LINEAR: 1,
+    INTERPOLATION_TYPE_CUBIC: 3,
+}
+
+# Resolve interpolation strategis to CV2 codes
+OPENCV_INTERPOLATION_CODES = {
+    INTERPOLATION_TYPE_NEAREST: cv2.INTER_NEAREST,
+    INTERPOLATION_TYPE_LINEAR: cv2.INTER_LINEAR,
+    INTERPOLATION_TYPE_CUBIC: cv2.INTER_CUBIC,
+    INTERPOLATION_TYPE_AREA: cv2.INTER_AREA,
+    INTERPOLATION_TYPE_LANCZOS4: cv2.INTER_LANCZOS4,
+}

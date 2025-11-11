@@ -1,1 +1,4 @@
+tests/**/*.png filter=lfs diff=lfs merge=lfs -text
+tests/**/*.npy filter=lfs diff=lfs merge=lfs -text
+tests/**/*.npy.gz filter=lfs diff=lfs merge=lfs -text
 * !text !filter !merge !diff
