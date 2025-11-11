@@ -5,9 +5,8 @@
 set -e
 set -o pipefail
 
-# --- CONFIG ---
-INCREMENT_PART=${1:-"patch"} # "patch", "minor", or "major"
-TEST_CMD="pytest tests/ -q"  # can also be: poetry run pytest tests/
+INCREMENT_PART="patch"
+TEST_CMD="pytest tests/ -q"
 
 echo "🚀 Starting weekly release..."
 
@@ -21,11 +20,8 @@ git fetch origin --tags
 git checkout develop
 git pull origin develop
 
-# --- Determine last tag ---
+# --- Determine new tag ---
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-echo "🔖 Last tag: ${LAST_TAG}"
-
-# --- Parse and increment ---
 IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST_TAG#v}"
 
 case $INCREMENT_PART in
@@ -38,24 +34,15 @@ minor)
   MINOR=$((MINOR + 1))
   PATCH=0
   ;;
-patch)
-  PATCH=$((PATCH + 1))
-  ;;
-*)
-  echo "❌ Invalid INCREMENT_PART: $INCREMENT_PART"
-  exit 1
-  ;;
+patch) PATCH=$((PATCH + 1)) ;;
 esac
 
 NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-echo "🏷️ New tag: ${NEW_TAG}"
+RELEASE_BRANCH="release/${NEW_TAG}"
 
-# --- Start release branch ---
+echo "🔖 Creating release branch ${RELEASE_BRANCH}"
+
 git flow release start "${NEW_TAG}"
-
-# Optionally bump version in pyproject.toml:
-# sed -i "s/^version = .*/version = \"${NEW_TAG}\"/" pyproject.toml
-# git commit -am "Bump version to ${NEW_TAG}"
 
 # --- Run tests ---
 echo "🧪 Running tests..."
@@ -67,10 +54,17 @@ else
   exit 1
 fi
 
-# --- Finish release ---
-git flow release finish -m "Weekly release ${NEW_TAG}" "${NEW_TAG}"
+# --- Merge into develop locally ---
+git checkout develop
+git merge --no-ff "${RELEASE_BRANCH}" -m "Merge ${RELEASE_BRANCH} into develop"
 
-# --- Push changes ---
-git push origin develop master --follow-tags
+# --- Tag the release ---
+git tag -a "${NEW_TAG}" -m "Release ${NEW_TAG}"
 
-echo "🎉 Release ${NEW_TAG} complete and pushed successfully!"
+# --- Push to origin (but NOT to master) ---
+git push origin develop "${RELEASE_BRANCH}" --follow-tags
+
+echo "📤 Release branch ${RELEASE_BRANCH} and tag ${NEW_TAG} pushed."
+
+echo "📋 Next step: open a PR from ${RELEASE_BRANCH} → master in your repo UI."
+echo "🎉 Done!"
