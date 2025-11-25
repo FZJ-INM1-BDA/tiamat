@@ -145,7 +145,7 @@ class DeformationFieldTransformer(Transformer):
             Deformed image array.
         """
         from scipy.ndimage import map_coordinates
-        from tiamat.readers.processing import SCIPY_INTERPOLATION_CODES
+        from tiamat.constants import SCIPY_INTERPOLATION_CODES
 
         if channel_dim is None:
             out_image = map_coordinates(
