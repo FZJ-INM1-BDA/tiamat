@@ -176,6 +176,7 @@ class BoundingBoxTransformer(Transformer):
         shape = list(metadata.shape)
         for i, dimension in enumerate(metadata.spatial_dimensions):
             shape[dimension] = spatial_shape[i]
+        shape = tuple(shape)
 
         metadata = replace(metadata, shape=shape)
 
