@@ -76,7 +76,7 @@ class ImageToVolumeTransformer(Transformer):
         # Insert new spatial axis
         new_shape = list(metadata.shape)
         new_shape.insert(new_axis, 1)
-        metadata.shape = new_shape
+        metadata.shape = tuple(new_shape)
 
         # Insert the axis to the dimensions
         new_dimensions = list(metadata.dimensions)
