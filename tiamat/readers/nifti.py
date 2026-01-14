@@ -47,7 +47,6 @@ class NiftiReader(ImageReader):
         Returns:
             Any ImageResult with image data and metadata.
         """
-        from ..io import ImageResult
         from .processing import access_and_rescale_image
 
         data = self.handle.get_fdata()

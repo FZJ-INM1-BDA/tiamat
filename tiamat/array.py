@@ -156,9 +156,8 @@ class Array(object):
         }
         shape_fn = shape_round_functions.get(self.shape_round_mode)
         if shape_fn is None:
-            raise RuntimeError(
-                f"Invalid shape_round_mode {self.shape_round_mode}. Valid: {','.join(list(shape_round_functions.keys()))}"
-            )
+            valid = ",".join(list(shape_round_functions.keys()))
+            raise RuntimeError(f"Invalid shape_round_mode {self.shape_round_mode}. Valid: {valid}")
 
         return tuple(shape_fn(np.array(self.metadata.shape) * self.scale).astype(int).tolist())
 

@@ -12,7 +12,7 @@ import pytest
 
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import RGB, C, X, Y, Z
+from tiamat.metadata.dimensions import RGB, X, Y, Z
 from tiamat.transformers.axes import (
     ImageToVolumeTransformer,
     MirrorTransformer,
@@ -434,7 +434,7 @@ class TestWithKoalaImage:
         # Swap X and Y
         transformer = ReorderCoordinatesTransformer(axes=("x", "y"))
         # Transform metadata
-        new_metadata2 = transformer.transform_metadata(koala_metadata)
+        # new_metadata2 = transformer.transform_metadata(koala_metadata)
         h, w = koala_image.shape[:2]
 
         # Transform image

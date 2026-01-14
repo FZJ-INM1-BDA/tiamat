@@ -240,7 +240,8 @@ def prepare_coordinate(
 
     factor = image_scale / coordinate_scale
 
-    # Note: We round to the 10 first significant digits here very slightly whenever we multiply the factor, as minimal floating errors can mess the length up quite badly when applying math.ceil or math.floor
+    # Note: We round to the 10 first significant digits here very slightly whenever we multiply the factor,
+    # as minimal floating errors can mess the length up quite badly when applying math.ceil or math.floor
     def round_sig(x, sig=10):
         # we need a small eps to avoid infinity
         eps = 1 / (10 ** (sig + 2))
@@ -476,7 +477,7 @@ def get_interpolation_for_accessor(accessor: ImageAccessor, metadata: ImageMetad
         interpolation = get_interpolation_for_image_type(image_type=metadata.image_type)
     else:
         raise RuntimeError(
-            f"Could not _rescale image, as neither 'interpolation' nor 'metadata.image_type' was provided."
+            "Could not _rescale image, as neither 'interpolation' nor 'metadata.image_type' was provided."
         )
     return interpolation
 

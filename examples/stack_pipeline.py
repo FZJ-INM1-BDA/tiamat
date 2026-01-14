@@ -85,6 +85,6 @@ try:
     print(result.image.shape)
 
     _cleanup()
-except:
+except Exception:
     _cleanup()
     raise

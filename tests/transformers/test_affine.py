@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tiamat.io import ImageAccessor, ImageResult
+from tiamat.io import ImageAccessor
 from tiamat.metadata import IMAGE_TYPE_IMAGE, ImageMetadata
 from tiamat.transformers.affine import AffineTransformer
 
