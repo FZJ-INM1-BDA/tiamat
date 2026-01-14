@@ -4,8 +4,8 @@ Reader for OME-Zarr (Zarr v3 / OME-NGFF ≥0.5).
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import zipfile
 from functools import cached_property
 from typing import Any, Dict, List, Tuple
@@ -14,19 +14,19 @@ import numpy as np
 
 # We try to import zarr here. If it is not available, this reader will not register itself as available (see check_file)
 try:
-    import zarr  # type: ignore
-    from zarr.storage import ZipStore  # type: ignore
+    import zarr  # pylint: disable=import-error
+    from zarr.storage import ZipStore  # pylint: disable=import-error
 
     _ZARR_AVAILABLE = True
 except Exception:  # pragma: no cover
-    zarr = None  # type: ignore
-    ZipStore = None  # type: ignore
+    zarr = None  # pylint: disable=import-error
+    ZipStore = None  # pylint: disable=import-error
     _ZARR_AVAILABLE = False
 
-from tiamat.readers.protocol import ImageReader
 from tiamat.cache import instance_cache
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
+from tiamat.readers.protocol import ImageReader
 
 
 def _axis_to_dim(axis_name: str, md) -> Any:
