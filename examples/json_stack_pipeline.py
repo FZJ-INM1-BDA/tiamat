@@ -3,10 +3,6 @@ Pipeline for color mapping.
 """
 
 import json
-import os
-import shutil
-
-import matplotlib.pyplot as plt
 
 from tiamat.io import ImageAccessor
 from tiamat.readers import register_reader

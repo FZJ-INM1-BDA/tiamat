@@ -2,8 +2,6 @@
 Comprehensive tests for access transformers.
 """
 
-import math
-
 import numpy as np
 import pytest
 

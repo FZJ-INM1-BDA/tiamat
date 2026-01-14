@@ -1,4 +1,4 @@
-from .factory import get_reader, register_reader
+from .factory import get_reader, register_reader  # noqa: F401
 
 
 def register_all_readers():

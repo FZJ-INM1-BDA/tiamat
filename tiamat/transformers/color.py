@@ -49,7 +49,7 @@ class LUTTransformer(Transformer):
         Returns:
             Color-mapped image as ndarray.
         """
-        assert metadata.value_range is not None, f"LUTTransformer requires metadata.value_range."
+        assert metadata.value_range is not None, "LUTTransformer requires metadata.value_range."
 
         image = self._apply_color_map(image=image, value_range=metadata.value_range)
 

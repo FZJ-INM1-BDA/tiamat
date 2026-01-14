@@ -7,7 +7,6 @@ import json
 import matplotlib.pyplot as plt
 
 from tiamat.io import ImageAccessor
-from tiamat.pipeline import Pipeline
 from tiamat.serialization import load_pipeline_from_config, register_class
 from tiamat.transformers.access import FractionTransformer
 from tiamat.transformers.color import GrayscaleTransformer, LUTTransformer

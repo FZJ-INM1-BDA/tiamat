@@ -14,7 +14,7 @@ from PIL import Image
 
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import RGB, RGBA, C, X, Y, Z
+from tiamat.metadata.dimensions import RGB, RGBA, X, Y
 from tiamat.transformers.color import (
     FloatToByteTransformer,
     GrayscaleToRGBTransformer,

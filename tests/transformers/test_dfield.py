@@ -4,8 +4,6 @@ Comprehensive tests for deformation field transformers.
 Combines unit tests with synthetic deformation fields.
 """
 
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -372,7 +370,7 @@ class TestDeformationFieldIntegration:
         )
         accessor = ImageAccessor(x=(0, 200), y=(0, 100))
         # Step 1: Transform metadata
-        new_metadata = dft.transform_metadata(metadata)
+        # new_metadata = dft.transform_metadata(metadata)
         # assert new_metadata.spatial_shape == (100, 200)
         assert metadata.shape == image.shape  # Not mutated
 

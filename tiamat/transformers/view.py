@@ -4,8 +4,6 @@ Transformers that change the output view
 
 import numpy as np
 
-from tiamat.metadata import dimensions
-
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 from .protocol import Transformer

@@ -369,7 +369,8 @@ class ImageStackReader(ImageReader):
                 return available_slices
             else:
                 raise Exception(
-                    f"{self.missing_section_interpolation} missing_section_interpolation requires reader_identifier to be provided"
+                    f"{self.missing_section_interpolation} missing_section_interpolation"
+                    "requires reader_identifier to be provided"
                 )
         else:
             # Sort available slices by their reader_identifier

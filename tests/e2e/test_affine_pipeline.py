@@ -94,12 +94,12 @@ def test_affine_pipeline(scale, rotation, mirror_x, mirror_y, translate_x, trans
 
     filename = f"test_affine_s{scale}_r{rotation}"
     if mirror_x:
-        filename += f"_mirrorX"
+        filename += "_mirrorX"
     if mirror_y:
-        filename += f"_mirrorY"
+        filename += "_mirrorY"
     filename += f"_t{translate_x}_{translate_y}"
 
-    png_filename = f"tests/e2e/references/{request.node.callspec.id}--{filename}.png"
+    # png_filename = f"tests/e2e/references/{request.node.callspec.id}--{filename}.png"
     npygz_filename = f"tests/e2e/references/{request.node.callspec.id}--{filename}.npy.gz"
     npy_filename = f"tests/e2e/references/{request.node.callspec.id}--{filename}.npy"
 

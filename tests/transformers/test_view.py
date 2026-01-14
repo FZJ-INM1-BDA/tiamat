@@ -255,6 +255,8 @@ class TestWithKoalaImage:
         accessor = ImageAccessor(x=(0, w), y=(0, h))
         new_accessor = bbox.transform_access(accessor, koala_metadata)
 
+        assert new_accessor is not None
+
         # Manually crop for comparison
         expected_crop = koala_image[start_y : start_y + crop_h, start_x : start_x + crop_w]
 

@@ -12,7 +12,7 @@ import pytest
 
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import RGB, C, X, Y
+from tiamat.metadata.dimensions import RGB, X, Y
 from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 
 
@@ -75,7 +75,7 @@ class TestMinMaxNormalizationTransformer:
         transformer = MinMaxNormalizationTransformer(target_dtype=np.float64)
 
         original = ImageMetadata("image", (50, 50, 3), (10, 200), np.uint8, dimensions=(Y, X, RGB))
-        original_shape = original.shape
+        # original_shape = original.shape
         original_dtype = original.dtype
         original_range = original.value_range
         original_id = id(original)
