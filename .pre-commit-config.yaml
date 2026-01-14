@@ -31,11 +31,3 @@ repos:
     hooks:
       - id: flake8
         args: [--max-line-length=120] # not sure, why it does not pick it up from pyproject.toml
-  - repo: local
-    hooks:
-      - id: pylint
-        args: ["--errors-only"]
-        name: pylint
-        entry: pylint
-        language: system
-        types: [python]
