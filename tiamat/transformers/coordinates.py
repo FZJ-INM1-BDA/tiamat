@@ -2,8 +2,8 @@ import numpy as np
 
 
 def resolve_coordinate_slice(
-        coordinate_slice: tuple[int | float | None, int | float | None] | int | float | None,
-        image_dimension: int | float,
+    coordinate_slice: tuple[int | float | None, int | float | None] | int | float | None,
+    image_dimension: int | float,
 ) -> tuple[int | float, int | float] | int | float:
     """
     Resolve `None` values in a coordinate slice.
@@ -31,8 +31,8 @@ def resolve_coordinate_slice(
 
 
 def get_coordinate_bounds(
-        coordinate_slice: tuple[int | float | None, int | float | None] | int,
-        image_dimension: int | float,
+    coordinate_slice: tuple[int | float | None, int | float | None] | int,
+    image_dimension: int | float,
 ) -> tuple[int | float, int | float]:
     """
     Return numeric start and end values from a coordinate slice.

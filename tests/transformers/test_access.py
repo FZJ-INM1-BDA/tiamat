@@ -2,14 +2,15 @@
 Comprehensive tests for access transformers.
 """
 
-import pytest
-import numpy as np
 import math
 
-from tiamat.transformers.access import SpacingToScaleTransformer, FractionTransformer
+import numpy as np
+import pytest
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import Y, X, Z, RGB
+from tiamat.metadata.dimensions import RGB, X, Y, Z
+from tiamat.transformers.access import FractionTransformer, SpacingToScaleTransformer
 
 
 class TestSpacingToScaleTransformer:
@@ -126,9 +127,16 @@ class TestFractionTransformer:
 
 
 # Parametrized tests cover remaining cases compactly
-@pytest.mark.parametrize("img_sp,acc_sp,exp_scale", [
-    (1.0, 1.0, 1.0), (2.0, 1.0, 2.0), (1.0, 2.0, 0.5), (3.0, 1.5, 2.0), (0.5, 0.25, 2.0),
-])
+@pytest.mark.parametrize(
+    "img_sp,acc_sp,exp_scale",
+    [
+        (1.0, 1.0, 1.0),
+        (2.0, 1.0, 2.0),
+        (1.0, 2.0, 0.5),
+        (3.0, 1.5, 2.0),
+        (0.5, 0.25, 2.0),
+    ],
+)
 def test_spacing_scale_combinations(img_sp, acc_sp, exp_scale):
     """Test spacing→scale with various combinations."""
     t = SpacingToScaleTransformer()
@@ -137,9 +145,16 @@ def test_spacing_scale_combinations(img_sp, acc_sp, exp_scale):
     assert t.transform_access(acc, meta).scale == exp_scale
 
 
-@pytest.mark.parametrize("frac,dim,exp", [
-    (0.0, 100, 0), (0.5, 100, 50), (1.0, 100, 100), (0.25, 200, 50), (0.75, 400, 300),
-])
+@pytest.mark.parametrize(
+    "frac,dim,exp",
+    [
+        (0.0, 100, 0),
+        (0.5, 100, 50),
+        (1.0, 100, 100),
+        (0.25, 200, 50),
+        (0.75, 400, 300),
+    ],
+)
 def test_fraction_conversions(frac, dim, exp):
     """Test fraction→pixel conversions."""
     assert FractionTransformer._scale_coordinate(frac, dim) == exp

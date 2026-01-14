@@ -3,7 +3,9 @@ IO objects.
 """
 
 from dataclasses import dataclass, field
+
 import numpy as np
+
 from tiamat.metadata import ImageMetadata
 
 
@@ -26,11 +28,15 @@ class ImageAccessor:
         fill_value: Value for out-of-bounds padding. None means no padding.
         history: Dictionary storing history of operations or transformations.
     """
+
     x: tuple[int | float | None, int | float | None] | int = None
     y: tuple[int | float | None, int | float | None] | int = None
     z: tuple[int | float | None, int | float | None] | int = None
-    c: tuple[int | float | None, int | float | None] | int | dict[
-        str: tuple[int | float | None, int | float | None] | int] = None
+    c: (
+        tuple[int | float | None, int | float | None]
+        | int
+        | dict[str : tuple[int | float | None, int | float | None] | int]
+    ) = None
     # scale/spacing to retrieve
     scale: float | tuple[float, ...] = 1.0
     spacing: float | tuple[float, ...] = None
@@ -74,5 +80,6 @@ class ImageResult:
     """
     Stores an image with its corresponding metadata.
     """
+
     image: np.ndarray
     metadata: ImageMetadata | None = None

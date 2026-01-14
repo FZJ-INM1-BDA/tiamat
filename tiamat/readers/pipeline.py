@@ -1,17 +1,18 @@
 """
 Reader that delegates image reading to a processing pipeline.
 """
-from collections.abc import Callable
 
+from collections.abc import Callable
 from functools import partial
 from typing import Any
 
 import numpy as np
 
 from tiamat.cache import instance_cache
-from .protocol import ImageReader
+
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import ImageReader
 
 
 class PipelineReader(ImageReader):
@@ -44,9 +45,7 @@ class PipelineReader(ImageReader):
         Returns:
             np.ndarray: The image array after applying the pipeline.
         """
-        return self.pipeline(
-            file_name=self.fname, accessor=accessor, **self.reader_kwargs
-        ).image
+        return self.pipeline(file_name=self.fname, accessor=accessor, **self.reader_kwargs).image
 
     @instance_cache
     def read_metadata(self) -> ImageMetadata:
@@ -72,8 +71,9 @@ class PipelineReader(ImageReader):
         return False
 
     @classmethod
-    def from_json(cls, args: dict[str, Any], reader_post_creation_hook: Callable | None = None) -> Callable[
-        ..., "PipelineReader"]:
+    def from_json(
+        cls, args: dict[str, Any], reader_post_creation_hook: Callable | None = None
+    ) -> Callable[..., "PipelineReader"]:
         """
         Creates a PipelineReader from a JSON-like configuration.
 

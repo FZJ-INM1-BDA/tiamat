@@ -11,9 +11,13 @@ from typing import Any
 
 import numpy as np
 
-from tiamat.constants import INTERPOLATION_TYPE_CUBIC, INTERPOLATION_TYPE_NEAREST, OPENCV_INTERPOLATION_CODES
-from tiamat.metadata.metadata import ImageMetadata
+from tiamat.constants import (
+    INTERPOLATION_TYPE_CUBIC,
+    INTERPOLATION_TYPE_NEAREST,
+    OPENCV_INTERPOLATION_CODES,
+)
 from tiamat.io import ImageAccessor
+from tiamat.metadata.metadata import ImageMetadata
 
 
 def _expand_to_dimension(value: int | float | Sequence[int | float], image_shape: Sequence[int]) -> list[float]:

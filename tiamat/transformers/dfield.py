@@ -3,29 +3,30 @@ Deformation field transformers.
 """
 
 from __future__ import annotations
-from typing import Any
-from collections.abc import Callable
-from tiamat.cache import instance_cached_property
 
-from tiamat.readers.protocol import ImageReader
-from tiamat.transformers.protocol import Transformer
-from tiamat.io import ImageAccessor
-from tiamat.metadata import ImageMetadata
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
+
+from tiamat.cache import instance_cached_property
+from tiamat.io import ImageAccessor
+from tiamat.metadata import ImageMetadata
+from tiamat.readers.protocol import ImageReader
+from tiamat.transformers.protocol import Transformer
 
 
 class DeformationFieldTransformer(Transformer):
     """Transformer that warps images using a deformation field."""
 
     def __init__(
-            self,
-            dfield_file: str,
-            request_margin: int = 2,
-            interpolation='linear',
-            fill_value: int | float | None = None,
-            xy_coordinates=True,
-            reader_factory: Callable[[str], ImageReader] | None = None,
+        self,
+        dfield_file: str,
+        request_margin: int = 2,
+        interpolation="linear",
+        fill_value: int | float | None = None,
+        xy_coordinates=True,
+        reader_factory: Callable[[str], ImageReader] | None = None,
     ):
         """
         Creates an instance of DeformationFieldTransformer
@@ -51,13 +52,13 @@ class DeformationFieldTransformer(Transformer):
 
     @staticmethod
     def get_pixel_coordinates(
-            dfield: np.ndarray,
-            dfield_spacing: tuple[float, float],
-            dfield_scale: tuple[int, int],
-            dfield_origin: tuple[float, float],
-            image_spacing: tuple[float, float],
-            coord_dim: int = 2,
-            xy: bool = True,
+        dfield: np.ndarray,
+        dfield_spacing: tuple[float, float],
+        dfield_scale: tuple[int, int],
+        dfield_origin: tuple[float, float],
+        image_spacing: tuple[float, float],
+        coord_dim: int = 2,
+        xy: bool = True,
     ):
         """
         Convert deformation field vectors to pixel coordinates in image space.
@@ -110,27 +111,27 @@ class DeformationFieldTransformer(Transformer):
     def dfield_spacing(self) -> tuple[float, float]:
         """Return physical spacing of the deformation field in two dimensions."""
         from tiamat.readers.processing import expand_to_length
+
         return expand_to_length(self.dfield_file_handle.spacing, 2)
 
     @instance_cached_property
     def dfield_origin(self) -> tuple[float, float]:
         """Return physical origin of the deformation field."""
-        dfield_origin = (0., 0.)
+        dfield_origin = (0.0, 0.0)
         if self.dfield_metadata.additional_metadata is not None:
-            if 'dfield_origin' in self.dfield_metadata.additional_metadata.keys():
-                dfield_origin = self.dfield_metadata.additional_metadata['dfield_origin']
+            if "dfield_origin" in self.dfield_metadata.additional_metadata.keys():
+                dfield_origin = self.dfield_metadata.additional_metadata["dfield_origin"]
 
         return dfield_origin
 
     @staticmethod
     def apply_deformation(
-            image: np.ndarray,
-            coordinates: np.ndarray,
-            channel_dim: int | None = None,
-            fill_value: int | float = 0,
-            interpolation: str = "nearest",
+        image: np.ndarray,
+        coordinates: np.ndarray,
+        channel_dim: int | None = None,
+        fill_value: int | float = 0,
+        interpolation: str = "nearest",
     ) -> np.ndarray:
-
         """
         Apply a deformation field to an image using scipy map_coordinates.
 
@@ -145,6 +146,7 @@ class DeformationFieldTransformer(Transformer):
             Deformed image array.
         """
         from scipy.ndimage import map_coordinates
+
         from tiamat.constants import SCIPY_INTERPOLATION_CODES
 
         if channel_dim is None:
@@ -152,7 +154,7 @@ class DeformationFieldTransformer(Transformer):
                 image,
                 coordinates,
                 order=SCIPY_INTERPOLATION_CODES[interpolation],
-                mode='constant',
+                mode="constant",
                 cval=fill_value,
             )
         else:
@@ -170,7 +172,7 @@ class DeformationFieldTransformer(Transformer):
                     image_channel,
                     coordinates,
                     order=SCIPY_INTERPOLATION_CODES[interpolation],
-                    mode='constant',
+                    mode="constant",
                     cval=fill_value,
                 )
 
@@ -189,10 +191,14 @@ class DeformationFieldTransformer(Transformer):
         Returns:
             Updated ImageAccessor with coordinates for deformation.
         """
-        from dataclasses import replace
         import math
+        from dataclasses import replace
 
-        from tiamat.readers.processing import _prepare_coordinates, expand_to_length, rescale_shape
+        from tiamat.readers.processing import (
+            _prepare_coordinates,
+            expand_to_length,
+            rescale_shape,
+        )
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         image_scale = expand_to_length(accessor.scale, 2)[:2]
@@ -211,7 +217,7 @@ class DeformationFieldTransformer(Transformer):
 
         scale_factor = (
             self.dfield_spacing[0] / image_spacing[0],
-            self.dfield_spacing[1] / image_spacing[1]
+            self.dfield_spacing[1] / image_spacing[1],
         )
 
         # Request fitting scale of dfield that matches physical resolution of the request
@@ -228,30 +234,30 @@ class DeformationFieldTransformer(Transformer):
         # Target shape of coordinates is same as image shape
         target_shape = rescale_shape(
             ((y_to - y_from), (x_to - x_from)),
-            (target_scale[0] / tmp_coord_scale[0], target_scale[1] / tmp_coord_scale[1])
+            (target_scale[0] / tmp_coord_scale[0], target_scale[1] / tmp_coord_scale[1]),
         )
 
         # Request more coordinates if dfield needs to be upscaled to avoid artifacts at corners
         tmp_margin = (
-            tmp_coord_scale[0] if target_scale[0] > 1. else 0,
-            tmp_coord_scale[1] if target_scale[1] > 1. else 0,
+            tmp_coord_scale[0] if target_scale[0] > 1.0 else 0,
+            tmp_coord_scale[1] if target_scale[1] > 1.0 else 0,
         )
 
         # Build temporary accessor to read dfield vectors
         tmp_accessor = replace(accessor)
         tmp_accessor.scale = target_scale
         tmp_accessor.coordinate_scale = tmp_coord_scale
-        tmp_accessor.interpolation = 'linear'
+        tmp_accessor.interpolation = "linear"
         tmp_accessor.fill_value = -1
 
         # Request margin if dfield needs upscaling to avoid artifacts
         tmp_accessor.x = (
             x_from - tmp_margin[0],
-            x_to + tmp_margin[0]
+            x_to + tmp_margin[0],
         )
         tmp_accessor.y = (
             y_from - tmp_margin[1],
-            y_to + tmp_margin[1]
+            y_to + tmp_margin[1],
         )
 
         # Read the corresponding crop from dfield
@@ -266,8 +272,8 @@ class DeformationFieldTransformer(Transformer):
         assert offset[0] >= 0 and offset[1] >= 0, "target_shape can not be larger than dfield_crop shape"
 
         dfield_vectors = dfield_crop[
-            offset[0]:(offset[0] + target_shape[0]),
-            offset[1]:(offset[1] + target_shape[1])
+            offset[0] : (offset[0] + target_shape[0]),
+            offset[1] : (offset[1] + target_shape[1]),
         ]
 
         # Convert pixel coordinates to physical coordinates
@@ -304,7 +310,8 @@ class DeformationFieldTransformer(Transformer):
         # Store pixel coordinates for transforming image
         coord_origin = np.array((accessor.y[0], accessor.x[0]), dtype=float)
         px_coordinates = (coordinates - coord_origin[:, np.newaxis, np.newaxis]) * np.array(image_scale)[
-            :, np.newaxis, np.newaxis]
+            :, np.newaxis, np.newaxis
+        ]
         accessor.history[id(self)] = px_coordinates
 
         return accessor
@@ -320,6 +327,7 @@ class DeformationFieldTransformer(Transformer):
             Updated ImageMetadata with modified spatial shape.
         """
         from dataclasses import replace
+
         from tiamat.readers.processing import expand_to_length
 
         metadata = replace(metadata)
@@ -417,7 +425,7 @@ class DeformationFieldTransformer(Transformer):
         return cls(
             dfield_file=args["dfield_file"],
             request_margin=args.get("request_margin", 2),
-            interpolation=args.get("interpolation", 'linear'),
+            interpolation=args.get("interpolation", "linear"),
             fill_value=args.get("fill_value"),
             xy_coordinates=args.get("xy_coordinates", True),
             reader_factory=get_reader_from_config(args.get("reader_factory")),

@@ -4,15 +4,16 @@ Comprehensive tests for normalization transformers.
 Combines unit tests with real image validation using Koala.jpg.
 """
 
-import pytest
-import numpy as np
 from pathlib import Path
-import cv2
 
-from tiamat.transformers.normalization import MinMaxNormalizationTransformer
+import cv2
+import numpy as np
+import pytest
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import Y, X, C, RGB
+from tiamat.metadata.dimensions import RGB, C, X, Y
+from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 
 
 # Fixtures
@@ -39,7 +40,7 @@ def koala_metadata(koala_image):
         shape=koala_image.shape,
         value_range=(0, 255),
         dtype=koala_image.dtype,
-        dimensions=(Y, X, RGB)
+        dimensions=(Y, X, RGB),
     )
 
 
@@ -73,10 +74,7 @@ class TestMinMaxNormalizationTransformer:
         """Test metadata updates dtype/value_range and check for mutation bug."""
         transformer = MinMaxNormalizationTransformer(target_dtype=np.float64)
 
-        original = ImageMetadata(
-            "image", (50, 50, 3), (10, 200), np.uint8,
-            dimensions=(Y, X, RGB)
-        )
+        original = ImageMetadata("image", (50, 50, 3), (10, 200), np.uint8, dimensions=(Y, X, RGB))
         original_shape = original.shape
         original_dtype = original.dtype
         original_range = original.value_range
@@ -95,10 +93,10 @@ class TestMinMaxNormalizationTransformer:
 
         # CRITICAL BUG CHECK: Should NOT mutate original
         # This will FAIL with current code (missing dataclasses.replace)!
-        assert original.dtype == original_dtype, \
-            "BUG: Original metadata was mutated! Missing dataclasses.replace()"
-        assert original.value_range == original_range, \
-            "BUG: Original metadata was mutated! Missing dataclasses.replace()"
+        assert original.dtype == original_dtype, "BUG: Original metadata was mutated! Missing dataclasses.replace()"
+        assert (
+            original.value_range == original_range
+        ), "BUG: Original metadata was mutated! Missing dataclasses.replace()"
         assert id(result) != original_id
 
     def test_normalization_formula_with_various_ranges(self):
@@ -191,7 +189,7 @@ class TestMinMaxNormalizationTransformer:
                 result = transformer.transform_image(img, meta, accessor)
 
                 assert result.dtype == target_dtype
-                np.testing.assert_array_almost_equal(result, [[0.0, 0.5, 1.0]],0.001)
+                np.testing.assert_array_almost_equal(result, [[0.0, 0.5, 1.0]], 0.001)
 
 
 # Real Image Tests with Koala
@@ -250,16 +248,13 @@ class TestWithKoalaImage:
 
         # Take center crop
         h, w = koala_image.shape[:2]
-        crop = koala_image[h // 4:h // 2, w // 4:w // 2]
+        crop = koala_image[h // 4 : h // 2, w // 4 : w // 2]
 
         # Use actual min/max from crop
         crop_min = int(crop.min())
         crop_max = int(crop.max())
 
-        crop_metadata = ImageMetadata(
-            "image", crop.shape, (crop_min, crop_max), crop.dtype,
-            dimensions=(Y, X, RGB)
-        )
+        crop_metadata = ImageMetadata("image", crop.shape, (crop_min, crop_max), crop.dtype, dimensions=(Y, X, RGB))
 
         # Normalize
         result = transformer.transform_image(crop, crop_metadata, accessor)
@@ -273,8 +268,8 @@ class TestWithKoalaImage:
         assert result.max() <= 1.0
 
         # Test 3: Min/max values map to 0/1
-        min_mask = (crop == crop_min)
-        max_mask = (crop == crop_max)
+        min_mask = crop == crop_min
+        max_mask = crop == crop_max
         assert np.all(result[min_mask] < 0.01)
         assert np.all(result[max_mask] > 0.99)
 
@@ -286,10 +281,7 @@ class TestWithKoalaImage:
         koala_bgr = cv2.cvtColor(koala_image, cv2.COLOR_RGB2BGR)
         koala_gray = cv2.cvtColor(koala_bgr, cv2.COLOR_BGR2GRAY)
 
-        gray_metadata = ImageMetadata(
-            "image", koala_gray.shape, (0, 255), koala_gray.dtype,
-            dimensions=(Y, X)
-        )
+        gray_metadata = ImageMetadata("image", koala_gray.shape, (0, 255), koala_gray.dtype, dimensions=(Y, X))
 
         # Test both target dtypes
         for target_dtype in [np.float32, np.float64]:
@@ -343,9 +335,12 @@ class TestIntegrationAndPipeline:
     def test_metadata_preservation(self):
         """Test that additional_metadata is preserved through transformation."""
         original = ImageMetadata(
-            "image", (50, 50, 3), (0, 255), np.uint8,
+            "image",
+            (50, 50, 3),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X, RGB),
-            additional_metadata={"source": "test", "version": 1}
+            additional_metadata={"source": "test", "version": 1},
         )
 
         transformer = MinMaxNormalizationTransformer()
@@ -359,12 +354,15 @@ class TestIntegrationAndPipeline:
 
 
 # Parametrized tests for compact coverage
-@pytest.mark.parametrize("value_range,test_values,expected", [
-    ((0, 255), [0, 127, 255], [0.0, 127 / 255, 1.0]),
-    ((0, 100), [0, 50, 100], [0.0, 0.5, 1.0]),
-    ((-50, 50), [-50, 0, 50], [0.0, 0.5, 1.0]),
-    ((10, 20), [10, 15, 20], [0.0, 0.5, 1.0]),
-])
+@pytest.mark.parametrize(
+    "value_range,test_values,expected",
+    [
+        ((0, 255), [0, 127, 255], [0.0, 127 / 255, 1.0]),
+        ((0, 100), [0, 50, 100], [0.0, 0.5, 1.0]),
+        ((-50, 50), [-50, 0, 50], [0.0, 0.5, 1.0]),
+        ((10, 20), [10, 15, 20], [0.0, 0.5, 1.0]),
+    ],
+)
 def test_various_value_ranges(value_range, test_values, expected):
     """Test normalization with various value ranges produces correct output."""
     transformer = MinMaxNormalizationTransformer()
