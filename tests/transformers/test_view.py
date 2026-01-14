@@ -4,15 +4,16 @@ Comprehensive tests for view transformers.
 Combines unit tests with real image validation using Koala.jpg.
 """
 
-import pytest
-import numpy as np
 from pathlib import Path
-import cv2
 
-from tiamat.transformers.view import BoundingBoxTransformer
+import cv2
+import numpy as np
+import pytest
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import Y, X, Z, RGB
+from tiamat.metadata.dimensions import RGB, X, Y, Z
+from tiamat.transformers.view import BoundingBoxTransformer
 
 
 # Fixtures
@@ -40,7 +41,7 @@ def koala_metadata(koala_image):
         shape=koala_image.shape,
         value_range=(0, 255),
         dtype=koala_image.dtype,
-        dimensions=(Y, X, RGB)
+        dimensions=(Y, X, RGB),
     )
 
 
@@ -54,7 +55,7 @@ class TestBoundingBoxTransformer:
         bbox1 = BoundingBoxTransformer(
             bounds_x=(10, 100),
             bounds_y=(20, 200),
-            bounds_z=(5, 50)
+            bounds_z=(5, 50),
         )
         assert bbox1.bounds_x == (10, 100)
         assert bbox1.bounds_y == (20, 200)
@@ -76,7 +77,7 @@ class TestBoundingBoxTransformer:
         # Test simple slice
         shape = BoundingBoxTransformer.get_coordinate_shape(
             coord=(0, 100),
-            image_dimension=100
+            image_dimension=100,
         )
         assert shape == 100
 
@@ -84,9 +85,9 @@ class TestBoundingBoxTransformer:
         shape_scaled = BoundingBoxTransformer.get_coordinate_shape(
             coord=(0, 50),
             image_dimension=100,
-            coord_scale=0.5
+            coord_scale=0.5,
         )
-        assert shape_scaled == 100 # !!!hier sollte doch 100 erwartet werden, aber es wurde 50 erwartet.
+        assert shape_scaled == 100  # !!!hier sollte doch 100 erwartet werden, aber es wurde 50 erwartet.
 
     def test_crop_coordinate(self):
         """Test coordinate cropping logic."""
@@ -94,7 +95,7 @@ class TestBoundingBoxTransformer:
         out_coords, residuals = BoundingBoxTransformer.crop_coordinate(
             coord_slice=(0, 100),
             bounds_slice=(10, 90),
-            image_dimension=90
+            image_dimension=90,
         )
 
         # Output should be within bounds
@@ -105,7 +106,7 @@ class TestBoundingBoxTransformer:
         out_coords2, residuals2 = BoundingBoxTransformer.crop_coordinate(
             coord_slice=(0, 50),
             bounds_slice=(60, 100),
-            image_dimension=100
+            image_dimension=100,
         )
 
         # Should have residual padding
@@ -116,8 +117,11 @@ class TestBoundingBoxTransformer:
         bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180))
 
         original = ImageMetadata(
-            "image", (200, 100, 3), (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
+            "image",
+            (200, 100, 3),
+            (0, 255),
+            np.uint8,
+            dimensions=(Y, X, RGB),
         )
         original_shape = original.shape
         original_id = id(original)
@@ -153,11 +157,7 @@ class TestBoundingBoxTransformer:
 
     def test_bounds_spatial_shape_3d(self):
         """Test spatial shape computation for 3D images."""
-        bbox = BoundingBoxTransformer(
-            bounds_x=(0, 50),
-            bounds_y=(0, 100),
-            bounds_z=(0, 20)
-        )
+        bbox = BoundingBoxTransformer(bounds_x=(0, 50), bounds_y=(0, 100), bounds_z=(0, 20))
 
         spatial_shape = (30, 200, 100)  # (Z, Y, X)
         result = bbox.bounds_spatial_shape(spatial_shape)
@@ -169,10 +169,7 @@ class TestBoundingBoxTransformer:
         """Test accessor transformation."""
         bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180))
 
-        metadata = ImageMetadata(
-            "image", (200, 100, 3), (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
-        )
+        metadata = ImageMetadata("image", (200, 100, 3), (0, 255), np.uint8, dimensions=(Y, X, RGB))
 
         accessor = ImageAccessor(x=(0, 100), y=(0, 200))
 
@@ -192,10 +189,7 @@ class TestBoundingBoxTransformer:
         """Test image transformation without padding."""
         bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180))
 
-        metadata = ImageMetadata(
-            "image", (160, 80, 3), (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
-        )
+        metadata = ImageMetadata("image", (160, 80, 3), (0, 255), np.uint8, dimensions=(Y, X, RGB))
 
         # Create test image
         image = np.random.randint(0, 256, size=(160, 80, 3), dtype=np.uint8)
@@ -214,10 +208,7 @@ class TestBoundingBoxTransformer:
         """Test image transformation with padding."""
         bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180))
 
-        metadata = ImageMetadata(
-            "image", (150, 70, 3), (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
-        )
+        metadata = ImageMetadata("image", (150, 70, 3), (0, 255), np.uint8, dimensions=(Y, X, RGB))
 
         # Create test image
         image = np.random.randint(0, 256, size=(150, 70, 3), dtype=np.uint8)
@@ -254,10 +245,7 @@ class TestWithKoalaImage:
         crop_h, crop_w = h // 2, w // 2
         start_y, start_x = h // 4, w // 4
 
-        bbox = BoundingBoxTransformer(
-            bounds_x=(start_x, start_x + crop_w),
-            bounds_y=(start_y, start_y + crop_h)
-        )
+        bbox = BoundingBoxTransformer(bounds_x=(start_x, start_x + crop_w), bounds_y=(start_y, start_y + crop_h))
 
         # Transform metadata
         new_metadata = bbox.transform_metadata(koala_metadata)
@@ -268,7 +256,7 @@ class TestWithKoalaImage:
         new_accessor = bbox.transform_access(accessor, koala_metadata)
 
         # Manually crop for comparison
-        expected_crop = koala_image[start_y:start_y + crop_h, start_x:start_x + crop_w]
+        expected_crop = koala_image[start_y : start_y + crop_h, start_x : start_x + crop_w]
 
         # Transform image (with accessor that simulates the crop)
         # In real usage, the reader would provide the cropped image
@@ -285,10 +273,7 @@ class TestWithKoalaImage:
         h, w = koala_image.shape[:2]
 
         # Bounds that extend beyond image
-        bbox = BoundingBoxTransformer(
-            bounds_x=(-10, w + 10),
-            bounds_y=(-20, h + 20)
-        )
+        bbox = BoundingBoxTransformer(bounds_x=(-10, w + 10), bounds_y=(-20, h + 20))
 
         # Transform metadata
         new_metadata = bbox.transform_metadata(koala_metadata)
@@ -302,10 +287,7 @@ class TestWithKoalaImage:
         h, w = koala_image.shape[:2]
 
         # Small crop (simulating face region)
-        bbox = BoundingBoxTransformer(
-            bounds_x=(w // 3, 2 * w // 3),
-            bounds_y=(h // 3, 2 * h // 3)
-        )
+        bbox = BoundingBoxTransformer(bounds_x=(w // 3, 2 * w // 3), bounds_y=(h // 3, 2 * h // 3))
 
         # Transform metadata
         new_metadata = bbox.transform_metadata(koala_metadata)
@@ -323,18 +305,12 @@ class TestWithKoalaImage:
         h, w = koala_image.shape[:2]
 
         # Test top-left corner
-        bbox_tl = BoundingBoxTransformer(
-            bounds_x=(0, w // 4),
-            bounds_y=(0, h // 4)
-        )
+        bbox_tl = BoundingBoxTransformer(bounds_x=(0, w // 4), bounds_y=(0, h // 4))
         meta_tl = bbox_tl.transform_metadata(koala_metadata)
         assert meta_tl.shape == (h // 4, w // 4, 3)
 
         # Test bottom-right corner
-        bbox_br = BoundingBoxTransformer(
-            bounds_x=(3 * w // 4, w),
-            bounds_y=(3 * h // 4, h)
-        )
+        bbox_br = BoundingBoxTransformer(bounds_x=(3 * w // 4, w), bounds_y=(3 * h // 4, h))
         meta_br = bbox_br.transform_metadata(koala_metadata)
         assert meta_br.shape == (h // 4, w // 4, 3)
 
@@ -346,18 +322,12 @@ class TestWithKoalaImage:
         h, w = koala_image.shape[:2]
 
         # Horizontal strip (middle third)
-        bbox_h = BoundingBoxTransformer(
-            bounds_x=(0, w),
-            bounds_y=(h // 3, 2 * h // 3)
-        )
+        bbox_h = BoundingBoxTransformer(bounds_x=(0, w), bounds_y=(h // 3, 2 * h // 3))
         meta_h = bbox_h.transform_metadata(koala_metadata)
         assert meta_h.shape == (h // 3, w, 3)
 
         # Vertical strip (middle third)
-        bbox_v = BoundingBoxTransformer(
-            bounds_x=(w // 3, 2 * w // 3),
-            bounds_y=(0, h)
-        )
+        bbox_v = BoundingBoxTransformer(bounds_x=(w // 3, 2 * w // 3), bounds_y=(0, h))
         meta_v = bbox_v.transform_metadata(koala_metadata)
         assert meta_v.shape == (h, w // 3, 3)
 
@@ -366,18 +336,12 @@ class TestWithKoalaImage:
         h, w = koala_image.shape[:2]
 
         # First crop: center 80%
-        bbox1 = BoundingBoxTransformer(
-            bounds_x=(w // 10, 9 * w // 10),
-            bounds_y=(h // 10, 9 * h // 10)
-        )
+        bbox1 = BoundingBoxTransformer(bounds_x=(w // 10, 9 * w // 10), bounds_y=(h // 10, 9 * h // 10))
         meta1 = bbox1.transform_metadata(koala_metadata)
 
         # Second crop: center 50% of the first crop
         h1, w1 = meta1.shape[:2]
-        bbox2 = BoundingBoxTransformer(
-            bounds_x=(w1 // 4, 3 * w1 // 4),
-            bounds_y=(h1 // 4, 3 * h1 // 4)
-        )
+        bbox2 = BoundingBoxTransformer(bounds_x=(w1 // 4, 3 * w1 // 4), bounds_y=(h1 // 4, 3 * h1 // 4))
         meta2 = bbox2.transform_metadata(meta1)
 
         # Final size should be 40% of original (0.8 * 0.5)
@@ -399,10 +363,7 @@ class TestIntegrationAndEdgeCases:
         """Test complete pipeline: metadata → access → image."""
         bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180))
 
-        original_metadata = ImageMetadata(
-            "image", (200, 100, 3), (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
-        )
+        original_metadata = ImageMetadata("image", (200, 100, 3), (0, 255), np.uint8, dimensions=(Y, X, RGB))
         original_accessor = ImageAccessor(x=(0, 100), y=(0, 200))
 
         # Step 1: Transform metadata
@@ -427,10 +388,7 @@ class TestIntegrationAndEdgeCases:
         """Test padding with various fill values."""
         bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180))
 
-        metadata = ImageMetadata(
-            "image", (150, 70, 3), (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
-        )
+        metadata = ImageMetadata("image", (150, 70, 3), (0, 255), np.uint8, dimensions=(Y, X, RGB))
 
         image = np.ones((150, 70, 3), dtype=np.uint8) * 100
 
@@ -453,16 +411,9 @@ class TestIntegrationAndEdgeCases:
 
     def test_3d_image_cropping(self):
         """Test cropping 3D images (with Z dimension)."""
-        bbox = BoundingBoxTransformer(
-            bounds_x=(10, 90),
-            bounds_y=(20, 180),
-            bounds_z=(5, 25)
-        )
+        bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180), bounds_z=(5, 25))
 
-        metadata = ImageMetadata(
-            "image", (30, 200, 100, 3), (0, 255), np.uint8,
-            dimensions=(Z, Y, X, RGB)
-        )
+        metadata = ImageMetadata("image", (30, 200, 100, 3), (0, 255), np.uint8, dimensions=(Z, Y, X, RGB))
 
         # Transform metadata
         new_metadata = bbox.transform_metadata(metadata)
@@ -480,10 +431,7 @@ class TestIntegrationAndEdgeCases:
         """Test with single pixel bounds."""
         bbox = BoundingBoxTransformer(bounds_x=50, bounds_y=100)
 
-        metadata = ImageMetadata(
-            "image", (200, 100), (0, 255), np.uint8,
-            dimensions=(Y, X)
-        )
+        metadata = ImageMetadata("image", (200, 100), (0, 255), np.uint8, dimensions=(Y, X))
 
         with pytest.raises(TypeError):
             bbox.transform_metadata(metadata)
@@ -493,9 +441,12 @@ class TestIntegrationAndEdgeCases:
         bbox = BoundingBoxTransformer(bounds_x=(10, 90), bounds_y=(20, 180))
 
         original = ImageMetadata(
-            "image", (200, 100, 3), (0, 255), np.uint8,
+            "image",
+            (200, 100, 3),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X, RGB),
-            additional_metadata={"source": "test", "version": 1}
+            additional_metadata={"source": "test", "version": 1},
         )
 
         result = bbox.transform_metadata(original)
@@ -508,11 +459,14 @@ class TestIntegrationAndEdgeCases:
 
 
 # Parametrized tests for compact coverage
-@pytest.mark.parametrize("bounds_x,bounds_y,image_shape,expected_shape", [
-    ((0, 50), (0, 100), (200, 100, 3), (100, 50, 3)),
-    ((25, 75), (50, 150), (200, 100, 3), (100, 50, 3)),
-    ((10, 90), (20, 180), (200, 100, 3), (160, 80, 3)),
-])
+@pytest.mark.parametrize(
+    "bounds_x,bounds_y,image_shape,expected_shape",
+    [
+        ((0, 50), (0, 100), (200, 100, 3), (100, 50, 3)),
+        ((25, 75), (50, 150), (200, 100, 3), (100, 50, 3)),
+        ((10, 90), (20, 180), (200, 100, 3), (160, 80, 3)),
+    ],
+)
 def test_various_bounds(bounds_x, bounds_y, image_shape, expected_shape):
     """Test various bounding box configurations."""
     bbox = BoundingBoxTransformer(bounds_x=bounds_x, bounds_y=bounds_y)

@@ -1,17 +1,16 @@
-from collections import namedtuple
-from pathlib import Path
 import gzip
 import shutil
+from collections import namedtuple
+from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 from imageio.v3 import imwrite
 
-from tiamat.transformers.affine import AffineTransformer
-from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
-
+from tiamat.transformers.affine import AffineTransformer
+from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 
 image_width, image_height = 2560, 1600
 
@@ -110,7 +109,6 @@ def test_affine_pipeline(scale, rotation, mirror_x, mirror_y, translate_x, trans
 
     uint8_img = np.array(result.image * 255, dtype=np.uint8)
 
-
     Path(dst_png_filename).parent.mkdir(exist_ok=True, parents=True)
     np.save(dst_npy_filename, uint8_img, False)
     with gzip.open(dst_npygz_filename, "wb") as gzip_file:
@@ -125,4 +123,3 @@ def test_affine_pipeline(scale, rotation, mirror_x, mirror_y, translate_x, trans
     expected_arr = np.load(npy_filename)
     np.testing.assert_equal(uint8_img, expected_arr)
     Path(npy_filename).unlink()
-

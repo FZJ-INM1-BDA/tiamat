@@ -3,14 +3,14 @@ Transformers to specifically modify metadata.
 """
 
 from abc import ABC
-from typing import Callable, Any
 from dataclasses import fields
+from typing import Any, Callable
 
 import numpy as np
 
-from .protocol import Transformer
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class _MetadataTransformer(ABC, Transformer):
@@ -33,10 +33,9 @@ class MetadataKwargsTransformer(_MetadataTransformer):
     """
 
     def __init__(
-            self,
-            **kwargs: Any,
+        self,
+        **kwargs: Any,
     ) -> None:
-
         """
         Args:
             **kwargs: Field-value pairs to set in the metadata.
@@ -68,13 +67,13 @@ class MetadataLambdaTransformer(_MetadataTransformer):
     """
 
     def __init__(
-            self,
-            metadata_lambda: Callable[
-                [
-                    ImageMetadata,
-                ],
+        self,
+        metadata_lambda: Callable[
+            [
                 ImageMetadata,
             ],
+            ImageMetadata,
+        ],
     ) -> None:
         self.metadata_lambda = metadata_lambda
 

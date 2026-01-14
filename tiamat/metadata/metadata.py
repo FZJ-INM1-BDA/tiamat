@@ -2,24 +2,18 @@
 Metadata on images.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from itertools import product, repeat
-from collections.abc import Iterable
 
 import numpy as np
 
 import tiamat.metadata.dimensions as dimensions
 
 # Image types
-IMAGE_TYPE_SEGMENTATION = (
-    "segmentation"  # an image with discrete values, e.g., a mask or a segmentation.
-)
-IMAGE_TYPE_IMAGE = (
-    "image"  # an image with continuous values (e.g., a microscopy image).
-)
-IMAGE_TYPE_VECTOR = (
-    "vector"  # an image with continuous vector values (e.g., a deformation field).
-)
+IMAGE_TYPE_SEGMENTATION = "segmentation"  # an image with discrete values, e.g., a mask or a segmentation.
+IMAGE_TYPE_IMAGE = "image"  # an image with continuous values (e.g., a microscopy image).
+IMAGE_TYPE_VECTOR = "vector"  # an image with continuous vector values (e.g., a deformation field).
 
 
 def get_dtype_limits(dtype):
@@ -66,8 +60,11 @@ class ImageMetadata:
         """
         Returns indices of spatial axes, excluding channels
         """
-        return tuple(self.dimensions.index(dimension) for dimension in dimensions.SPATIAL_DIMENSIONS if
-                     dimension in self.dimensions)
+        return tuple(
+            self.dimensions.index(dimension)
+            for dimension in dimensions.SPATIAL_DIMENSIONS
+            if dimension in self.dimensions
+        )
 
     @property
     def channel_dimensions(self):

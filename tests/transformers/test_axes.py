@@ -4,19 +4,20 @@ Comprehensive tests for axes transformers.
 Combines unit tests with real image validation using Koala.jpg.
 """
 
-import pytest
-import numpy as np
 from pathlib import Path
-import cv2
 
-from tiamat.transformers.axes import (
-    ImageToVolumeTransformer,
-    ReorderCoordinatesTransformer,
-    MirrorTransformer
-)
+import cv2
+import numpy as np
+import pytest
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import Y, X, Z, RGB, C
+from tiamat.metadata.dimensions import RGB, C, X, Y, Z
+from tiamat.transformers.axes import (
+    ImageToVolumeTransformer,
+    MirrorTransformer,
+    ReorderCoordinatesTransformer,
+)
 
 
 # Fixtures
@@ -45,8 +46,7 @@ def koala_metadata(koala_image):
         dtype=koala_image.dtype,
         dimensions=(Y, X, RGB),
         spacing=(1.0, 1.0),
-        scales=(1.0, 1.0)
-
+        scales=(1.0, 1.0),
     )
 
 
@@ -69,10 +69,13 @@ class TestImageToVolumeTransformer:
         transformer = ImageToVolumeTransformer(z_spacing=1.5)
 
         original = ImageMetadata(
-            "image", (100, 200, 3), (0, 255), np.uint8,
+            "image",
+            (100, 200, 3),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X, RGB),
             spacing=(1.0, 1.0),
-            scales=(1.0, 1.0)
+            scales=(1.0, 1.0),
         )
         original_shape = original.shape
         original_id = id(original)
@@ -104,16 +107,21 @@ class TestImageToVolumeTransformer:
         transformer = ImageToVolumeTransformer()
 
         metadata = ImageMetadata(
-            "image", (100, 200), (0, 255), np.uint8,
+            "image",
+            (100, 200),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X),
-            spacing=(1.0, 1.0)
+            spacing=(1.0, 1.0),
         )
 
         # Accessor with Z info (shouldn't have for 2D image)
         accessor = ImageAccessor(
-            x=(0, 200), y=(0, 100), z=(0, 1),
+            x=(0, 200),
+            y=(0, 100),
+            z=(0, 1),
             scale=(1.0, 1.0, 1.0),
-            spacing=(1.0, 1.0, 1.0)
+            spacing=(1.0, 1.0, 1.0),
         )
 
         result = transformer.transform_access(accessor, metadata)
@@ -135,8 +143,11 @@ class TestImageToVolumeTransformer:
         # 2D image (Y, X, RGB)
         image = np.random.randint(0, 256, size=(100, 200, 3), dtype=np.uint8)
         metadata = ImageMetadata(
-            "image", image.shape, (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
+            "image",
+            image.shape,
+            (0, 255),
+            np.uint8,
+            dimensions=(Y, X, RGB),
         )
 
         result = transformer.transform_image(image, metadata, ImageAccessor())
@@ -160,9 +171,12 @@ class TestImageToVolumeTransformer:
         transformer = ImageToVolumeTransformer()  # No z_spacing
 
         metadata = ImageMetadata(
-            "image", (100, 200), (0, 255), np.uint8,
+            "image",
+            (100, 200),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X),
-            spacing=(1.0, 2.0)  # Non-uniform
+            spacing=(1.0, 2.0),  # Non-uniform
         )
 
         # with pytest.raises(Exception, match="Need provide z_spacing"):
@@ -177,25 +191,28 @@ class TestReorderCoordinatesTransformer:
     def test_initialization_2d_and_3d(self):
         """Test initialization for 2D and 3D axes."""
         # 2D
-        t2d = ReorderCoordinatesTransformer(axes=('x', 'y'))
-        assert t2d.reorder_axes == ('x', 'y')
+        t2d = ReorderCoordinatesTransformer(axes=("x", "y"))
+        assert t2d.reorder_axes == ("x", "y")
         assert len(t2d.from_indices) == 2
 
         # 3D
-        t3d = ReorderCoordinatesTransformer(axes=('x', 'y', 'z'))
-        assert t3d.reorder_axes == ('x', 'y', 'z')
+        t3d = ReorderCoordinatesTransformer(axes=("x", "y", "z"))
+        assert t3d.reorder_axes == ("x", "y", "z")
         assert len(t3d.from_indices) == 3
 
         # Custom order
-        t_custom = ReorderCoordinatesTransformer(axes=('y', 'x', 'z'))
-        assert t_custom.reorder_axes == ('y', 'x', 'z')
+        t_custom = ReorderCoordinatesTransformer(axes=("y", "x", "z"))
+        assert t_custom.reorder_axes == ("y", "x", "z")
 
-    @pytest.mark.parametrize("axes, input_dims, expected_dims, expected_shape", [
-        # Case 1: Swap 2D (Y, X) -> (X, Y)
-        (('y', 'x'), (X, Y, RGB), (Y, X, RGB), (200, 100, 3)),
-        # Case 2: Reorder 3D (Z, Y, X) -> (X, Y, Z)
-        (('z', 'y', 'x'), (X, Y, Z, RGB), (Z, Y, X, RGB), (200, 100, 10, 3)),
-    ])
+    @pytest.mark.parametrize(
+        "axes, input_dims, expected_dims, expected_shape",
+        [
+            # Case 1: Swap 2D (Y, X) -> (X, Y)
+            (("y", "x"), (X, Y, RGB), (Y, X, RGB), (200, 100, 3)),
+            # Case 2: Reorder 3D (Z, Y, X) -> (X, Y, Z)
+            (("z", "y", "x"), (X, Y, Z, RGB), (Z, Y, X, RGB), (200, 100, 10, 3)),
+        ],
+    )
     def test_reorder_full_flow(self, axes, input_dims, expected_dims, expected_shape):
         """Tests metadata and image transformation for reordering."""
         transformer = ReorderCoordinatesTransformer(axes=axes)
@@ -203,7 +220,15 @@ class TestReorderCoordinatesTransformer:
         base_shape = {Z: 10, Y: 100, X: 200, RGB: 3}
         shape = tuple(base_shape[d] for d in input_dims)
 
-        meta = ImageMetadata("image", shape, (0, 255), np.uint8, dimensions=input_dims, spacing=(1,) * len(shape), scales=(1,) * len(shape))
+        meta = ImageMetadata(
+            "image",
+            shape,
+            (0, 255),
+            np.uint8,
+            dimensions=input_dims,
+            spacing=(1,) * len(shape),
+            scales=(1,) * len(shape),
+        )
 
         # 1. Test Metadata
         res_meta = transformer.transform_metadata(meta)
@@ -219,18 +244,21 @@ class TestReorderCoordinatesTransformer:
     def test_transform_access_reorders_coordinates(self):
         """Test that accessor coordinates are reordered."""
         # Swap X and Y
-        transformer = ReorderCoordinatesTransformer(axes=('x', 'y'))
+        transformer = ReorderCoordinatesTransformer(axes=("x", "y"))
 
         metadata = ImageMetadata(
-            "image", (100, 200), (0, 255), np.uint8,
+            "image",
+            (100, 200),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X),
-            spacing=(1.0, 2.0)
+            spacing=(1.0, 2.0),
         )
 
         accessor = ImageAccessor(
             x=(10, 50),
             y=(20, 80),
-            scale=(1.0, 2.0)
+            scale=(1.0, 2.0),
         )
 
         result = transformer.transform_access(accessor, metadata)
@@ -241,12 +269,13 @@ class TestReorderCoordinatesTransformer:
 
         # Scale should be reordered
         assert result.scale == (2.0, 1.0)
+
     def test_from_json(self):
         """Test JSON deserialization."""
-        config = {"axes": ('y', 'x', 'z')}
+        config = {"axes": ("y", "x", "z")}
         transformer = ReorderCoordinatesTransformer.from_json(config)
 
-        assert transformer.reorder_axes == ('y', 'x', 'z')
+        assert transformer.reorder_axes == ("y", "x", "z")
 
 
 # Unit Tests - MirrorTransformer
@@ -275,8 +304,11 @@ class TestMirrorTransformer:
         transformer = MirrorTransformer(mirror_x=True, mirror_y=True)
 
         original = ImageMetadata(
-            "image", (100, 200, 3), (0, 255), np.uint8,
-            dimensions=(Y, X, RGB)
+            "image",
+            (100, 200, 3),
+            (0, 255),
+            np.uint8,
+            dimensions=(Y, X, RGB),
         )
 
         result = transformer.transform_metadata(original)
@@ -284,15 +316,17 @@ class TestMirrorTransformer:
         # Should be unchanged (mirroring doesn't affect metadata)
         assert result is original
 
-
-        @pytest.mark.parametrize("settings, input_shape, axis_to_check, expected_val", [
-            # 1. Mirror X only: Pixel at 0 moves to end
-            ({"mirror_x": True}, (10, 10, 3), 1, 9),
-            # 2. Mirror Y only: Pixel at 0 moves to end
-            ({"mirror_y": True}, (10, 10, 3), 0, 9),
-            # 3. Mirror Both: Pixel at (0,0) moves to (9,9)
-            ({"mirror_x": True, "mirror_y": True}, (10, 10, 3), (0, 1), (9, 9)),
-        ])
+        @pytest.mark.parametrize(
+            "settings, input_shape, axis_to_check, expected_val",
+            [
+                # 1. Mirror X only: Pixel at 0 moves to end
+                ({"mirror_x": True}, (10, 10, 3), 1, 9),
+                # 2. Mirror Y only: Pixel at 0 moves to end
+                ({"mirror_y": True}, (10, 10, 3), 0, 9),
+                # 3. Mirror Both: Pixel at (0,0) moves to (9,9)
+                ({"mirror_x": True, "mirror_y": True}, (10, 10, 3), (0, 1), (9, 9)),
+            ],
+        )
         def test_mirror_logic(self, settings, input_shape, axis_to_check, expected_val):
             """
             Tests initialization, accessor transform, AND image transform in one go.
@@ -327,22 +361,20 @@ class TestMirrorTransformer:
             elif settings.get("mirror_y"):
                 assert img_res[9, 0, 0] == 255
 
-
-
     def test_mirror_3d_image(self):
         """Test mirroring 3D image with Z axis."""
         transformer = MirrorTransformer(mirror_z=True)
 
         # Simple 3D image (Z, Y, X)
-        image = np.array([
-            [[1, 2], [3, 4]],  # Z=0
-            [[5, 6], [7, 8]],  # Z=1
-        ], dtype=np.uint8)
-
-        metadata = ImageMetadata(
-            "image", image.shape, (0, 255), np.uint8,
-            dimensions=(Z, Y, X)
+        image = np.array(
+            [
+                [[1, 2], [3, 4]],  # Z=0
+                [[5, 6], [7, 8]],  # Z=1
+            ],
+            dtype=np.uint8,
         )
+
+        metadata = ImageMetadata("image", image.shape, (0, 255), np.uint8, dimensions=(Z, Y, X))
 
         result = transformer.transform_image(image, metadata, ImageAccessor())
 
@@ -374,6 +406,8 @@ class TestMirrorTransformer:
         # The transformer should strictly return None (preserve 'full image' semantic)
         # OR resolve it to (0, 100). Both are valid, but it MUST NOT CRASH.
         assert result.x is None or result.x == (0, 100)
+
+
 # Real Image Tests with Koala
 class TestWithKoalaImage:
     """Test axes transformers with real Koala.jpg image."""
@@ -398,7 +432,7 @@ class TestWithKoalaImage:
     def test_reorder_koala_axes(self, koala_image, koala_metadata):
         """Test reordering koala image axes."""
         # Swap X and Y
-        transformer = ReorderCoordinatesTransformer(axes=('x', 'y'))
+        transformer = ReorderCoordinatesTransformer(axes=("x", "y"))
         # Transform metadata
         new_metadata2 = transformer.transform_metadata(koala_metadata)
         h, w = koala_image.shape[:2]
@@ -450,7 +484,3 @@ class TestWithKoalaImage:
         # Top-left should match original bottom-right
         np.testing.assert_array_equal(result[0, 0, :], koala_image[-1, -1, :])
         np.testing.assert_array_equal(result[-1, -1, :], koala_image[0, 0, :])
-
-
-
-

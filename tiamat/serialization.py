@@ -1,11 +1,12 @@
 """
 Pipeline serialization and instantiation from configuration dictionaries.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import partial
 from typing import Any
-from collections.abc import Callable
 
 from tiamat.readers.protocol import ImageReader
 
@@ -27,10 +28,7 @@ def register_class(cls: type) -> type:
     return cls
 
 
-def create_instance(
-        class_name: str,
-        args: dict[str, Any]
-) -> Any:
+def create_instance(class_name: str, args: dict[str, Any]) -> Any:
     """
     Safely instantiate a registered class with arguments from a configuration dictionary.
 
@@ -53,16 +51,14 @@ def create_instance(
         return cls.from_json(args)
     else:
         # Validate provided arguments
-        allowed_args = cls.__init__.__code__.co_varnames[
-            1: cls.__init__.__code__.co_argcount
-        ]
+        allowed_args = cls.__init__.__code__.co_varnames[1 : cls.__init__.__code__.co_argcount]
         filtered_args = {k: v for k, v in args.items() if k in allowed_args}
 
         return cls(**filtered_args)
 
 
 def make_object_from_config(config_entry: dict) -> Any:
-    """"
+    """
     Instantiate an object from a single configuration entry.
 
     Args:
@@ -83,8 +79,7 @@ def make_object_from_config(config_entry: dict) -> Any:
 
 
 def get_reader_from_config(
-        config_reader: dict | None,
-        reader_post_creation_hook: Callable | None = None
+    config_reader: dict | None, reader_post_creation_hook: Callable | None = None
 ) -> Callable[..., "ImageReader"]:
     """
     Get a reader constructor from configuration.
@@ -99,6 +94,7 @@ def get_reader_from_config(
 
     if config_reader is None:
         from tiamat.readers.factory import get_reader
+
         if reader_post_creation_hook is None:
             return get_reader
         else:
@@ -116,9 +112,7 @@ def get_reader_from_config(
         return cls.from_json(args, reader_post_creation_hook=reader_post_creation_hook)
     else:
         # Validate provided arguments
-        allowed_args = cls.__init__.__code__.co_varnames[
-            1: cls.__init__.__code__.co_argcount
-        ]
+        allowed_args = cls.__init__.__code__.co_varnames[1 : cls.__init__.__code__.co_argcount]
         filtered_args = {k: v for k, v in args.items() if k in allowed_args}
 
         if reader_post_creation_hook is None:
@@ -128,9 +122,7 @@ def get_reader_from_config(
 
 
 def load_pipeline_from_config(
-        config: dict,
-        auto_register_default_readers: bool = True,
-        reader_post_creation_hook: Callable | None = None
+    config: dict, auto_register_default_readers: bool = True, reader_post_creation_hook: Callable | None = None
 ) -> Any:
     """
     Construct a pipeline from a configuration dictionary.
@@ -151,19 +143,11 @@ def load_pipeline_from_config(
         register_all_readers()
 
     return Pipeline(
-        transformers=[
-            make_object_from_config(item)
-            for item in config.get("transformers", [])
-        ],
-        access_transformers=[
-            make_object_from_config(item)
-            for item in config.get("access_transformers", [])
-        ],
-        image_transformers=[
-            make_object_from_config(item)
-            for item in config.get("image_transformers", [])
-        ],
-        reader_factory=get_reader_from_config(config.get("reader", None),
-                                              reader_post_creation_hook=reader_post_creation_hook),
+        transformers=[make_object_from_config(item) for item in config.get("transformers", [])],
+        access_transformers=[make_object_from_config(item) for item in config.get("access_transformers", [])],
+        image_transformers=[make_object_from_config(item) for item in config.get("image_transformers", [])],
+        reader_factory=get_reader_from_config(
+            config.get("reader", None), reader_post_creation_hook=reader_post_creation_hook
+        ),
         auto_register_default_readers=False,
     )
