@@ -2,10 +2,13 @@
 Comprehensive tests for coordinate utility functions.
 """
 
-import pytest
 import numpy as np
+import pytest
 
-from tiamat.transformers.coordinates import resolve_coordinate_slice, get_coordinate_bounds
+from tiamat.transformers.coordinates import (
+    get_coordinate_bounds,
+    resolve_coordinate_slice,
+)
 
 
 class TestResolveCoordinateSlice:
@@ -107,32 +110,38 @@ class TestIntegrationAndEdgeCases:
 
 
 # Parametrized tests cover all cases compactly
-@pytest.mark.parametrize("coord,dim,expected", [
-    (None, 100, (0, 100)),
-    (50, 100, 50),
-    ((10, 90), 100, (10, 90)),
-    ((None, 50), 100, (0, 50)),
-    ((50, None), 100, (50, 100)),
-    ((None, None), 100, (0, 100)),
-    (0, 100, 0),
-    (99, 100, 99),
-    ((0, 100), 100, (0, 100)),
-])
+@pytest.mark.parametrize(
+    "coord,dim,expected",
+    [
+        (None, 100, (0, 100)),
+        (50, 100, 50),
+        ((10, 90), 100, (10, 90)),
+        ((None, 50), 100, (0, 50)),
+        ((50, None), 100, (50, 100)),
+        ((None, None), 100, (0, 100)),
+        (0, 100, 0),
+        (99, 100, 99),
+        ((0, 100), 100, (0, 100)),
+    ],
+)
 def test_resolve_parametrized(coord, dim, expected):
     """Parametrized test for resolve_coordinate_slice."""
     assert resolve_coordinate_slice(coord, dim) == expected
 
 
-@pytest.mark.parametrize("coord,dim,expected", [
-    (None, 100, (0, 100)),
-    (50, 100, (50, 50)),
-    ((10, 90), 100, (10, 90)),
-    ((None, 50), 100, (0, 50)),
-    ((50, None), 100, (50, 100)),
-    ((None, None), 100, (0, 100)),
-    (0, 200, (0, 0)),
-    (199, 200, (199, 199)),
-])
+@pytest.mark.parametrize(
+    "coord,dim,expected",
+    [
+        (None, 100, (0, 100)),
+        (50, 100, (50, 50)),
+        ((10, 90), 100, (10, 90)),
+        ((None, 50), 100, (0, 50)),
+        ((50, None), 100, (50, 100)),
+        ((None, None), 100, (0, 100)),
+        (0, 200, (0, 0)),
+        (199, 200, (199, 199)),
+    ],
+)
 def test_get_bounds_parametrized(coord, dim, expected):
     """Parametrized test for get_coordinate_bounds."""
     assert get_coordinate_bounds(coord, dim) == expected

@@ -1,15 +1,18 @@
 """
 Reader for generic image formats.
 """
+
 from __future__ import annotations
+
 from collections.abc import Sequence
 
 import numpy as np
 
 from tiamat.cache import instance_cache
-from .protocol import ImageReader
+
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import ImageReader
 
 
 class GenericReader(ImageReader):
@@ -20,11 +23,12 @@ class GenericReader(ImageReader):
     It supports caching the image in memory to avoid repeated disk reads.
     """
 
-    def __init__(self,
-                 fname: str,
-                 cache_image: bool = False,
-                 image_spacing: float | Sequence[float] | None = None
-                 ) -> None:
+    def __init__(
+        self,
+        fname: str,
+        cache_image: bool = False,
+        image_spacing: float | Sequence[float] | None = None,
+    ) -> None:
         """
         Initialize a generic image reader.
 
@@ -47,9 +51,8 @@ class GenericReader(ImageReader):
             np.ndarray: Raw image array as loaded by `imageio`.
         """
         from imageio.v3 import imread
-        image = (
-            self._cached_image if self._cached_image is not None else imread(self.fname)
-        )
+
+        image = self._cached_image if self._cached_image is not None else imread(self.fname)
         if self._cache_image:
             self._cached_image = image
 

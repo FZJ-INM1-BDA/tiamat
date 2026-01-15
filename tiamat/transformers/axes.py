@@ -2,15 +2,16 @@
 Transforms manipulating individual axes of images
 """
 
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
 
-from dataclasses import replace
-from .protocol import Transformer
+from tiamat.transformers.coordinates import resolve_coordinate_slice
+
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
-from tiamat.transformers.coordinates import resolve_coordinate_slice
+from .protocol import Transformer
 
 
 class ImageToVolumeTransformer(Transformer):
@@ -61,6 +62,7 @@ class ImageToVolumeTransformer(Transformer):
             Updated ImageMetadata with new Z-axis.
         """
         from dataclasses import replace
+
         from tiamat.metadata import dimensions
         from tiamat.readers.processing import expand_to_length
 
@@ -74,7 +76,7 @@ class ImageToVolumeTransformer(Transformer):
         # Insert new spatial axis
         new_shape = list(metadata.shape)
         new_shape.insert(new_axis, 1)
-        metadata.shape = new_shape
+        metadata.shape = tuple(new_shape)
 
         # Insert the axis to the dimensions
         new_dimensions = list(metadata.dimensions)
@@ -87,10 +89,10 @@ class ImageToVolumeTransformer(Transformer):
         metadata.scales = [(*expand_to_length(s, 2), 1.0) for s in metadata.scales]
 
         if self.z_spacing is None:
-            if hasattr(metadata.spacing, '__len__'):
+            if hasattr(metadata.spacing, "__len__"):
                 raise Exception(f"Need provide z_spacing for non-uniform spacing {metadata.spacing}")
         else:
-            if hasattr(metadata.spacing, '__len__'):
+            if hasattr(metadata.spacing, "__len__"):
                 metadata.spacing = (*metadata.spacing, self.z_spacing)
             else:
                 metadata.spacing = (*expand_to_length(metadata.spacing, 2), self.z_spacing)
@@ -143,14 +145,15 @@ class ReorderCoordinatesTransformer(Transformer):
     Transformer that reorders spatial axes of images and metadata.
     """
 
-    def __init__(self, axes: tuple[str, ...] = ('x', 'y', 'z')) -> None:
+    def __init__(self, axes: tuple[str, ...] = ("x", "y", "z")) -> None:
         """
         Initialize a ReorderCoordinatesTransformer.
 
         Args:
             axes: Desired axis order, either 2D ('x', 'y') or 3D ('x', 'y', 'z').
         """
-        from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS, META_DIMENSIONS
+        from tiamat.metadata.dimensions import META_DIMENSIONS, SPATIAL_DIMENSIONS
+
         assert len(axes) == 2 or len(axes) == 3
 
         self.reorder_axes = axes
@@ -162,7 +165,7 @@ class ReorderCoordinatesTransformer(Transformer):
             in_axes = SPATIAL_DIMENSIONS  # ('z', 'y', 'x')
             meta_axes = META_DIMENSIONS  # ('x', 'y', 'z')
 
-        # Determine forward and backward indices for z, y, x ordered 
+        # Determine forward and backward indices for z, y, x ordered
         self.from_indices = tuple(in_axes.index(a) for a in self.reorder_axes)
         self.to_indices = tuple(self.reorder_axes.index(a) for a in in_axes)
 
@@ -183,6 +186,7 @@ class ReorderCoordinatesTransformer(Transformer):
             Updated ImageAccessor with reordered coordinates and scales.
         """
         from dataclasses import replace
+
         from tiamat.readers.processing import expand_to_length
 
         accessor = replace(accessor)
@@ -223,8 +227,9 @@ class ReorderCoordinatesTransformer(Transformer):
             Updated ImageMetadata.
         """
         from dataclasses import replace
-        from tiamat.readers.processing import expand_to_length
+
         from tiamat.metadata.dimensions import SPATIAL_DIMENSIONS
+        from tiamat.readers.processing import expand_to_length
 
         metadata = replace(metadata)
 
@@ -298,7 +303,7 @@ class ReorderCoordinatesTransformer(Transformer):
             ReorderCoordinatesTransformer instance.
         """
         return cls(
-            axes=tuple(args.get("axes", ('x', 'y', 'z'))),
+            axes=tuple(args.get("axes", ("x", "y", "z"))),
         )
 
 
@@ -332,6 +337,7 @@ class MirrorTransformer(Transformer):
             Updated ImageAccessor with mirrored coordinates.
         """
         from dataclasses import replace
+
         from tiamat.metadata import dimensions
 
         accessor = replace(accessor)
@@ -366,6 +372,10 @@ class MirrorTransformer(Transformer):
         Returns:
            The unchanged metadata.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:

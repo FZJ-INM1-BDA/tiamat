@@ -1,11 +1,13 @@
 """
 Pipeline for color mapping.
 """
+
 import matplotlib.pyplot as plt
-from tiamat.transformers.color import GrayscaleTransformer, LUTTransformer
-from tiamat.transformers.access import FractionTransformer
+
 from tiamat.io import ImageAccessor
 from tiamat.pipeline import Pipeline
+from tiamat.transformers.access import FractionTransformer
+from tiamat.transformers.color import GrayscaleTransformer, LUTTransformer
 
 # Convert an image to grayscale, then apply a colormap.
 # Let's also combine it with some coordinate transformers.

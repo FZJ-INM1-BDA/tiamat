@@ -94,7 +94,7 @@ class instance_cached_property(property, Generic[T, R]):
             def expensive_property(self):
                 # compute expensive value
                 return value
-      """
+    """
 
     def __init__(self, func: Callable[[T], R]):
         super().__init__(func)

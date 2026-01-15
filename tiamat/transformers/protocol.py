@@ -1,6 +1,7 @@
 """
 Protocol for transformers.
 """
+
 from typing import Protocol
 
 import numpy as np
@@ -13,7 +14,7 @@ class Transformer(Protocol):
     """
     Protocol for image transformation steps in a pipeline.
 
-    A transformer can modify metadata, access parameters, and image data 
+    A transformer can modify metadata, access parameters, and image data
     in three stages, executed in the following order:
 
         1. transform_metadata
@@ -23,7 +24,7 @@ class Transformer(Protocol):
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         """
-        Adjusts image metadata to match the metadata describing 
+        Adjusts image metadata to match the metadata describing
         the transformed image returned by `transform_image`.
 
         Parameters
@@ -36,6 +37,10 @@ class Transformer(Protocol):
         ImageMetadata
             Updated metadata associated with the transformed image.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
@@ -57,12 +62,7 @@ class Transformer(Protocol):
         """
         return accessor
 
-    def transform_image(
-        self,
-        image: np.ndarray,
-        metadata: ImageMetadata,
-        accessor: ImageAccessor
-    ) -> np.ndarray:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
         Modifies image pixel data based on its metadata and an accessor.
 
