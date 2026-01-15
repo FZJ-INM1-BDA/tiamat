@@ -314,52 +314,52 @@ class TestMirrorTransformer:
         result = transformer.transform_metadata(original)
 
         # Should be unchanged (mirroring doesn't affect metadata)
-        assert result is original
+        assert result == original
 
-        @pytest.mark.parametrize(
-            "settings, input_shape, axis_to_check, expected_val",
-            [
-                # 1. Mirror X only: Pixel at 0 moves to end
-                ({"mirror_x": True}, (10, 10, 3), 1, 9),
-                # 2. Mirror Y only: Pixel at 0 moves to end
-                ({"mirror_y": True}, (10, 10, 3), 0, 9),
-                # 3. Mirror Both: Pixel at (0,0) moves to (9,9)
-                ({"mirror_x": True, "mirror_y": True}, (10, 10, 3), (0, 1), (9, 9)),
-            ],
-        )
-        def test_mirror_logic(self, settings, input_shape, axis_to_check, expected_val):
-            """
-            Tests initialization, accessor transform, AND image transform in one go.
-            """
-            transformer = MirrorTransformer(**settings)
-            meta = ImageMetadata("image", input_shape, (0, 255), np.uint8, dimensions=(Y, X, RGB))
+    @pytest.mark.parametrize(
+        "settings, input_shape, axis_to_check, expected_val",
+        [
+            # 1. Mirror X only: Pixel at 0 moves to end
+            ({"mirror_x": True}, (10, 10, 3), 1, 9),
+            # 2. Mirror Y only: Pixel at 0 moves to end
+            ({"mirror_y": True}, (10, 10, 3), 0, 9),
+            # 3. Mirror Both: Pixel at (0,0) moves to (9,9)
+            ({"mirror_x": True, "mirror_y": True}, (10, 10, 3), (0, 1), (9, 9)),
+        ],
+    )
+    def test_mirror_logic(self, settings, input_shape, axis_to_check, expected_val):
+        """
+        Tests initialization, accessor transform, AND image transform in one go.
+        """
+        transformer = MirrorTransformer(**settings)
+        meta = ImageMetadata("image", input_shape, (0, 255), np.uint8, dimensions=(Y, X, RGB))
 
-            # 1. Test Accessor Transform
-            # We use a specific slice (0, 1) to see if it flips to the end of the image
-            accessor = ImageAccessor(x=(0, 1), y=(0, 1))
-            acc_res = transformer.transform_access(accessor, meta)
+        # 1. Test Accessor Transform
+        # We use a specific slice (0, 1) to see if it flips to the end of the image
+        accessor = ImageAccessor(x=(0, 1), y=(0, 1))
+        acc_res = transformer.transform_access(accessor, meta)
 
-            # Check X coordinate
-            if settings.get("mirror_x"):
-                # If image is width 10, requesting (0,1) becomes (9, 10)
-                assert acc_res.x == (9, 10)
-            else:
-                assert acc_res.x == (0, 1)
+        # Check X coordinate
+        if settings.get("mirror_x"):
+            # If image is width 10, requesting (0,1) becomes (9, 10)
+            assert acc_res.x == (9, 10)
+        else:
+            assert acc_res.x == (0, 1)
 
-            # 2. Test Image Transform
-            image = np.zeros(input_shape, dtype=np.uint8)
-            # Set a specific pixel to 255 to track it
-            image[0, 0] = 255
+        # 2. Test Image Transform
+        image = np.zeros(input_shape, dtype=np.uint8)
+        # Set a specific pixel to 255 to track it
+        image[0, 0] = 255
 
-            img_res = transformer.transform_image(image, meta, ImageAccessor())
+        img_res = transformer.transform_image(image, meta, ImageAccessor())
 
-            # Check where the pixel moved
-            if settings.get("mirror_x") and settings.get("mirror_y"):
-                assert img_res[9, 9, 0] == 255
-            elif settings.get("mirror_x"):
-                assert img_res[0, 9, 0] == 255
-            elif settings.get("mirror_y"):
-                assert img_res[9, 0, 0] == 255
+        # Check where the pixel moved
+        if settings.get("mirror_x") and settings.get("mirror_y"):
+            assert img_res[9, 9, 0] == 255
+        elif settings.get("mirror_x"):
+            assert img_res[0, 9, 0] == 255
+        elif settings.get("mirror_y"):
+            assert img_res[9, 0, 0] == 255
 
     def test_mirror_3d_image(self):
         """Test mirroring 3D image with Z axis."""

@@ -321,7 +321,7 @@ class TestWithKoalaImage:
 
         # PIL reference - EXACT SAME STEPS
         # Step 1: Create PIL Image from RGB array
-        pil_img = Image.fromarray(koala_image, mode="RGB")
+        pil_img = Image.fromarray(koala_image).convert("RGB")
         # Step 2: Convert to grayscale
         pil_gray = pil_img.convert("L")
         # Step 3: Convert back to numpy
