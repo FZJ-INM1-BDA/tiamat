@@ -435,8 +435,9 @@ class TestIntegrationAndEdgeCases:
 
         metadata = ImageMetadata("image", (200, 100), (0, 255), np.uint8, dimensions=(Y, X))
 
-        with pytest.raises(TypeError):
-            bbox.transform_metadata(metadata)
+        out_metadata = bbox.transform_metadata(metadata)
+
+        assert out_metadata.shape == (1, 1)
 
     def test_metadata_preservation(self):
         """Test that additional metadata is preserved."""
