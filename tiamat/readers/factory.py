@@ -94,9 +94,7 @@ def get_reader(fname: str, auto_register_default_readers: bool = True, **kwargs)
             raise RuntimeError("Reader must return bool or int from check_file")
         reader_by_priority.append((reader, reader_priority))
     if not reader_by_priority:
-        raise UnknownFileError(
-            f"Could not find reader for file {fname}. Reader errors: {reader_errors}"
-        )
+        raise UnknownFileError(f"Could not find reader for file {fname}. Reader errors: {reader_errors}")
 
     # sort by priority (descending)
     reader_by_priority.sort(key=lambda x: -x[1])

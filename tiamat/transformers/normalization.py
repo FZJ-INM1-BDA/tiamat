@@ -4,9 +4,9 @@ Normalization transformers.
 
 import numpy as np
 
-from .protocol import Transformer
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
+from .protocol import Transformer
 
 
 class MinMaxNormalizationTransformer(Transformer):
@@ -47,6 +47,10 @@ class MinMaxNormalizationTransformer(Transformer):
         Returns:
             Updated ImageMetadata with dtype set to target_dtype and value_range set to (0.0, 1.0).
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         metadata.dtype = self.target_dtype
         metadata.value_range = (0.0, 1.0)
 
@@ -67,6 +71,7 @@ class MinMaxNormalizationTransformer(Transformer):
         assert metadata.value_range is not None, "MinMaxNormalizationTransformer requires metadata.value_range."
 
         vmin, vmax = metadata.value_range
+
         image = (image.astype(self.target_dtype) - vmin) / (vmax - vmin)
 
         return image

@@ -1,6 +1,7 @@
 """
 Affine transformers.
 """
+
 import logging
 from itertools import product, repeat
 from typing import Any
@@ -8,6 +9,7 @@ from typing import Any
 import numpy as np
 
 from tiamat.constants import OPENCV_INTERPOLATION_CODES
+
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 from .protocol import Transformer
@@ -28,10 +30,10 @@ class AffineTransformer(Transformer):
     # TODO: define a unit of affine matrix, e.g. microns, mm, ...
     # TODO: allow to use center-pixel / corner-pixel aligned affine
     def __init__(
-            self,
-            affine_matrix: np.ndarray | list[list[float]],
-            request_margin: int = 2,
-            fill_value: int | float | None = None,
+        self,
+        affine_matrix: np.ndarray | list[list[float]],
+        request_margin: int = 2,
+        fill_value: int | float | None = None,
     ):
         """
         Initialize an AffineTransformer.
@@ -106,7 +108,7 @@ class AffineTransformer(Transformer):
         from tiamat.transformers.coordinates import resolve_coordinate_slice
 
         target_spacing = metadata.spacing
-        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1.0, 1.0))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
         target_spacing = target_spacing[:2]  # TODO: general solution for 3D
@@ -167,8 +169,16 @@ class AffineTransformer(Transformer):
 
         # Up to here everything is physical coordinates, but in transform_image we need pixel coordinates
         # We need to scale the coordinates to obtain pixel coordinates
-        accessor.history[id(self)] = (x_from_input, y_from_input, x_from, x_to, offset_x_input, y_from, y_to,
-                                      offset_y_input)
+        accessor.history[id(self)] = (
+            x_from_input,
+            y_from_input,
+            x_from,
+            x_to,
+            offset_x_input,
+            y_from,
+            y_to,
+            offset_y_input,
+        )
 
         return accessor
 
@@ -192,7 +202,7 @@ class AffineTransformer(Transformer):
         extents = list(zip(repeat(0), shape_tuple[::-1]))
         extent_coords = list(product(*extents))
 
-        new_metadata = replace(metadata)
+        metadata = replace(metadata)
 
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1, 1, 1, 1])))[:2, :].T
 
@@ -201,9 +211,9 @@ class AffineTransformer(Transformer):
             round(np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item()),
         )
 
-        new_metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
+        metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
 
-        return new_metadata
+        return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
@@ -222,7 +232,10 @@ class AffineTransformer(Transformer):
         """
         import cv2
 
-        from tiamat.readers.processing import rescale_shape, get_interpolation_for_accessor
+        from tiamat.readers.processing import (
+            get_interpolation_for_accessor,
+            rescale_shape,
+        )
 
         target_scale = accessor.scale
         target_scale = np.array(target_scale) if target_scale is not None else np.array((1,))
@@ -231,7 +244,7 @@ class AffineTransformer(Transformer):
         target_scale = target_scale[:2]  # TODO: general solution for 3D
 
         target_spacing = metadata.spacing
-        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1., 1.))
+        target_spacing = np.array(target_spacing) if target_spacing is not None else np.array((1.0, 1.0))
         if target_spacing.size == 1:
             target_spacing = np.array([target_spacing, target_spacing])
         target_spacing = target_spacing[:2]  # TODO: general solution for 3D
@@ -239,14 +252,12 @@ class AffineTransformer(Transformer):
         # Restore extent from requested frame
         try:
             x_from_input, y_from_input, x_from, x_to, offset_x_input, y_from, y_to, offset_y_input = accessor.history[
-                id(self)]
+                id(self)
+            ]
         except KeyError:
             raise Exception("transform_access has to be called once before transform_image")
 
-        target_shape = rescale_shape(
-            ((y_to - y_from), (x_to - x_from)),
-            target_scale
-        )[::-1]
+        target_shape = rescale_shape(((y_to - y_from), (x_to - x_from)), target_scale)[::-1]
 
         # We have to take into account that our input image is not the actual origin of the image.
         # Also, the target image we aim to compute is not at the origin.

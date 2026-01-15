@@ -1,31 +1,32 @@
 from __future__ import annotations
+
 from collections.abc import Iterable
 from functools import cached_property
 
-from .pipeline import Pipeline
-from .metadata import ImageMetadata, dimensions
 from .io import ImageAccessor
+from .metadata import ImageMetadata, dimensions
+from .pipeline import Pipeline
 
 
 def slice_to_interval(
-        array_slice: int | slice | tuple[int | slice | Ellipsis, ...] | None,
-        shape: tuple[int, ...],
+    array_slice: int | slice | tuple[int | slice | Ellipsis, ...] | None,
+    shape: tuple[int, ...],
 ) -> tuple[list[tuple[int, int]], list[int]]:
     """
-        Convert a given slice or index into intervals usable for image access.
+    Convert a given slice or index into intervals usable for image access.
 
-        Args:
-            array_slice: Slice, integer, ellipsis or tuple of them. Can also be None to expand to full slice.
-            shape: The shape of the array to index into.
+    Args:
+        array_slice: Slice, integer, ellipsis or tuple of them. Can also be None to expand to full slice.
+        shape: The shape of the array to index into.
 
-        Returns:
-            A tuple containing:
-            - A list of (start, stop) intervals for each dimension.
-            - A list of dimensions to be squeezed after slicing.
+    Returns:
+        A tuple containing:
+        - A list of (start, stop) intervals for each dimension.
+        - A list of dimensions to be squeezed after slicing.
 
-        Raises:
-            IndexError: If the number of slice dimensions exceeds the array's dimensions.
-        """
+    Raises:
+        IndexError: If the number of slice dimensions exceeds the array's dimensions.
+    """
     if array_slice is None:
         # expand None slice
         array_slice = tuple([slice(None) for _ in range(len(shape))])
@@ -85,12 +86,12 @@ class Array(object):
     """
 
     def __init__(
-            self,
-            file_name,
-            pipeline: Pipeline,
-            scale: float | int | Iterable[float | int],
-            reader_kwargs: dict | None = None,
-            shape_round_mode: str = "round",
+        self,
+        file_name,
+        pipeline: Pipeline,
+        scale: float | int | Iterable[float | int],
+        reader_kwargs: dict | None = None,
+        shape_round_mode: str = "round",
     ) -> None:
         """
         Initialize an Array instance.
@@ -111,10 +112,10 @@ class Array(object):
 
     @classmethod
     def create_arrays_for_scales(
-            cls,
-            file_name: str,
-            pipeline: Pipeline,
-            reader_kwargs: dict | None = None,
+        cls,
+        file_name: str,
+        pipeline: Pipeline,
+        reader_kwargs: dict | None = None,
     ) -> tuple:
         """
         Factory method to create `Array` instances for all scales of an image.
@@ -136,17 +137,12 @@ class Array(object):
             scales = [
                 scales,
             ]
-        return tuple(
-            cls(file_name=file_name, pipeline=pipeline, scale=scale, **reader_kwargs)
-            for scale in scales
-        )
+        return tuple(cls(file_name=file_name, pipeline=pipeline, scale=scale, **reader_kwargs) for scale in scales)
 
     @cached_property
     def metadata(self) -> ImageMetadata:
         """Read and cache image metadata."""
-        return self.pipeline.read_metadata(
-            file_name=self.file_name, **self.reader_kwargs
-        )
+        return self.pipeline.read_metadata(file_name=self.file_name, **self.reader_kwargs)
 
     @cached_property
     def shape(self) -> tuple[int, ...]:
@@ -160,13 +156,10 @@ class Array(object):
         }
         shape_fn = shape_round_functions.get(self.shape_round_mode)
         if shape_fn is None:
-            raise RuntimeError(
-                f"Invalid shape_round_mode {self.shape_round_mode}. Valid: {','.join(list(shape_round_functions.keys()))}"
-            )
+            valid = ",".join(list(shape_round_functions.keys()))
+            raise RuntimeError(f"Invalid shape_round_mode {self.shape_round_mode}. Valid: {valid}")
 
-        return tuple(
-            shape_fn(np.array(self.metadata.shape) * self.scale).astype(int).tolist()
-        )
+        return tuple(shape_fn(np.array(self.metadata.shape) * self.scale).astype(int).tolist())
 
     @property
     def ndim(self) -> int:
@@ -182,7 +175,7 @@ class Array(object):
 
     @property
     def dtype(self) -> str:
-        """"Dtype of the image."""
+        """ "Dtype of the image."""
         return self.metadata.dtype
 
     def __getitem__(self, array_slice: slice | tuple[slice] | None):
@@ -205,14 +198,10 @@ class Array(object):
 
         # consolidate channel access into a named dictionary
         spatial_accessor_kwargs = {
-            key: value
-            for key, value in accessor_kwargs.items()
-            if key in dimensions.SPATIAL_DIMENSIONS
+            key: value for key, value in accessor_kwargs.items() if key in dimensions.SPATIAL_DIMENSIONS
         }
         channel_accessor_kwargs = {
-            key: value
-            for key, value in accessor_kwargs.items()
-            if key not in spatial_accessor_kwargs
+            key: value for key, value in accessor_kwargs.items() if key not in spatial_accessor_kwargs
         }
         if len(channel_accessor_kwargs) == 0:
             channel_accessor_kwargs = None
@@ -223,9 +212,7 @@ class Array(object):
             scale=self.scale,
             coordinate_scale=self.scale,
         )
-        result = self.pipeline(
-            file_name=self.file_name, accessor=accessor, **self.reader_kwargs
-        )
+        result = self.pipeline(file_name=self.file_name, accessor=accessor, **self.reader_kwargs)
         image = result.image
 
         squeeze_dims = [dim for dim in squeeze_dims if image.shape[dim] == 1]

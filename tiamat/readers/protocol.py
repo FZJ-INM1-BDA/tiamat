@@ -2,9 +2,11 @@
 Protocol for readers.
 """
 
-from ..io import ImageAccessor, ImageResult
 from typing import Protocol
+
 import numpy as np
+
+from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 
 CheckResult = bool | int | float
