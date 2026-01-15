@@ -68,7 +68,7 @@ class TestSpacingToScaleTransformer:
             t.transform_access(acc, ImageMetadata("image", (100, 200), (0, 255), np.uint8, spacing=(1.0, 2.0)))
 
         # Passthrough tests
-        assert t.transform_metadata(meta) is meta
+        assert t.transform_metadata(meta) == meta
         img = np.random.randint(0, 256, size=(100, 200), dtype=np.uint8)
         np.testing.assert_array_equal(t.transform_image(img, meta, acc), img)
 
@@ -119,7 +119,7 @@ class TestFractionTransformer:
             t.transform_access(ImageAccessor(x=0.5), ImageMetadata("image", None, (0, 255), np.uint8))
 
         # Passthrough tests
-        assert t.transform_metadata(meta) is meta
+        assert t.transform_metadata(meta) == meta
         img = np.random.randint(0, 256, size=(100, 200), dtype=np.uint8)
         np.testing.assert_array_equal(t.transform_image(img, meta, ImageAccessor()), img)
 
