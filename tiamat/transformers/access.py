@@ -68,6 +68,10 @@ class SpacingToScaleTransformer(Transformer):
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         """Return metadata unchanged."""
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
@@ -163,6 +167,10 @@ class FractionTransformer(Transformer):
         Returns:
             ImageMetadata: The unchanged metadata.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:

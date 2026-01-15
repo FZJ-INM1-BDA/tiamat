@@ -91,8 +91,6 @@ class TestMinMaxNormalizationTransformer:
         assert result.image_type == "image"
         assert result.dimensions == (Y, X, RGB)
 
-        # CRITICAL BUG CHECK: Should NOT mutate original
-        # This will FAIL with current code (missing dataclasses.replace)!
         assert original.dtype == original_dtype, "BUG: Original metadata was mutated! Missing dataclasses.replace()"
         assert (
             original.value_range == original_range

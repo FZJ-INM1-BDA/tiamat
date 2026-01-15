@@ -47,6 +47,10 @@ class MinMaxNormalizationTransformer(Transformer):
         Returns:
             Updated ImageMetadata with dtype set to target_dtype and value_range set to (0.0, 1.0).
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         metadata.dtype = self.target_dtype
         metadata.value_range = (0.0, 1.0)
 

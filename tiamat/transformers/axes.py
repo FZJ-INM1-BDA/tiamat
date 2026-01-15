@@ -372,6 +372,10 @@ class MirrorTransformer(Transformer):
         Returns:
            The unchanged metadata.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
