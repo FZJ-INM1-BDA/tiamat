@@ -37,6 +37,10 @@ class Transformer(Protocol):
         ImageMetadata
             Updated metadata associated with the transformed image.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:

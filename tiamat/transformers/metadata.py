@@ -81,4 +81,8 @@ class MetadataLambdaTransformer(_MetadataTransformer):
         """
         Applied the transformation defined by the given lambda.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return self.metadata_lambda(metadata)

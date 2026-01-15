@@ -202,7 +202,7 @@ class AffineTransformer(Transformer):
         extents = list(zip(repeat(0), shape_tuple[::-1]))
         extent_coords = list(product(*extents))
 
-        new_metadata = replace(metadata)
+        metadata = replace(metadata)
 
         transformed_coords = (self.affine_matrix @ np.vstack((np.array(extent_coords).T, [1, 1, 1, 1])))[:2, :].T
 
@@ -211,9 +211,9 @@ class AffineTransformer(Transformer):
             round(np.max(transformed_coords[:, 0]).item() - np.min(transformed_coords[:, 0]).item()),
         )
 
-        new_metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
+        metadata.spatial_shape = (*metadata.spatial_shape[:-2], *out_shape)
 
-        return new_metadata
+        return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
