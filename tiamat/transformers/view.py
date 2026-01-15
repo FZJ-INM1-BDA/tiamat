@@ -4,8 +4,6 @@ Transformers that change the output view
 
 import numpy as np
 
-from tiamat.metadata import dimensions
-
 from ..io import ImageAccessor
 from ..metadata import ImageMetadata
 from .protocol import Transformer
@@ -178,6 +176,7 @@ class BoundingBoxTransformer(Transformer):
         shape = list(metadata.shape)
         for i, dimension in enumerate(metadata.spatial_dimensions):
             shape[dimension] = spatial_shape[i]
+        shape = tuple(shape)
 
         metadata = replace(metadata, shape=shape)
 

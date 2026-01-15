@@ -1,8 +1,11 @@
 repos:
   - repo: https://github.com/pycqa/flake8
-    rev: ''
+    rev: 7.3.0
     hooks:
-    - id: flake8
+      - id: flake8
+        args:
+          - --max-line-length=120   # not sure, why it does not pick it up from pyproject.toml
+          - --extend-ignore=E203,W503
   - repo: local
     hooks:
       - id: pylint
