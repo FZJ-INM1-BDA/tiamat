@@ -14,7 +14,7 @@ from PIL import Image
 
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import RGB, RGBA, C, X, Y, Z
+from tiamat.metadata.dimensions import RGB, RGBA, X, Y
 from tiamat.transformers.color import (
     FloatToByteTransformer,
     GrayscaleToRGBTransformer,
@@ -321,7 +321,7 @@ class TestWithKoalaImage:
 
         # PIL reference - EXACT SAME STEPS
         # Step 1: Create PIL Image from RGB array
-        pil_img = Image.fromarray(koala_image, mode="RGB")
+        pil_img = Image.fromarray(koala_image).convert("RGB")
         # Step 2: Convert to grayscale
         pil_gray = pil_img.convert("L")
         # Step 3: Convert back to numpy
@@ -506,7 +506,7 @@ class TestPixelValueConsistency:
         color_map = "Blues"
         transformer = LUTTransformer(color_map=color_map)
 
-        image = np.array([[0, 240]], dtype=np.uint8)
+        image = np.array(np.arange(255), dtype=np.uint8)
         metadata = ImageMetadata("image", image.shape, (0, 255), np.uint8)
 
         result = transformer.transform_image(image, metadata, ImageAccessor())
@@ -521,8 +521,8 @@ class TestPixelValueConsistency:
         mmin, mmax = result_meta.value_range
 
         # Should be close
-        assert abs(vmin - mmin) < 0.1, f"Min mismatch: {vmin} vs {mmin}"
-        assert abs(vmax - mmax) < 0.1, f"Max mismatch: {vmax} vs {mmax}"
+        assert np.allclose(vmin, mmin, atol=0.1), f"Min mismatch: {vmin} vs {mmin}"
+        assert np.allclose(vmax, mmax, atol=0.1), f"Max mismatch: {vmax} vs {mmax}"
 
     def test_grayscale_metadata_consistency(self):
         """Check that grayscale conversion preserves value_range."""

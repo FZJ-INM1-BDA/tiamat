@@ -4,16 +4,15 @@ Comprehensive tests for deformation field transformers.
 Combines unit tests with synthetic deformation fields.
 """
 
-import pytest
-import numpy as np
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-import tempfile
 
-from tiamat.transformers.dfield import DeformationFieldTransformer
+import numpy as np
+import pytest
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
-from tiamat.metadata.dimensions import Y, X, RGB
+from tiamat.metadata.dimensions import RGB, X, Y
+from tiamat.transformers.dfield import DeformationFieldTransformer
 
 
 # Fixtures
@@ -32,7 +31,7 @@ def mock_reader_factory():
             dtype=np.float32,
             dimensions=(Y, X, "vec"),
             spacing=(1.0, 1.0),
-            additional_metadata={"dfield_origin": (0.0, 0.0)}
+            additional_metadata={"dfield_origin": (0.0, 0.0)},
         )
         reader.read_metadata.return_value = dfield_metadata
         reader.spacing = (1.0, 1.0)
@@ -76,11 +75,11 @@ class TestDeformationFieldTransformer:
         # Test with minimal args
         dft1 = DeformationFieldTransformer(
             dfield_file="test_dfield.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
         assert dft1.dfield_file == "test_dfield.npy"
         assert dft1.request_margin == 2  # Default
-        assert dft1.interpolation == 'linear'  # Default
+        assert dft1.interpolation == "linear"  # Default
         assert dft1.fill_value is None  # Default
         assert dft1.xy_coordinates is True  # Default
 
@@ -88,13 +87,13 @@ class TestDeformationFieldTransformer:
         dft2 = DeformationFieldTransformer(
             dfield_file="custom.npy",
             request_margin=5,
-            interpolation='cubic',
+            interpolation="cubic",
             fill_value=128,
             xy_coordinates=False,
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
         assert dft2.request_margin == 5
-        assert dft2.interpolation == 'cubic'
+        assert dft2.interpolation == "cubic"
         assert dft2.fill_value == 128
         assert dft2.xy_coordinates is False
 
@@ -102,7 +101,7 @@ class TestDeformationFieldTransformer:
         """Test cached properties for deformation field metadata."""
         dft = DeformationFieldTransformer(
             dfield_file="test.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         # Test dfield_metadata (cached)
@@ -130,7 +129,7 @@ class TestDeformationFieldTransformer:
             dfield_scale=(1, 1),
             dfield_origin=(0.0, 0.0),
             image_spacing=(1.0, 1.0),
-            xy=True
+            xy=True,
         )
 
         # Should be (2, H, W) shape
@@ -152,7 +151,7 @@ class TestDeformationFieldTransformer:
             dfield_scale=(1, 1),
             dfield_origin=(0.0, 0.0),
             image_spacing=(1.0, 1.0),
-            xy=True
+            xy=True,
         )
 
         # Should be shifted by 5 pixels
@@ -172,7 +171,7 @@ class TestDeformationFieldTransformer:
             dfield_scale=(1, 1),
             dfield_origin=(0.0, 0.0),
             image_spacing=(1.0, 1.0),
-            xy=True
+            xy=True,
         )
 
         # With xy=False (YX ordering)
@@ -182,7 +181,7 @@ class TestDeformationFieldTransformer:
             dfield_scale=(1, 1),
             dfield_origin=(0.0, 0.0),
             image_spacing=(1.0, 1.0),
-            xy=False
+            xy=False,
         )
 
         # Results should be different
@@ -194,14 +193,14 @@ class TestDeformationFieldTransformer:
         image = np.random.randint(0, 256, size=(50, 100), dtype=np.uint8)
 
         # Identity coordinates (pixel positions unchanged)
-        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing='ij')
+        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing="ij")
         coordinates = np.stack([y_coords, x_coords], axis=0).astype(np.float32)
 
         result = DeformationFieldTransformer.apply_deformation(
             image=image,
             coordinates=coordinates,
             fill_value=0,
-            interpolation='linear'
+            interpolation="linear",
         )
 
         # Should be identical (or very close due to interpolation)
@@ -213,7 +212,7 @@ class TestDeformationFieldTransformer:
         image = np.random.randint(0, 256, size=(50, 100, 3), dtype=np.uint8)
 
         # Identity coordinates
-        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing='ij')
+        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing="ij")
         coordinates = np.stack([y_coords, x_coords], axis=0).astype(np.float32)
 
         result = DeformationFieldTransformer.apply_deformation(
@@ -221,7 +220,7 @@ class TestDeformationFieldTransformer:
             coordinates=coordinates,
             channel_dim=2,
             fill_value=0,
-            interpolation='linear'
+            interpolation="linear",
         )
 
         # Should preserve shape
@@ -242,7 +241,7 @@ class TestDeformationFieldTransformer:
             image=image,
             coordinates=coordinates,
             fill_value=255,
-            interpolation='nearest'
+            interpolation="nearest",
         )
 
         # All pixels should be fill_value (out of bounds)
@@ -252,13 +251,16 @@ class TestDeformationFieldTransformer:
         """Test metadata updates and non-mutation."""
         dft = DeformationFieldTransformer(
             dfield_file="test.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         original = ImageMetadata(
-            "image", (50, 100, 3), (0, 255), np.uint8,
+            "image",
+            (50, 100, 3),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X, RGB),
-            spacing=(1.0, 1.0)
+            spacing=(1.0, 1.0),
         )
         original_shape = original.shape
         original_id = id(original)
@@ -269,7 +271,7 @@ class TestDeformationFieldTransformer:
         # Dfield is 100x200 with spacing 1.0
         # Image spacing is 1.0
         # Result should be 100x200
-        #assert result.spatial_shape == (100, 200)
+        # assert result.spatial_shape == (100, 200)
 
         # Should preserve channels
         assert result.shape[2] == 3
@@ -282,13 +284,16 @@ class TestDeformationFieldTransformer:
         """Test that transform_access stores coordinates in accessor history."""
         dft = DeformationFieldTransformer(
             dfield_file="test.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         metadata = ImageMetadata(
-            "image", (100, 200, 3), (0, 255), np.uint8,
+            "image",
+            (100, 200, 3),
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X, RGB),
-            spacing=(1.0, 1.0)
+            spacing=(1.0, 1.0),
         )
 
         accessor = ImageAccessor(x=(0, 200), y=(0, 100))
@@ -308,7 +313,7 @@ class TestDeformationFieldTransformer:
         """Test that transform_image requires transform_access to be called first."""
         dft = DeformationFieldTransformer(
             dfield_file="test.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         image = np.zeros((50, 100), dtype=np.uint8)
@@ -330,7 +335,7 @@ class TestDeformationFieldTransformer:
         }
 
         # Need to mock get_reader_from_config
-        with patch('tiamat.serialization.get_reader_from_config') as mock_get_reader:
+        with patch("tiamat.serialization.get_reader_from_config") as mock_get_reader:
             mock_get_reader.return_value = mock_reader_factory
 
             dft = DeformationFieldTransformer.from_json(config)
@@ -350,20 +355,23 @@ class TestDeformationFieldIntegration:
         """Test complete pipeline with identity deformation."""
         dft = DeformationFieldTransformer(
             dfield_file="identity.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         # Create test image
         image = np.random.randint(0, 256, size=(100, 200, 3), dtype=np.uint8)
         metadata = ImageMetadata(
-            "image", image.shape, (0, 255), np.uint8,
+            "image",
+            image.shape,
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X, RGB),
-            spacing=(1.0, 1.0)
+            spacing=(1.0, 1.0),
         )
         accessor = ImageAccessor(x=(0, 200), y=(0, 100))
         # Step 1: Transform metadata
-        new_metadata = dft.transform_metadata(metadata)
-        #assert new_metadata.spatial_shape == (100, 200)
+        # new_metadata = dft.transform_metadata(metadata)
+        # assert new_metadata.spatial_shape == (100, 200)
         assert metadata.shape == image.shape  # Not mutated
 
         # Step 2: Transform access
@@ -372,7 +380,7 @@ class TestDeformationFieldIntegration:
 
         # Step 3: Transform image (with identity deformation)
         # Need to set up coordinates in history manually for this test
-        y_coords, x_coords = np.meshgrid(np.arange(100), np.arange(200), indexing='ij')
+        y_coords, x_coords = np.meshgrid(np.arange(100), np.arange(200), indexing="ij")
         coordinates = np.stack([y_coords, x_coords], axis=0).astype(np.float32)
         new_accessor.history[id(dft)] = coordinates
 
@@ -387,19 +395,22 @@ class TestDeformationFieldIntegration:
         """Test pipeline preserves multiple channels."""
         dft = DeformationFieldTransformer(
             dfield_file="test.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         # RGB image
         image = np.random.randint(0, 256, size=(50, 100, 3), dtype=np.uint8)
         metadata = ImageMetadata(
-            "image", image.shape, (0, 255), np.uint8,
+            "image",
+            image.shape,
+            (0, 255),
+            np.uint8,
             dimensions=(Y, X, RGB),
-            spacing=(1.0, 1.0)
+            spacing=(1.0, 1.0),
         )
 
         # Identity coordinates for testing
-        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing='ij')
+        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing="ij")
         coordinates = np.stack([y_coords, x_coords], axis=0).astype(np.float32)
 
         accessor = ImageAccessor()
@@ -413,22 +424,18 @@ class TestDeformationFieldIntegration:
 
     def test_pipeline_with_3d_image(self, mock_reader_factory):
         """Test pipeline with 3D image (Z, Y, X)."""
-        dft = DeformationFieldTransformer(
-            dfield_file="test.npy",
-            reader_factory=mock_reader_factory
-        )
+        dft = DeformationFieldTransformer(dfield_file="test.npy", reader_factory=mock_reader_factory)
 
         # 3D image (Z, Y, X)
         from tiamat.metadata.dimensions import Z
+
         image = np.random.randint(0, 256, size=(5, 50, 100), dtype=np.uint8)
         metadata = ImageMetadata(
-            "image", image.shape, (0, 255), np.uint8,
-            dimensions=(Z, Y, X),
-            spacing=(1.0, 1.0, 1.0)
+            "image", image.shape, (0, 255), np.uint8, dimensions=(Z, Y, X), spacing=(1.0, 1.0, 1.0)
         )
 
         # Identity coordinates
-        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing='ij')
+        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing="ij")
         coordinates = np.stack([y_coords, x_coords], axis=0).astype(np.float32)
 
         accessor = ImageAccessor()
@@ -449,15 +456,15 @@ class TestDeformationFieldEdgeCases:
         """Test error with multiple channel dimensions."""
         dft = DeformationFieldTransformer(
             dfield_file="test.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         # Image with multiple channel dimensions (invalid)
         from tiamat.metadata.dimensions import C
+
         image = np.random.randint(0, 256, size=(50, 100, 3, 4), dtype=np.uint8)
         metadata = ImageMetadata(
-            "image", image.shape, (0, 255), np.uint8,
-            dimensions=(Y, X, C, RGB)  # Two channel dims
+            "image", image.shape, (0, 255), np.uint8, dimensions=(Y, X, C, RGB)  # Two channel dims
         )
 
         coordinates = np.zeros((2, 50, 100), dtype=np.float32)
@@ -472,16 +479,16 @@ class TestDeformationFieldEdgeCases:
         image = np.random.randint(0, 256, size=(50, 100), dtype=np.uint8)
 
         # Identity coordinates
-        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing='ij')
+        y_coords, x_coords = np.meshgrid(np.arange(50), np.arange(100), indexing="ij")
         coordinates = np.stack([y_coords, x_coords], axis=0).astype(np.float32)
 
         # Test different interpolation methods
-        for interp in ['nearest', 'linear']:
+        for interp in ["nearest", "linear"]:
             result = DeformationFieldTransformer.apply_deformation(
                 image=image,
                 coordinates=coordinates,
                 fill_value=0,
-                interpolation=interp
+                interpolation=interp,
             )
 
             assert result.shape == image.shape
@@ -494,12 +501,15 @@ class TestDeformationFieldEdgeCases:
         dft1 = DeformationFieldTransformer(
             dfield_file="test.npy",
             fill_value=255,
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         metadata = ImageMetadata(
-            "image", (50, 100), (0, 255), np.uint8,
-            spacing=(1.0, 1.0)
+            "image",
+            (50, 100),
+            (0, 255),
+            np.uint8,
+            spacing=(1.0, 1.0),
         )
         accessor1 = ImageAccessor(x=(0, 100), y=(0, 50))
 
@@ -510,7 +520,7 @@ class TestDeformationFieldEdgeCases:
         # Test with accessor fill_value
         dft2 = DeformationFieldTransformer(
             dfield_file="test.npy",
-            reader_factory=mock_reader_factory
+            reader_factory=mock_reader_factory,
         )
 
         accessor2 = ImageAccessor(x=(0, 100), y=(0, 50), fill_value=128)
@@ -528,18 +538,21 @@ def test_xy_coordinate_ordering(xy_coordinates, mock_reader_factory):
     dft = DeformationFieldTransformer(
         dfield_file="test.npy",
         xy_coordinates=xy_coordinates,
-        reader_factory=mock_reader_factory
+        reader_factory=mock_reader_factory,
     )
 
     assert dft.xy_coordinates == xy_coordinates
 
 
-@pytest.mark.parametrize("spacing", [
-    (1.0, 1.0),
-    (0.5, 0.5),
-    (2.0, 2.0),
-    (1.0, 2.0),
-])
+@pytest.mark.parametrize(
+    "spacing",
+    [
+        (1.0, 1.0),
+        (0.5, 0.5),
+        (2.0, 2.0),
+        (1.0, 2.0),
+    ],
+)
 def test_different_spacings(spacing):
     """Test deformation with different image spacings."""
     dfield = np.zeros((10, 20, 2), dtype=np.float32)
@@ -550,7 +563,7 @@ def test_different_spacings(spacing):
         dfield_scale=(1, 1),
         dfield_origin=(0.0, 0.0),
         image_spacing=spacing,
-        xy=True
+        xy=True,
     )
 
     assert coords.shape == (2, 10, 20)

@@ -49,7 +49,7 @@ class LUTTransformer(Transformer):
         Returns:
             Color-mapped image as ndarray.
         """
-        assert metadata.value_range is not None, f"LUTTransformer requires metadata.value_range."
+        assert metadata.value_range is not None, "LUTTransformer requires metadata.value_range."
 
         image = self._apply_color_map(image=image, value_range=metadata.value_range)
 
@@ -104,9 +104,16 @@ class LUTTransformer(Transformer):
 
             metadata.dtype = np.asarray(matplotlib.colormaps.get_cmap(self.color_map)(0)).dtype
             ldim = len(matplotlib.colormaps.get_cmap(self.color_map)(0))
+            metadata.value_range = (0.0, 1.0)
         elif isinstance(self.color_map, (np.ndarray, (tuple, list))):
             metadata.dtype = np.asarray(self.color_map).dtype
             ldim = len(self.color_map[0])
+            if isinstance(self.color_map, np.ndarray):
+                print(self.color_map)
+                metadata.value_range = (np.min(self.color_map).item(), np.max(self.color_map).max().item())
+            else:
+                metadata.value_range = (min(self.color_map), max(self.color_map))
+
         else:
             raise RuntimeError(f"Unknown type for color map: {type(self.color_map)}")
         metadata.shape = (*metadata.shape, ldim)
@@ -289,5 +296,9 @@ class FloatToByteTransformer(Transformer):
         Returns:
             Updated metadata with value_range 0–255.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         metadata.value_range = (0, 255)
         return metadata

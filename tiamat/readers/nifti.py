@@ -1,10 +1,11 @@
 from functools import cached_property
+from typing import Any
 
 import numpy as np
 
 from tiamat.cache import instance_cache
 from tiamat.io import ImageAccessor
-from typing import Any
+
 from .protocol import ImageReader
 
 
@@ -47,7 +48,6 @@ class NiftiReader(ImageReader):
             Any ImageResult with image data and metadata.
         """
         from .processing import access_and_rescale_image
-        from ..io import ImageResult
 
         data = self.handle.get_fdata()
 

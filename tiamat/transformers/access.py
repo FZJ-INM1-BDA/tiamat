@@ -36,21 +36,24 @@ class SpacingToScaleTransformer(Transformer):
         """
         from dataclasses import replace
 
-        assert (
-            metadata.spacing is not None
-        ), f"SpacingToScaleTransformer requires spacing, but metadata does not provide it. Make sure to use a suitable reader, or provide the metadata yourself."
+        assert metadata.spacing is not None, (
+            "SpacingToScaleTransformer requires spacing, but metadata does not provide it. "
+            "Make sure to use a suitable reader, or provide the metadata yourself."
+        )
         assert (
             accessor.coordinate_spacing is not None
-        ), f"SpacingToScaleTransformer requires accessor.coordinate_spacing."
-        assert accessor.spacing is not None, f"SpacingToScaleTransformer requires accessor.spacing."
+        ), "SpacingToScaleTransformer requires accessor.coordinate_spacing."
+        assert accessor.spacing is not None, "SpacingToScaleTransformer requires accessor.spacing."
 
         accessor = replace(accessor)
         # Compute the scale
         image_spacing = metadata.spacing
         if isinstance(image_spacing, (list, tuple)):
-            assert all(
-                image_spacing[0] == i for i in image_spacing
-            ), f"SpacingToScaleTransformer does currently not support anisotropic image spacing (got {image_spacing}). PRs welcome."
+
+            assert all(image_spacing[0] == i for i in image_spacing), (
+                "SpacingToScaleTransformer does currently not support anisotropic "
+                f"image spacing (got {image_spacing}). PRs welcome."
+            )
             image_spacing = image_spacing[0]
 
         accessor.scale = image_spacing / accessor.spacing
@@ -65,6 +68,10 @@ class SpacingToScaleTransformer(Transformer):
 
     def transform_metadata(self, metadata: ImageMetadata) -> ImageMetadata:
         """Return metadata unchanged."""
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
@@ -134,7 +141,7 @@ class FractionTransformer(Transformer):
         """
         from dataclasses import replace
 
-        assert metadata.shape is not None, f"FractionTransformer requires metadata.shape."
+        assert metadata.shape is not None, "FractionTransformer requires metadata.shape."
 
         accessor = replace(accessor)
         # Note the correct the dimensions for x and y.
@@ -160,6 +167,10 @@ class FractionTransformer(Transformer):
         Returns:
             ImageMetadata: The unchanged metadata.
         """
+        from dataclasses import replace
+
+        metadata = replace(metadata)
+
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:

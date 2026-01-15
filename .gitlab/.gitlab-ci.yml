@@ -76,6 +76,7 @@ pre-commit-hooks-soft:
   allow_failure: true
   script:
     - pip3 install pylint pre-commit
+    - pip3 install -e .
     - pre-commit install
     - pre-commit run --all-files --config .pre-commit-config-soft.yaml
 
