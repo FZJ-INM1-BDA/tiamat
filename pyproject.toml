@@ -1,7 +1,9 @@
 [project]
 name = "tiamat-python"
 description = "Tiled Image Access, Manipulation, and Analysis Toolkit"
-authors = [{ name = "INM-1/FZJ", email = "inm1@fz-juelich.de" }]
+authors = [
+  { name = "Big Data Analytics Group, Forschungszentrum Juelich, Institute of Neuroscience and Medicine (INM-1)", email = "inm1-bda@fz-juelich.de" },
+]
 license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.10"
