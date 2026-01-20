@@ -102,7 +102,7 @@ See the [`examples/`](./examples) directory for usage demonstrations and pipelin
 3. Make sure the current commit has a version tag, e.g. `git tag v0.1.8`
 4. `python -m build`
 5. `twine check dist/*`
-6. `python -m venv .venv-test; source .venv-test/bin/activate; pip install dist/*.whl; python -c "import tiamat; print(tiamat.__version__)"`
+6. `python -m venv .venv-test; source .venv-test/bin/activate; pip install dist/*.whl; python -c "import tiamat; print(tiamat.__version__)"; deactive; rm -rf .venv-test`
 7. `twine upload --repository testpypi dist/*`
 
 ---
