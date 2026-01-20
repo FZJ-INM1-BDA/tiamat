@@ -1,5 +1,5 @@
 [project]
-name = "tiamat"
+name = "tiamat-python"
 description = "Tiled Image Access, Manipulation, and Analysis Toolkit"
 authors = [{ name = "INM-1/FZJ", email = "inm1@fz-juelich.de" }]
 license = { file = "LICENSE" }
