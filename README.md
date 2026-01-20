@@ -141,4 +141,4 @@ Apache 2.0 – see [LICENSE](./LICENSE) for details.
 
 ## 🙏 Acknowledgements
 
-This project has received funding from the Helmholtz Association’s Initiative and Networking Fund through the Helmholtz International BigBrain Analytics and Learning Laboratory (HIBALL) under the Helmholtz International Lab grant agreement InterLabs-0015.
+See [ACKNOWLEDGEMENTS](./ACKNOWLEDGEMENTS).
