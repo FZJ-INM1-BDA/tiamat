@@ -93,6 +93,17 @@ See the [`examples/`](./examples) directory for usage demonstrations and pipelin
 - Tests: `pytest` unit tests
 - Feature development follows `git-flow`
 
+### pypi publication
+
+**Note:** Preliminary instructions until publication is automated.
+
+0. Make sure the repository is clean (no unstaged changes).
+1. Make sure your pypi or test.pypi credentials are configured in `~/.pypirc`.
+2. `python -m build`
+3. `twine check dist/*`
+4. `python -m venv .venv-test; source .venv-test/bin/activate; pip install dist/*.whl; python -c "import tiamat; print(tiamat.__version__)"`
+5. `twine upload --repository testpypi dist/*`
+
 ---
 
 ## 🤝 Contributing
