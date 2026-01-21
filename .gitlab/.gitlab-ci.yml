@@ -4,6 +4,7 @@ stages:
   - build
   - tests
   - examples
+  - dist-test
 
 variables:
   USER: "marvin"
@@ -30,8 +31,8 @@ cache:
 # only applies when PR is made against master
 .final-qa-rules:
   rules:
-  - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
-    when: on_success
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+      when: on_success
 
 docker:build-python3.10:
   stage: docker
@@ -99,7 +100,7 @@ build.python3.11:
   extends: .global-rules
   artifacts:
     paths:
-    - artefacts/**
+      - artefacts/**
     expire_in: 72 hours
   script:
     - pip3 install ".[dev]"
@@ -117,7 +118,7 @@ build-dev.python3.11:
   extends: .global-rules
   artifacts:
     paths:
-    - artefacts/**
+      - artefacts/**
     expire_in: 72 hours
   script:
     - pip3 install .
@@ -146,4 +147,22 @@ examples.python3.10:
 
 examples.python3.11:
   extends: .examples
+  image: $IMAGE_NAME:python3.11
+
+.dist-test:
+  stage: dist-test
+  extends: .global-rules
+  script:
+    - pip3 install twine build
+    - python3 -m build
+    - twine check dist/*
+    - pip3 install dist/*.whl
+    - python -c "import tiamat; print(tiamat.__version__)"
+
+dist-test.python3.10:
+  extends: .dist-test
+  image: $IMAGE_NAME:python3.10
+
+dist-test.python3.11:
+  extends: .dist-test
   image: $IMAGE_NAME:python3.11

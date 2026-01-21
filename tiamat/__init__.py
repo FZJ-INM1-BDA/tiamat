@@ -2,4 +2,4 @@
 
 import importlib.metadata
 
-__version__ = importlib.metadata.version("tiamat")
+__version__ = importlib.metadata.version("tiamat-python")
