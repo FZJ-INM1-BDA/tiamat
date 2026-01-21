@@ -4,7 +4,7 @@ stages:
   - build
   - tests
   - examples
-  - dist_test
+  - dist-test
 
 variables:
   USER: "marvin"
@@ -150,7 +150,7 @@ examples.python3.11:
   image: $IMAGE_NAME:python3.11
 
 .dist-test:
-  stage: dist_test
+  stage: dist-test
   extends: .global-rules
   script:
     - pip3 install twine
@@ -158,3 +158,11 @@ examples.python3.11:
     - twine check dist/*
     - pip3 install dist/*.whl
     - python -c "import tiamat; print(tiamat.__version__)"
+
+dist-test.python3.10:
+  extends: .dist-test
+  image: $IMAGE_NAME:python3.10
+
+dist-test.python3.11:
+  extends: .dist-test
+  image: $IMAGE_NAME:python3.11
