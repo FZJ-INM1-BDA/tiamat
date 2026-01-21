@@ -153,7 +153,7 @@ examples.python3.11:
   stage: dist-test
   extends: .global-rules
   script:
-    - pip3 install twine
+    - pip3 install twine build
     - python3 -m build
     - twine check dist/*
     - pip3 install dist/*.whl
