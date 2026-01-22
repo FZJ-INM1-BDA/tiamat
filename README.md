@@ -85,7 +85,7 @@ This decoupled architecture allows you to:
 
 Interfaces use `tiamat` to expose data to various client applications.
 
-- **[tiamat-openseadragon](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-openseadragon)**: Interface compatible with [OpenSeadragn](https://openseadragon.github.io/).
+- **[tiamat-openseadragon](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-openseadragon)**: Interface compatible with [OpenSeadragon](https://openseadragon.github.io/).
 - **[tiamat-ng](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-ng)**: Interface compatible with [Neuroglancer](https://github.com/google/neuroglancer).
 - **[tiamat-fuse-zarr](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-fuse-zarr)**: Interface for exposing `tiamat` pipelines as zarr files through FUSE (experimental).
 - **[tiamat-napari](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-napari)**: [Napari](https://napari.org/stable/) plugin interface for `tiamat` (experimental).
