@@ -1,6 +1,5 @@
 import gzip
 import shutil
-import subprocess
 import tarfile
 import tempfile
 import zipfile
@@ -18,15 +17,9 @@ from tiamat.pipeline import Pipeline
 from tiamat.transformers.affine import AffineTransformer
 from tiamat.transformers.normalization import MinMaxNormalizationTransformer
 
-# -----------------------------------------------------------------------------
-# External reference data handling (pure Python download + extract into temp dir)
-# -----------------------------------------------------------------------------
+TIAMAT_TEST_DATA_COMMIT = "master"
 
-# The test file specifies the commit to use.
-# (Start with the example commit you provided.)
-TIAMAT_TEST_DATA_COMMIT = "674007f608add0cb061a294fcd82ee24931c2173"
-
-# Public GitLab archive URLs (try a few common formats to be robust).
+# Public GitLab archive URLs.
 _TEST_DATA_PROJECT_BASE = "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-test-data"
 _TEST_DATA_ARCHIVE_URLS = [
     f"{_TEST_DATA_PROJECT_BASE}/-/archive/{TIAMAT_TEST_DATA_COMMIT}/tiamat-test-data-{TIAMAT_TEST_DATA_COMMIT}.tar.gz",
@@ -96,6 +89,7 @@ def _get_testdata_root(commit: str) -> Path:
             last_err = None
             break
         except (HTTPError, URLError, tarfile.TarError, zipfile.BadZipFile, OSError) as e:
+            print(f"Failed to download data for commit {commit} from {url}. Error: {e}")
             last_err = e
             continue
 
