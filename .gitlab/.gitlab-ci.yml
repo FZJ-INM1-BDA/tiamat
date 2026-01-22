@@ -5,6 +5,7 @@ stages:
   - tests
   - examples
   - dist-test
+  - publish
 
 variables:
   USER: "marvin"
@@ -21,7 +22,7 @@ cache:
       when: on_success
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"
       when: on_success
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]+/
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
       when: on_success
     - if: $CI_COMMIT_MESSAGE =~ /.*WIP.*/
       when: never
@@ -166,3 +167,45 @@ dist-test.python3.10:
 dist-test.python3.11:
   extends: .dist-test
   image: $IMAGE_NAME:python3.11
+
+publish:pypi:
+  stage: publish
+  image: $IMAGE_NAME:python3.11
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+      when: on_success
+    - when: never
+  variables:
+    TWINE_USERNAME: "__token__"
+    # CI variable
+    TWINE_PASSWORD: "$PYPI_TOKEN"
+    TWINE_NON_INTERACTIVE: "1"
+  script:
+    - set -euo pipefail
+    - python3 --version
+    - git status --porcelain
+    - test -z "$(git status --porcelain)"
+    - rm -rf dist build *.egg-info
+
+    # Ensure the tag commit is contained in master.
+    - git fetch origin master
+    - git merge-base --is-ancestor "$CI_COMMIT_SHA" "origin/master"
+
+    # Build + sanity checks.
+    - pip3 install --upgrade pip
+    - pip3 install build twine
+    - python3 -m build
+    - twine check dist/*
+
+    # Install wheel in a clean venv and validate version matches tag.
+    - python3 -m venv .venv-publish
+    - . .venv-publish/bin/activate
+    - pip install --upgrade pip
+    - pip install dist/*.whl
+    - TAG_VERSION="${CI_COMMIT_TAG#v}"
+    - python -c "import tiamat, sys; print(tiamat.__version__); sys.exit(0 if tiamat.__version__ == '${TAG_VERSION}' else 1)"
+    - deactivate
+    - rm -rf .venv-publish
+
+    # Upload to PyPI.
+    - twine upload dist/*
