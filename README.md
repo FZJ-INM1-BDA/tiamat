@@ -22,10 +22,8 @@ Supported outputs include NumPy arrays, Napari, Neuroglancer, OpenSeadragon, and
 4. [Examples](#-examples)
 5. [Development Guidelines](#-development-guidelines)
 6. [Contributing](#-contributing)
-7. [Data](#-data)
-8. [Acknowledgements](#-acknowledgements)
-9. [Contributors](#-contributors)
-10. [License](#-license)
+7. [Acknowledgements](#-acknowledgements)
+8. [License](#-license)
 
 ---
 
@@ -55,6 +53,12 @@ metadata = result.metadata
 
 ## 📦 Installation
 
+Install the latest release from pypi:
+
+```bash
+pip install tiamat-python
+```
+
 Install the latest development version directly from GitLab:
 
 ```bash
@@ -77,6 +81,20 @@ This decoupled architecture allows you to:
 - Extend with custom readers or transformers
 - Avoid costly format conversions
 
+### Interfaces
+
+Interfaces use `tiamat` to expose data to various client applications.
+
+- **[tiamat-openseadragon](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-openseadragon)**: Interface compatible with [OpenSeadragon](https://openseadragon.github.io/).
+- **[tiamat-ng](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-ng)**: Interface compatible with [Neuroglancer](https://github.com/google/neuroglancer).
+- **[tiamat-fuse-zarr](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-fuse-zarr)**: Interface for exposing `tiamat` pipelines as zarr files through FUSE (experimental).
+- **[tiamat-napari](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-napari)**: [Napari](https://napari.org/stable/) plugin interface for `tiamat` (experimental).
+
+### Extension transormers and readers
+
+- **[tiamat-justice](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-justice)**: Specialized readers and transformers used at INM-1, Forschungszentrum Jülich.
+- **[tiamat-celldetection](https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat-celldetection)**: AI-based transformers for live [cell segmentation](https://celldetection.org).
+
 ---
 
 ## 📁 Examples
@@ -93,21 +111,13 @@ See the [`examples/`](./examples) directory for usage demonstrations and pipelin
 - Tests: `pytest` unit tests
 - Feature development follows `git-flow`
 
-### pypi publication
+### Releases
 
-**Note:** Preliminary instructions until publication is automated.
-
-1. Make sure the repository is clean (no unstaged changes).
-2. Make sure your pypi or test.pypi credentials are configured in `~/.pypirc`.
-3. Make sure the current commit has a version tag, e.g. `git tag v0.1.8`
-4. `python -m build`
-5. `twine check dist/*`
-6. `python -m venv .venv-test; source .venv-test/bin/activate; pip install dist/*.whl; python -c "import tiamat; print(tiamat.__version__)"; deactive; rm -rf .venv-test`
-7. `twine upload --repository testpypi dist/*`
+Releases to [pypi](https://pypi.org/project/tiamat-python/) are automatically performed on semantic versioning tags on the master branch.
 
 ---
 
-## 🤝 Contributing
+### 🤝 Contributing
 
 We welcome contributions!
 
@@ -117,19 +127,6 @@ We welcome contributions!
 
 This project follows the [git-flow workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow).
 Releases are merged into `master` from `develop` on a regular basis.
-
----
-
-## 📂 Data
-
-Some test and example datasets require `git-lfs` for download.
-
----
-
-## 👥 Contributors
-
-- Forschungszentrum Jülich, Institute of Neuroscience and Medicine (INM-1)
-- Community contributors via GitLab merge requests
 
 ---
 
