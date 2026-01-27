@@ -45,7 +45,7 @@ Docker (recommended for production)
 -----------------------------------
 
 We publish Docker images in our
-`JuGit registry <https://jugit.fz-juelich.de/groups/inm-1/bda/software/data_access/tiamat/-/container_registries>`__. 
+`JuGit registry <https://jugit.fz-juelich.de/groups/inm-1/bda/software/data_access/tiamat/-/container_registries>`__.
 Running in a container is excellent if you need consistent dependencies or want to reproduce a deployment
 
 .. code-block:: bash

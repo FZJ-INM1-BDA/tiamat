@@ -17,43 +17,43 @@ Reader–Transformer–Interface Model
 ----------------------------------
 
 At the heart of tiamat is the Reader–Transformer–Interface Model (RTI Model). Picture an assembly line:
-**Readers** bring in the raw materials, **transformers** are the processing stations that refine or alter those 
-materials, and **interfaces** are the shipping and distribution units that deliver the finished product to the outside 
+**Readers** bring in the raw materials, **transformers** are the processing stations that refine or alter those
+materials, and **interfaces** are the shipping and distribution units that deliver the finished product to the outside
 world.
 
 * **Reader — the raw-material supplier**
-    A reader is responsible for acquiring precisely the data that is needed from storage. It reads precisely the chunk 
-    you requested, and hands raw pixel arrays and metadata to the next stage. Readers understand storage formats, 
-    tiling layouts, metadata conventions, and chunking schemes, like TIFF tiling patterns, OME-Zarr chunk layouts, 
+    A reader is responsible for acquiring precisely the data that is needed from storage. It reads precisely the chunk
+    you requested, and hands raw pixel arrays and metadata to the next stage. Readers understand storage formats,
+    tiling layouts, metadata conventions, and chunking schemes, like TIFF tiling patterns, OME-Zarr chunk layouts,
     NIfTI axes and scaling, etc. When a request arrives, the reader fetches the relevant region of the dataset
-    and hands both the image data and metadata to the next processing station. Because tiamat supports multiple readers, 
-    you can point the same pipeline at differently formatted datasets and the readers do the format detective work for 
-    you. 
+    and hands both the image data and metadata to the next processing station. Because tiamat supports multiple readers,
+    you can point the same pipeline at differently formatted datasets and the readers do the format detective work for
+    you.
 * **Transformer(s) — the processing stations**
     Transformers are small modules that modify or refine the data on the fly.
-    They can change coordinates (e.g., map physical z positions to slice indices), mutate metadata (update channel 
-    counts or spatial units), re-order axes, apply color maps, normalize intensities, or even run a small AI model to 
-    produce a segmentation mask for that tile. Importantly, transformers operate only on the requested tile/region — 
+    They can change coordinates (e.g., map physical z positions to slice indices), mutate metadata (update channel
+    counts or spatial units), re-order axes, apply color maps, normalize intensities, or even run a small AI model to
+    produce a segmentation mask for that tile. Importantly, transformers operate only on the requested tile/region —
     so heavy compute is localized to what the user actually needs. Each transformer takes the output of the previous
-    stage, processes it, and forwards the result along the pipeline. Multiple transformers 
+    stage, processes it, and forwards the result along the pipeline. Multiple transformers
     can be chained, allowing highly customizable processing flows.
 * **Interface — the distribution unit**
-    Finally, the transformed result is presented to clients. 
-    Interfaces adapt to the client’s needs: a RESTful API for Neuroglancer, a tile server for OpenSeadragon, an 
-    in-process NumPy array for Python scripts, or a FUSE filesystem exposing a virtual Zarr hierarchy. This design 
-    decouples the "how" of storage from the "how" of consumption so one pipeline can feed many front ends. The 
-    available interface modules in the project include tiamat-ng (Neuroglancer), tiamat-openseadragon, tiamat-napari, 
+    Finally, the transformed result is presented to clients.
+    Interfaces adapt to the client’s needs: a RESTful API for Neuroglancer, a tile server for OpenSeadragon, an
+    in-process NumPy array for Python scripts, or a FUSE filesystem exposing a virtual Zarr hierarchy. This design
+    decouples the "how" of storage from the "how" of consumption so one pipeline can feed many front ends. The
+    available interface modules in the project include tiamat-ng (Neuroglancer), tiamat-openseadragon, tiamat-napari,
     tiamat-fuse-zarr, and tiamat-array.
 
-This structured separation ensures that each part of the system can evolve independently. Adding support for a new file 
-format only requires a new reader; adding a new tool only requires a new interface; and new analytical or visual steps 
+This structured separation ensures that each part of the system can evolve independently. Adding support for a new file
+format only requires a new reader; adding a new tool only requires a new interface; and new analytical or visual steps
 can be introduced by adding or reorganizing transformers.
 
 ---------
 Pipelines
 ---------
 
-While readers, transformers, and interfaces are the individual stations of the factory, 
+While readers, transformers, and interfaces are the individual stations of the factory,
 the **pipeline** is the complete production line that connects them into a
 coherent process. It defines how raw materials flow through the factory, how many
 processing steps are applied, and how the final product is delivered.

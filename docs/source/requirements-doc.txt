@@ -1,6 +1,6 @@
-sphinx
 rtds_action
+sphinx
 sphinx-book-theme
 sphinx-copybutton
-sphinx_togglebutton
 sphinx-design
+sphinx_togglebutton

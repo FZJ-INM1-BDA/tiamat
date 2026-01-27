@@ -195,12 +195,12 @@ Apache 2.0 – see `LICENSE <./LICENSE>`_ for details.
 
 .. acknowledgements-start
 
-This project received funding from the European Union's Horizon 2020 Research and Innovation Programme, grant agreement 
-101147319 (EBRAINS 2.0 Project), the Helmholtz Association port-folio theme "Supercomputing and Modeling for the Human 
-Brain", the Helmholtz Association's Initiative and Networking Fund through the Helmholtz International BigBrain 
-Analytics and Learning Laboratory (HIBALL) under the Helmholtz International Lab grant agreement InterLabs-0015, 
-from HELMHOLTZ IMAGING, a platform of the Helmholtz Information & Data Science Incubator [X-BRAIN, grant number: 
-ZT-I-PF-4-061], and from the Deutsche Forschungsgemeinschaft (DFG, German  Research Foundation) under the National 
+This project received funding from the European Union's Horizon 2020 Research and Innovation Programme, grant agreement
+101147319 (EBRAINS 2.0 Project), the Helmholtz Association port-folio theme "Supercomputing and Modeling for the Human
+Brain", the Helmholtz Association's Initiative and Networking Fund through the Helmholtz International BigBrain
+Analytics and Learning Laboratory (HIBALL) under the Helmholtz International Lab grant agreement InterLabs-0015,
+from HELMHOLTZ IMAGING, a platform of the Helmholtz Information & Data Science Incubator [X-BRAIN, grant number:
+ZT-I-PF-4-061], and from the Deutsche Forschungsgemeinschaft (DFG, German  Research Foundation) under the National
 Research Data Infrastructure – NFDI 46/1 – 501864659.
 
 .. acknowledgements-end

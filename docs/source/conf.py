@@ -42,7 +42,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/legacy"]
 # ones.
 extensions = [
     "sphinx_design",
-    "sphinx_copybutton",    # adds a copy button for code fields
+    "sphinx_copybutton",  # adds a copy button for code fields
     "sphinx.ext.graphviz",  # to allow drawing diagrams
 ]
 

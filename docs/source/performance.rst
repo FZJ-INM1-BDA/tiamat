@@ -5,7 +5,7 @@
 Performance & Reproducibility
 =============================
 
-Tiamat is designed to provide flexible, on-demand data access for large-scale imaging datasets. This section discusses 
+Tiamat is designed to provide flexible, on-demand data access for large-scale imaging datasets. This section discusses
 when to use tiamat over traditional conversion workflows, performance considerations, and best practices for ensuring
 reproducible pipelines.
 
@@ -13,7 +13,7 @@ reproducible pipelines.
 Why not convert?
 ----------------
 
-The RTI architecture avoids many limitations of traditional conversion-based workflows. Instead of pre-generating 
+The RTI architecture avoids many limitations of traditional conversion-based workflows. Instead of pre-generating
 entire datasets in each tool's preferred format, tiamat reads datasets directly in their original form and
 performs all processing on demand. Tiamat is best when:
 
@@ -29,7 +29,7 @@ Profiling and performance guidance
 -----------------------------------
 
 tiamat prioritizes flexibility over raw throughput.
-Benchmarks indicate that dynamic pipelines incur <15% latency overhead compared to precomputed formats like 
+Benchmarks indicate that dynamic pipelines incur <15% latency overhead compared to precomputed formats like
 Neuroglancer-precomputed or Zarr-pyramids, while saving up to 80% storage by avoiding duplication.
 
 .. tip::

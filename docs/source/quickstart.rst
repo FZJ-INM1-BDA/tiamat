@@ -5,7 +5,7 @@
 Quickstart Guide
 ================
 
-Welcome to tiamat! This quickstart guide will help you get started with reading large images and processing them 
+Welcome to tiamat! This quickstart guide will help you get started with reading large images and processing them
 using tiamat's pipeline and transformers.
 In this guide, we assume you have **Python 3.8+ installed**.
 

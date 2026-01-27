@@ -26,7 +26,7 @@ Tiled Image Access, Manipulation, and Analysis Toolkit
         :margin: 2 2 0 0
 
         Get started with tiamat!
-        
+
     .. grid-item-card:: :fas:`book` Examples :octicon:`link-external`
         :link: https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/tree/master/examples?ref_type=heads
         :link-type: url
@@ -37,16 +37,16 @@ Tiled Image Access, Manipulation, and Analysis Toolkit
 
         Find and interactively run tiamat examples here!
 
-Imagine a gigantic high-resolution image — a full human brain scanned at micrometer resolution, or a multi-band 
-satellite image spanning terabytes. You want to view a tiny region, pan and zoom in a web viewer, or run a segmentation 
-model on a handful of patches. Traditionally you’d convert the original dataset into the viewer’s favorite layout 
+Imagine a gigantic high-resolution image — a full human brain scanned at micrometer resolution, or a multi-band
+satellite image spanning terabytes. You want to view a tiny region, pan and zoom in a web viewer, or run a segmentation
+model on a handful of patches. Traditionally you’d convert the original dataset into the viewer’s favorite layout
 (tile pyramids, precomputed volumes) and copy terabytes of data around. That costs time, storage, and patience.
 
-**tiamat** is the “middle-layer magician” that says: don’t copy the data; transform it on demand. It’s a Python toolkit 
-that composes three things — readers, transformers, and interfaces — into pipelines that lazily read only the pixels 
-you ask for, apply transformations (color maps, normalizations, affine re-projections, even model inference), and 
-stream the result to whatever client you use (web viewers like Neuroglancer/OpenSeadragon, Napari, FUSE mounts, 
-or plain Python scripts). This lets you serve and explore enormous datasets directly from their native storage while 
+**tiamat** is the “middle-layer magician” that says: don’t copy the data; transform it on demand. It’s a Python toolkit
+that composes three things — readers, transformers, and interfaces — into pipelines that lazily read only the pixels
+you ask for, apply transformations (color maps, normalizations, affine re-projections, even model inference), and
+stream the result to whatever client you use (web viewers like Neuroglancer/OpenSeadragon, Napari, FUSE mounts,
+or plain Python scripts). This lets you serve and explore enormous datasets directly from their native storage while
 keeping transformations reproducible and versionable.
 
 Why this matters:
@@ -55,13 +55,13 @@ Why this matters:
 * **On-demand transformations** — only compute what the user requests (tile, pyramid level, channel subset).
 * **Multiple clients** — the same backend can serve a Napari plugin, Neuroglancer, or an OpenSeadragon web app.
 
-tiamat is intentionally not a viewer; it is the flexible data layer beneath viewers and analysis tools. Think of it as 
+tiamat is intentionally not a viewer; it is the flexible data layer beneath viewers and analysis tools. Think of it as
 the friendly translator between your storage and your tools.
 
 .. toctree::
     :hidden:
     :caption: Overview
-    
+
     core-concepts
     installation
 
@@ -80,4 +80,3 @@ the friendly translator between your storage and your tools.
 
     JuGit Repository <https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat>
     acknowledgements
-
