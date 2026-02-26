@@ -287,7 +287,7 @@ class OmeZarrReader(ImageReader):
         for i, _ in enumerate(self._datasets):
             a = self._get_level_array(i)
             if base_y is not None:
-                f = base_y / float(a.shape[y_idx])
+                f = float(a.shape[y_idx]) / base_y
                 factors.append(float(f))
             else:
                 factors.append(1.0 if i == 0 else max(2.0, factors[-1] * 2))
@@ -319,7 +319,7 @@ class OmeZarrReader(ImageReader):
         spatial = {"z", "y", "x"}
         for i, a in enumerate(self.axes_names):
             if a in spatial:
-                factors.append(float(base[i]) / float(cur[i]))
+                factors.append(float(cur[i]) / float(base[i]))
             else:
                 factors.append(1.0)
         return factors
