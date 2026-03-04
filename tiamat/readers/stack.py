@@ -757,43 +757,41 @@ class VolumeStackReader(ImageReader):
 
             out_image[tuple(index_to)] = array[tuple(index_from)]
 
-        # Current offset of each subvolume
+        # Current offset each subvolume
         volume_z_offset = 0
 
-        # Variable slice offset to avoid rounding artifacts
-        slice_offset = 0
+        # Current coverage of read image data
+        coverage_offset = z_from
 
+        # Iterate all subvolumes
         for handle, shape in zip(self.ordered_subvolume_handles, self.subvolume_shapes):
+            # Size of the current subvolume
             z_size = shape[z_dim]
 
-            # Access only required subvolumes that lay in the accessor range
-            if volume_z_offset + z_size > z_from and volume_z_offset < z_to:
+            # Access only required subvolumes that lay in the accessor range and are not covered yet
+            if volume_z_offset + z_size > coverage_offset and volume_z_offset < z_to:
 
                 # Define access slice for the subvolume
-                from_ix = max(z_from - volume_z_offset, slice_offset)
+                from_ix = coverage_offset - volume_z_offset
                 to_ix = min(z_to - volume_z_offset, z_size)
 
                 # Access subvolume and read from it
                 tmp_accessor = replace(accessor, z=(from_ix, to_ix))
                 tmp_image = handle.read_image(accessor=tmp_accessor)
 
-                # Position in the output array to place the image
-                scaled_z_offset = math.floor(max(volume_z_offset - z_from, 0) * image_scales[-1])
-
-                # Actual coverage of the read image data
-                tmp_coverage = tmp_image.shape[z_dim]
-                scaled_coverage = int(tmp_coverage / image_scales[-1])
-
-                # Insert the result in the array at specific offfset
+                # Position result in the output array
+                scaled_z_offset = math.floor(max(coverage_offset - z_from, 0) * image_scales[-1])
                 insert_array(tmp_image, scaled_z_offset)
 
-                # Output image might cover more than z_size
-                volume_z_offset += z_size  # tmp_image.shape[z_dim] / image_scales[-1]
+                # Actual coverage of the newly read image data
+                tmp_coverage = tmp_image.shape[z_dim]
+                scaled_coverage = math.floor(tmp_coverage / image_scales[-1])
 
-                # Slice offset for the next volume to read more or less data depending on what is read so far
-                slice_offset = slice_offset + scaled_coverage - z_size
-            else:
-                volume_z_offset += z_size
+                # Update total coverage of read image data
+                coverage_offset = coverage_offset + scaled_coverage
+
+            # Prepare offset for the next subvolume
+            volume_z_offset += z_size
 
         return out_image
 
