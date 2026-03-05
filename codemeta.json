@@ -1,0 +1,36 @@
+{
+    "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+    "type": "SoftwareSourceCode",
+    "author": [
+        {
+            "affiliation": {
+                "name": "Forschungszentrum Juelich",
+                "@type": "Organization"
+            },
+            "email": "inm1-bda@fz-juelich.de",
+            "familyName": "Dickscheid",
+            "givenName": "Timo",
+            "@id": "https://orcid.org/0000-0002-9051-3701",
+            "@type": "Person"
+        }
+    ],
+    "contributor": [],
+    "codeRepository": "git+https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat.git",
+    "dateCreated": "YYYY-MM-DD",
+    "dateModified": "YYYY-MM-DD",
+    "datePublished": "YYYY-MM-DD",
+    "description": "tiamat is a modular Python toolkit for accessing, transforming, and exposing large scientific image datasets.",
+    "license": "https://spdx.org/licenses/Apache-2.0",
+    "name": "tiamat",
+    "programmingLanguage": [
+        "python 3"
+    ],
+    "schema:releaseNotes": "RELEASE NOTES",
+    "runtimePlatform": "docker",
+    "version": "VERSION",
+    "contIntegration": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/jobs",
+    "codemeta:continuousIntegration": {
+        "id": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/jobs"
+    },
+    "issueTracker": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/issues"
+}
