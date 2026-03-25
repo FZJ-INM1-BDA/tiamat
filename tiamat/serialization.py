@@ -14,6 +14,9 @@ from tiamat.readers.protocol import ImageReader
 class_registry: dict[str, type] = {}
 
 
+pipeline_keys = ["transformers", "access_transformers", "image_transformers", "reader"]
+
+
 def register_class(cls: type) -> type:
     """
     Decorator to register a class for safe instantiation from configuration.
@@ -142,6 +145,11 @@ def load_pipeline_from_config(
 
         register_all_readers()
 
+    metadata_overrides = {
+        k: config[k]
+        for k in set(config) - set(pipeline_keys)
+    }
+
     return Pipeline(
         transformers=[make_object_from_config(item) for item in config.get("transformers", [])],
         access_transformers=[make_object_from_config(item) for item in config.get("access_transformers", [])],
@@ -150,4 +158,5 @@ def load_pipeline_from_config(
             config.get("reader", None), reader_post_creation_hook=reader_post_creation_hook
         ),
         auto_register_default_readers=False,
+        metadata_overrides=metadata_overrides,
     )

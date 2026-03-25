@@ -3,8 +3,9 @@ Metadata on images.
 """
 
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from itertools import product, repeat
+from typing import Mapping, Any
 
 import numpy as np
 
@@ -204,3 +205,24 @@ class ImageMetadata:
 
     def __str__(self):
         return self.__repr__()
+
+
+def update_metadata_from_dict(
+    image_metadata: ImageMetadata,
+    update_dict: Mapping[str, Any],
+) -> ImageMetadata:
+    """
+    Update an ImageMetadata instance from a dict.
+
+    Matching keys update dataclass fields; unknown keys are stored in
+    ``additional_metadata``.
+    """
+    valid_fields = {f.name for f in fields(image_metadata)}
+
+    for key, value in update_dict.items():
+        if key in valid_fields:
+            setattr(image_metadata, key, value)
+        else:
+            image_metadata.additional_metadata[key] = value
+
+    return image_metadata
