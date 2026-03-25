@@ -48,7 +48,7 @@ tiamat = "tiamat.cli:cli"
 
 [project.optional-dependencies]
 dev = ["autopep8", "flake8", "pre-commit", "pytest"]
-zarr = ["tensorstore"]
+zarr = ["tensorstore; python_version >= '3.11'"]
 
 [project.urls]
 homepage = "https://www.fz-juelich.de/de/inm/inm-1"
