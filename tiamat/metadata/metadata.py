@@ -139,7 +139,7 @@ class ImageMetadata:
     file_path: Iterable[str] | str | None = None
     spacing: float | tuple[float, ...] | None = None
     additional_metadata: dict = field(default_factory=dict)
-    scales: float | int | Iterable[float | int] | None = None
+    scales: float | int | Iterable[float | int] | Iterable[tuple[float | int, ...]] | None = None
 
     @property
     def spatial_dimensions(self):
@@ -207,6 +207,24 @@ class ImageMetadata:
         return self.__repr__()
 
 
+def _convert_metadata_value(key: str, value: Any) -> Any:
+    """Convert metadata values to match ImageMetadata field conventions."""
+    if key in {"shape", "value_range", "dimensions", "spacing"}:
+        if isinstance(value, list):
+            return tuple(value)
+
+    if key == "dtype":
+        if isinstance(value, str):
+            return np.dtype(value)
+
+    if key == "scales":
+        if isinstance(value, list):
+            if value and all(isinstance(v, (list, tuple)) for v in value):
+                return [tuple(v) for v in value]
+
+    return value
+
+
 def update_metadata_from_dict(
     image_metadata: ImageMetadata,
     update_dict: Mapping[str, Any],
@@ -221,7 +239,7 @@ def update_metadata_from_dict(
 
     for key, value in update_dict.items():
         if key in valid_fields:
-            setattr(image_metadata, key, value)
+            setattr(image_metadata, key, _convert_metadata_value(key, value))
         else:
             image_metadata.additional_metadata[key] = value
 
