@@ -344,11 +344,11 @@ def test_reader_uses_tensorstore_for_metadata_and_slice_access(monkeypatch):
     assert level0.dtype == np.dtype(np.uint16)
     np.testing.assert_array_equal(level0[1:3, 2:5], np.array([[7, 8, 9], [12, 13, 14]], dtype=np.uint16))
 
-    assert fake_ts.kvstore_specs == [{"driver": "file", "path": "/tmp/sample.ome.zarr"}]
+    assert fake_ts.kvstore_specs == [{"driver": "file", "path": "/tmp/sample.ome.zarr/"}]
     assert fake_ts.open_specs == [
         {
             "driver": "zarr3",
-            "kvstore": {"driver": "file", "path": "/tmp/sample.ome.zarr"},
+            "kvstore": {"driver": "file", "path": "/tmp/sample.ome.zarr/"},
             "path": "0",
         }
     ]
