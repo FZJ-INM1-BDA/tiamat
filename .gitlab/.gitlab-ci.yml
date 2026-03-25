@@ -123,7 +123,7 @@ build-dev.python3.11:
     expire_in: 72 hours
   script:
     - pip3 install .
-    - pip3 install ".[dev]"
+    - pip3 install ".[dev,zarr]"
     - pytest
 
 test.python3.10:
