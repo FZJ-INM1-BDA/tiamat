@@ -7,6 +7,169 @@ import numpy as np
 from tiamat.readers.zarr import OmeZarrReader
 import tiamat.readers.zarr as zarr_reader
 
+from tempfile import TemporaryDirectory
+from pathlib import Path
+import json
+import sys
+from copy import deepcopy
+
+import pytest
+
+from tiamat.readers.zarr import OmeZarrReader
+
+
+zarrcontent = {
+    "attributes": {
+        "ome": {
+            "multiscales": [
+                {
+                    "axes": [
+                        {"name": "x", "type": "space", "unit": "nanometer"},
+                        {"name": "y", "type": "space", "unit": "nanometer"},
+                        {"name": "z", "type": "space", "unit": "nanometer"},
+                    ],
+                    "datasets": [
+                        {
+                            "path": "0",
+                            "coordinateTransformations": [{"scale": [1000.0, 1000.0, 1000.0], "type": "scale"}],
+                        },
+                        {
+                            "path": "1",
+                            "coordinateTransformations": [{"scale": [2000.0, 2000.0, 2000.0], "type": "scale"}],
+                        },
+                    ],
+                    "coordinateTransformations": [],
+                    "name": "multiresolution",
+                    "type": "unknown",
+                    "metadata": {},
+                }
+            ],
+            "version": "0.5",
+        }
+    },
+    "zarr_format": 3,
+    "node_type": "group",
+}
+
+z0content = {
+    "shape": [6000, 6000, 6000],
+    "data_type": "uint8",
+    "chunk_grid": {"name": "regular", "configuration": {"chunk_shape": [6016, 6016, 6016]}},
+    "chunk_key_encoding": {"configuration": {"separator": "."}, "name": "default"},
+    "fill_value": 0,
+    "codecs": [
+        {
+            "configuration": {
+                "chunk_shape": [64, 64, 64],
+                "codecs": [
+                    {"configuration": {"endian": "little"}, "name": "bytes"},
+                    {"configuration": {"level": 9}, "name": "gzip"},
+                ],
+                "index_codecs": [{"configuration": {"endian": "little"}, "name": "bytes"}],
+                "index_location": "start",
+            },
+            "name": "sharding_indexed",
+        }
+    ],
+    "dimension_names": ["x", "y", "z"],
+    "zarr_format": 3,
+    "node_type": "array",
+}
+
+z1content = {
+    "shape": [3000, 3000, 3000],
+    "data_type": "uint8",
+    "chunk_grid": {"name": "regular", "configuration": {"chunk_shape": [3008, 3008, 3008]}},
+    "chunk_key_encoding": {"configuration": {"separator": "."}, "name": "default"},
+    "fill_value": 0,
+    "codecs": [
+        {
+            "configuration": {
+                "chunk_shape": [64, 64, 64],
+                "codecs": [
+                    {"configuration": {"endian": "little"}, "name": "bytes"},
+                    {"configuration": {"level": 9}, "name": "gzip"},
+                ],
+                "index_codecs": [{"configuration": {"endian": "little"}, "name": "bytes"}],
+                "index_location": "start",
+            },
+            "name": "sharding_indexed",
+        }
+    ],
+    "dimension_names": ["x", "y", "z"],
+    "zarr_format": 3,
+    "node_type": "array",
+}
+
+
+@pytest.fixture
+def micron_zarrfile():
+    with TemporaryDirectory(suffix=".ome.zarr") as dir:
+        _zarrcontent = deepcopy(zarrcontent)
+        for ms in _zarrcontent["attributes"]["ome"]["multiscales"]:
+            for axis in ms["axes"]:
+                axis["unit"] = "micrometer"
+        (Path(dir) / "zarr.json").write_text(json.dumps(_zarrcontent))
+        (Path(dir) / "0").mkdir()
+        (Path(dir) / "1").mkdir()
+        (Path(dir) / "0" / "zarr.json").write_text(json.dumps(z0content))
+        (Path(dir) / "1" / "zarr.json").write_text(json.dumps(z1content))
+        yield dir
+
+
+@pytest.fixture
+def pico_zarrfile():
+    with TemporaryDirectory(suffix=".ome.zarr") as dir:
+        _zarrcontent = deepcopy(zarrcontent)
+        for ms in _zarrcontent["attributes"]["ome"]["multiscales"]:
+            for axis in ms["axes"]:
+                axis["unit"] = "picometer"
+        (Path(dir) / "zarr.json").write_text(json.dumps(_zarrcontent))
+        (Path(dir) / "0").mkdir()
+        (Path(dir) / "1").mkdir()
+        (Path(dir) / "0" / "zarr.json").write_text(json.dumps(z0content))
+        (Path(dir) / "1" / "zarr.json").write_text(json.dumps(z1content))
+        yield dir
+
+
+@pytest.fixture
+def nano_zarrfile():
+    with TemporaryDirectory(suffix=".ome.zarr") as dir:
+        (Path(dir) / "zarr.json").write_text(json.dumps(zarrcontent))
+        (Path(dir) / "0").mkdir()
+        (Path(dir) / "1").mkdir()
+        (Path(dir) / "0" / "zarr.json").write_text(json.dumps(z0content))
+        (Path(dir) / "1" / "zarr.json").write_text(json.dumps(z1content))
+        yield dir
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="omezarr require 3.11 or above")
+def test_nanospacing(nano_zarrfile):
+    reader = OmeZarrReader(nano_zarrfile)
+    metadata = reader.read_metadata()
+    assert metadata.spacing == (1, 1, 1)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="omezarr require 3.11 or above")
+def test_microspacing(micron_zarrfile):
+    reader = OmeZarrReader(micron_zarrfile)
+    metadata = reader.read_metadata()
+    assert metadata.spacing == (1e3, 1e3, 1e3)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="omezarr require 3.11 or above")
+def test_picospacing(pico_zarrfile):
+    reader = OmeZarrReader(pico_zarrfile)
+    metadata = reader.read_metadata()
+    assert metadata.spacing == (1e-3, 1e-3, 1e-3)
+
+
+@pytest.mark.skipif(sys.version_info >= (3, 11), reason="check < 3.11 results in import error")
+def test_importerr(nano_zarrfile):
+    with pytest.raises(ImportError):
+        reader = OmeZarrReader(nano_zarrfile)
+        metadata = reader.read_metadata()
+
 
 class _FakeFuture:
     def __init__(self, value):

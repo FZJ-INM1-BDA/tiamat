@@ -8,7 +8,7 @@ import json
 import os
 import zipfile
 from functools import cached_property
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 
@@ -24,6 +24,57 @@ from tiamat.cache import instance_cache
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
 from tiamat.readers.protocol import ImageReader
+
+
+# retrieved from https://ngff.openmicroscopy.org/specifications/0.5/index.html#axes-metadata
+# on 2026-03-05
+
+class SiUnit(NamedTuple):
+    symbol: str
+    exponent: int
+    prefix: str
+
+
+base_to_si_units = [
+    SiUnit(**d)
+    for d in [
+        {"symbol": "Y", "exponent": 24, "prefix": "yotta"},
+        {"symbol": "Z", "exponent": 21, "prefix": "zetta"},
+        {"symbol": "E", "exponent": 18, "prefix": "exa"},
+        {"symbol": "P", "exponent": 15, "prefix": "peta"},
+        {"symbol": "T", "exponent": 12, "prefix": "tera"},
+        {"symbol": "G", "exponent": 9, "prefix": "giga"},
+        {"symbol": "M", "exponent": 6, "prefix": "mega"},
+        {"symbol": "k", "exponent": 3, "prefix": "kilo"},
+        {"symbol": "", "exponent": 0, "prefix": ""},
+        {"symbol": "m", "exponent": -3, "prefix": "milli"},
+        {"symbol": "µ", "exponent": -6, "prefix": "micro"},
+        {"symbol": "u", "exponent": -6, "prefix": "micro"},
+        {"symbol": "n", "exponent": -9, "prefix": "nano"},
+        {"symbol": "p", "exponent": -12, "prefix": "pico"},
+        {"symbol": "f", "exponent": -15, "prefix": "femto"},
+        {"symbol": "a", "exponent": -18, "prefix": "atto"},
+        {"symbol": "z", "exponent": -21, "prefix": "zepto"},
+        {"symbol": "y", "exponent": -24, "prefix": "yocto"},
+        {"symbol": "h", "exponent": 2, "prefix": "hecto"},
+        {"symbol": "d", "exponent": -1, "prefix": "deci"},
+        {"symbol": "c", "exponent": -2, "prefix": "centi"},
+    ]
+]
+
+meter_to_spatial_units = {
+    "angstrom": 1e-10,
+    "foot": 0.3048,
+    "inch": 0.0254,
+    "mile": 1609.34,
+    "parsec": 3.0856775814913673e16,
+    "yard": 0.9144,
+}
+
+spatial_units_to_micron = {
+    **{unit: 1e6 / value for unit, value in meter_to_spatial_units.items()},
+    **{f"{v.prefix}meter": 10 ** (6 + v.exponent) for v in base_to_si_units},
+}
 
 
 def _axis_to_dim(axis_name: str, md) -> Any:
@@ -187,8 +238,6 @@ class OmeZarrReader(ImageReader):
     def _kvstore_spec(self) -> dict[str, Any]:
         lower = self.fname.lower()
         if lower.endswith(".zip"):
-            if not os.path.exists(self.fname):
-                raise FileNotFoundError(self.fname)
             return {
                 "driver": "zip",
                 "base": {
@@ -197,11 +246,13 @@ class OmeZarrReader(ImageReader):
                 },
             }
 
-        if not (os.path.isdir(self.fname) or os.path.exists(self.fname)):
-            raise FileNotFoundError(self.fname)
+        path = self.fname
+        if os.path.isdir(path) and not path.endswith(os.sep):
+            path += os.sep
+
         return {
             "driver": "file",
-            "path": self.fname,
+            "path": path,
         }
 
     @cached_property
@@ -296,13 +347,23 @@ class OmeZarrReader(ImageReader):
     @cached_property
     def pixel_spacing(self) -> tuple[float, ...]:
         axes = self.axes_names
+
+        mul_factor: list[float] = []
+        for axis in self._pyramid.get("axes", []):
+            unit = axis.get("unit")
+            if factor := spatial_units_to_micron.get(unit):
+                mul_factor.append(factor)
+            else:
+                raise RuntimeError(f"zarr unit {unit} either not recognized or factor not yet encoded.")
+
+
         transforms = self._datasets[0].get("coordinateTransformations", [])
         scale_vec = None
         for transform in transforms or []:
             if isinstance(transform, dict) and transform.get("type") == "scale":
                 scale = transform.get("scale")
-                if isinstance(scale, list) and len(scale) == len(axes):
-                    scale_vec = [float(x) for x in scale]
+                if isinstance(scale, list) and len(scale) == len(axes) == len(mul_factor):
+                    scale_vec = [float(x) * factor for x, factor in zip(scale, mul_factor)]
                     break
         if scale_vec is None:
             return tuple([1.0] * len(axes))
