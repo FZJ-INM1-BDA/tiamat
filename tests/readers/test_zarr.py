@@ -296,9 +296,13 @@ def test_reader_uses_tensorstore_for_metadata_and_slice_access(monkeypatch):
     payload = {
         "attributes": {
             "ome": {
+                "version": "0.5",
                 "multiscales": [
                     {
-                        "axes": ["y", "x"],
+                        "axes": [
+                            {"name": "y", "type": "space", "unit": "micrometer"},
+                            {"name": "x", "type": "space", "unit": "micrometer"},
+                        ],
                         "datasets": [
                             {
                                 "path": "0",

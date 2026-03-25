@@ -356,7 +356,6 @@ class OmeZarrReader(ImageReader):
             else:
                 raise RuntimeError(f"zarr unit {unit} either not recognized or factor not yet encoded.")
 
-
         transforms = self._datasets[0].get("coordinateTransformations", [])
         scale_vec = None
         for transform in transforms or []:
