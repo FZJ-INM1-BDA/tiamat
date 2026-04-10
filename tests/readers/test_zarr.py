@@ -336,6 +336,7 @@ def test_reader_uses_tensorstore_for_metadata_and_slice_access(monkeypatch):
     assert metadata.dtype == np.dtype(np.uint16)
     assert metadata.dimensions == ["y", "x"]
     assert metadata.spacing == (1.0, 1.0)
+    assert metadata.scales == [(1.0, 1.0)]
     assert metadata.additional_metadata == payload["attributes"]
 
     level0 = reader._get_level_array(0)
@@ -352,3 +353,60 @@ def test_reader_uses_tensorstore_for_metadata_and_slice_access(monkeypatch):
             "path": "0",
         }
     ]
+
+
+def test_reader_uses_multiscales_as_scale_source_of_truth(monkeypatch):
+    payload = {
+        "attributes": {
+            "ome": {
+                "version": "0.5",
+                "multiscales": [
+                    {
+                        "axes": [
+                            {"name": "y", "type": "space", "unit": "micrometer"},
+                            {"name": "x", "type": "space", "unit": "micrometer"},
+                        ],
+                        "datasets": [
+                            {
+                                "path": "0",
+                                "coordinateTransformations": [
+                                    {
+                                        "type": "scale",
+                                        "scale": [1.0, 1.0],
+                                    }
+                                ],
+                            },
+                            {
+                                "path": "1",
+                                "coordinateTransformations": [
+                                    {
+                                        "type": "scale",
+                                        "scale": [4.0, 2.0],
+                                    }
+                                ],
+                            },
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+    fake_ts = _FakeTensorStoreModule(
+        payload=payload,
+        arrays={
+            "0": np.arange(24, dtype=np.uint16).reshape(4, 6),
+            "1": np.arange(16, dtype=np.uint16).reshape(2, 8),
+        },
+    )
+
+    monkeypatch.setattr(zarr_reader, "ts", fake_ts)
+    monkeypatch.setattr(zarr_reader, "_TENSORSTORE_AVAILABLE", True)
+    monkeypatch.setattr(zarr_reader.os.path, "exists", lambda _: True)
+    monkeypatch.setattr(zarr_reader.os.path, "isdir", lambda _: True)
+
+    reader = OmeZarrReader("/tmp/sample.ome.zarr")
+    metadata = reader.read_metadata()
+
+    assert metadata.spacing == (1.0, 1.0)
+    assert metadata.scales == [(1.0, 1.0), (0.5, 0.25)]
+    assert reader._level_factors(1) == [0.25, 0.5]
