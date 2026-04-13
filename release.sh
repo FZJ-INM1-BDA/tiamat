@@ -54,6 +54,21 @@ else
   exit 1
 fi
 
+# --- Write metadata to codemta.json ---
+export ymd=$(date '+%Y-%m-%d')
+jq --indent 4 \
+    --arg vsn "$NEW_TAG" \
+    --arg ymd "$ymd" \
+    '
+        .version=$vsn,
+        .dateModified=$ymd,
+        .datePublished=$ymd
+    ' codemeta.json  > _codemeta.json \
+&& mv _codemeta.json codemeta.json
+
+git add codemta.json 
+git commit -m "Update codemta.json metadata"
+
 # --- Merge into develop locally ---
 git checkout develop
 git merge --no-ff "${RELEASE_BRANCH}" -m "Merge ${RELEASE_BRANCH} into develop"
