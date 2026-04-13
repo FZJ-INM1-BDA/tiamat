@@ -6,7 +6,7 @@ set -e
 set -o pipefail
 
 INCREMENT_PART="patch"
-TEST_CMD="pytest tests/readers -q"
+TEST_CMD="pytest tests/ -q"
 
 echo "🚀 Starting weekly release..."
 
