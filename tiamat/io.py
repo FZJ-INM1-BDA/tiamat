@@ -38,8 +38,8 @@ class ImageAccessor:
         | dict[str : tuple[int | float | None, int | float | None] | int]
     ) = None
     # scale/spacing to retrieve
-    scale: float | tuple[float, ...] = 1.0
-    spacing: float | tuple[float, ...] = None
+    scale: float = 1.0
+    spacing: float = None
     # scale/spacing of coordinates
     coordinate_scale: float = 1.0
     coordinate_spacing: float = 1.0
