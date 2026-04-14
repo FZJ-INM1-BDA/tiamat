@@ -50,9 +50,6 @@ def expand_to_length(value: Any, length: int) -> list[Any]:
         List of length `length`.
     """
 
-    print(value)
-    print(type(value))
-
     if np.ndim(value) == 0:
         if isinstance(value, np.ndarray):
             return [value.item()] * length
