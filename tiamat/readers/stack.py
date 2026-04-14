@@ -768,6 +768,10 @@ class VolumeStackReader(ImageReader):
             # Size of the current subvolume
             z_size = shape[z_dim]
 
+            # Everything read
+            if coverage_offset >= z_to:
+                break
+
             # Access only required subvolumes that lay in the accessor range and are not covered yet
             if volume_z_offset + z_size > coverage_offset and volume_z_offset < z_to:
 
@@ -777,6 +781,7 @@ class VolumeStackReader(ImageReader):
 
                 # Access subvolume and read from it
                 tmp_accessor = replace(accessor, z=(from_ix, to_ix))
+
                 tmp_image = handle.read_image(accessor=tmp_accessor)
 
                 # Position result in the output array
