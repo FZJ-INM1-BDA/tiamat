@@ -14,7 +14,7 @@ from tiamat.readers.protocol import ImageReader
 class_registry: dict[str, type] = {}
 
 
-pipeline_keys = ["transformers", "access_transformers", "image_transformers", "reader"]
+pipeline_keys = ["transformers", "access_transformers", "image_transformers", "reader", "reader_factory"]
 
 
 def register_class(cls: type) -> type:
@@ -149,6 +149,10 @@ def load_pipeline_from_config(
         k: config[k]
         for k in set(config) - set(pipeline_keys)
     }
+
+    # Resolve confusion between reader_factory and reader args
+    if "reader_factory" in config.keys():
+        config["reader"] = config["reader_factory"]
 
     return Pipeline(
         transformers=[make_object_from_config(item) for item in config.get("transformers", [])],
