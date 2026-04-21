@@ -43,7 +43,7 @@
             "email": "j.thoennissen@fz-juelich.de",
             "familyName": "Thönnißen",
             "givenName": "Julia",
-            "@id": "_:author_jt",
+            "@id": "https://orcid.org/0000-0002-5467-871X",
             "@type": "Person"
         },
         {
