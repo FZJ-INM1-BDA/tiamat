@@ -187,7 +187,9 @@ class ImageStackReader(ImageReader):
         """
         from tiamat.readers.processing import expand_to_length
 
-        if slice_spacing is None:
+        if hasattr(spacing, "__len__") and len(spacing) == 3:
+            return spacing
+        elif slice_spacing is None:
             spacing_2d = expand_to_length(spacing, 2)
             assert (
                 spacing_2d[0] == spacing_2d[1]
