@@ -109,7 +109,6 @@ class LUTTransformer(Transformer):
             metadata.dtype = np.asarray(self.color_map).dtype
             ldim = len(self.color_map[0])
             if isinstance(self.color_map, np.ndarray):
-                print(self.color_map)
                 metadata.value_range = (np.min(self.color_map).item(), np.max(self.color_map).max().item())
             else:
                 metadata.value_range = (min(self.color_map), max(self.color_map))

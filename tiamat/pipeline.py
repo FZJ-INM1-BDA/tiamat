@@ -5,10 +5,10 @@ Helper functions for running a tiamat processing pipeline.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from typing import Any
+from typing import Any, Mapping
 
 from .io import ImageAccessor, ImageResult
-from .metadata import ImageMetadata
+from .metadata import ImageMetadata, update_metadata_from_dict
 from .readers.factory import get_reader
 from .readers.protocol import ImageReader
 from .transformers.protocol import Transformer
@@ -29,6 +29,7 @@ class Pipeline:
         image_transformers: Iterable[Transformer] | None = None,
         reader_factory: Callable[[str], ImageReader] | None = None,
         auto_register_default_readers: bool = True,
+        metadata_overrides: Mapping[str, Any] | None = None,
     ):
         """
         Initializes the Pipeline.
@@ -41,6 +42,8 @@ class Pipeline:
                 Cannot be used together with `transformers`.
             reader_factory (Callable[[str], ImageReader] | None): Function returning a reader for a given file name.
             auto_register_default_readers (bool): Whether to auto-register default readers on pipeline call.
+            metadata_overrides (Mapping[str, Any] | None): Optional metadata values that override or extend
+                metadata returned by the reader. Unknown keys are stored in ``additional_metadata``.
         """
         if transformers:
             assert (
@@ -59,6 +62,8 @@ class Pipeline:
 
         self.reader_factory = reader_factory or get_reader
         self.auto_register_default_readers = auto_register_default_readers
+
+        self.metadata_overrides = metadata_overrides if metadata_overrides is not None else {}
 
     def __call__(
         self,
@@ -87,7 +92,7 @@ class Pipeline:
         reader = self.reader_factory(file_name, **reader_kwargs)
 
         # Forward rollout of metadata through transformers
-        metadata = [reader.read_metadata()]
+        metadata = [update_metadata_from_dict(reader.read_metadata(), self.metadata_overrides)]
 
         for transformer in self.transformers:
             # Check for transformers that do not implement transform_metadata
@@ -135,10 +140,11 @@ class Pipeline:
         from dataclasses import replace
 
         reader = self.reader_factory(file_name, **reader_kwargs)
-        metadata = reader.read_metadata()
+        metadata = update_metadata_from_dict(reader.read_metadata(), self.metadata_overrides)
         # backwards pass through the transformers to transform the accessor
         for transformer in self.transformers:
             if hasattr(transformer, "transform_metadata"):
                 # check for transformers that do not implement transform_metadata
                 metadata = transformer.transform_metadata(metadata=replace(metadata))
+
         return metadata
