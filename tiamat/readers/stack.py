@@ -187,7 +187,9 @@ class ImageStackReader(ImageReader):
         """
         from tiamat.readers.processing import expand_to_length
 
-        if slice_spacing is None:
+        if hasattr(spacing, "__len__") and len(spacing) == 3:
+            return spacing
+        elif slice_spacing is None:
             spacing_2d = expand_to_length(spacing, 2)
             assert (
                 spacing_2d[0] == spacing_2d[1]
@@ -768,6 +770,10 @@ class VolumeStackReader(ImageReader):
             # Size of the current subvolume
             z_size = shape[z_dim]
 
+            # Everything read
+            if coverage_offset >= z_to:
+                break
+
             # Access only required subvolumes that lay in the accessor range and are not covered yet
             if volume_z_offset + z_size > coverage_offset and volume_z_offset < z_to:
 
@@ -777,6 +783,7 @@ class VolumeStackReader(ImageReader):
 
                 # Access subvolume and read from it
                 tmp_accessor = replace(accessor, z=(from_ix, to_ix))
+
                 tmp_image = handle.read_image(accessor=tmp_accessor)
 
                 # Position result in the output array

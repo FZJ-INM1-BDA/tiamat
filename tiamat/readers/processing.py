@@ -49,9 +49,13 @@ def expand_to_length(value: Any, length: int) -> list[Any]:
     Returns:
         List of length `length`.
     """
-    if not isinstance(value, (list, tuple, np.ndarray)):
-        return [value] * length
-    elif len(value) == 1:
+
+    if np.ndim(value) == 0:
+        if isinstance(value, np.ndarray):
+            return [value.item()] * length
+        else:
+            return [value] * length
+    if len(value) == 1:
         return [value[0]] * length
     return value
 

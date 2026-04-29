@@ -25,9 +25,9 @@ from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
 from tiamat.readers.protocol import ImageReader
 
-
 # retrieved from https://ngff.openmicroscopy.org/specifications/0.5/index.html#axes-metadata
 # on 2026-03-05
+
 
 class SiUnit(NamedTuple):
     symbol: str
@@ -258,9 +258,7 @@ class OmeZarrReader(ImageReader):
     @cached_property
     def _kvstore(self):
         if not _TENSORSTORE_AVAILABLE:
-            raise ImportError(
-                "tensorstore is not installed. Install `tensorstore` to read OME-Zarr data."
-            )
+            raise ImportError("tensorstore is not installed. Install `tensorstore` to read OME-Zarr data.")
         return ts.KvStore.open(self._kvstore_spec).result()
 
     @cached_property
@@ -346,40 +344,51 @@ class OmeZarrReader(ImageReader):
 
     @cached_property
     def pixel_spacing(self) -> tuple[float, ...]:
-        axes = self.axes_names
+        return tuple(self._dataset_physical_scales(0))
 
-        mul_factor: list[float] = []
-        for axis in self._pyramid.get("axes", []):
-            unit = axis.get("unit")
-            if factor := spatial_units_to_micron.get(unit):
-                mul_factor.append(factor)
-            else:
-                raise RuntimeError(f"zarr unit {unit} either not recognized or factor not yet encoded.")
-
-        transforms = self._datasets[0].get("coordinateTransformations", [])
-        scale_vec = None
+    def _scale_transform_for_dataset(self, level: int) -> list[float]:
+        transforms = self._datasets[level].get("coordinateTransformations", [])
         for transform in transforms or []:
             if isinstance(transform, dict) and transform.get("type") == "scale":
                 scale = transform.get("scale")
-                if isinstance(scale, list) and len(scale) == len(axes) == len(mul_factor):
-                    scale_vec = [float(x) * factor for x, factor in zip(scale, mul_factor)]
-                    break
-        if scale_vec is None:
-            return tuple([1.0] * len(axes))
-        return tuple(scale_vec)
+                if isinstance(scale, list) and len(scale) == len(self.axes_names):
+                    return [float(x) for x in scale]
+        raise ValueError(f"OME-Zarr dataset at level {level} is missing a valid scale transformation.")
+
+    @cached_property
+    def _axis_unit_factors(self) -> list[float]:
+        axis_entries = self._pyramid.get("axes")
+        if not isinstance(axis_entries, list) or len(axis_entries) != len(self.axes_names):
+            return [1.0] * len(self.axes_names)
+
+        factors: list[float] = []
+        for axis in axis_entries:
+            if not isinstance(axis, dict):
+                factors.append(1.0)
+                continue
+
+            if axis.get("type") != "space":
+                factors.append(1.0)
+                continue
+
+            unit = axis.get("unit")
+            if factor := spatial_units_to_micron.get(unit):
+                factors.append(factor)
+            else:
+                raise RuntimeError(f"zarr unit {unit} either not recognized or factor not yet encoded.")
+
+        return factors
+
+    @instance_cache
+    def _dataset_physical_scales(self, level: int) -> list[float]:
+        scale = self._scale_transform_for_dataset(level)
+        return [axis_scale * factor for axis_scale, factor in zip(scale, self._axis_unit_factors)]
 
     @instance_cache
     def _level_factors(self, level: int) -> list[float]:
-        base = self._get_level_array(0).shape
-        cur = self._get_level_array(level).shape
-        factors = []
-        spatial = {"z", "y", "x"}
-        for i, axis_name in enumerate(self.axes_names):
-            if axis_name in spatial:
-                factors.append(float(cur[i]) / float(base[i]))
-            else:
-                factors.append(1.0)
-        return factors
+        base_scale = self._dataset_physical_scales(0)
+        level_scale = self._dataset_physical_scales(level)
+        return [float(base) / float(current) for base, current in zip(base_scale, level_scale)]
 
     @cached_property
     def scales(self) -> list[tuple[float, ...]]:
