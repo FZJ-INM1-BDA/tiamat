@@ -54,7 +54,7 @@ else
   exit 1
 fi
 
-# --- Write metadata to codemta.json ---
+# --- Write metadata to codemeta.json ---
 export ymd=$(date '+%Y-%m-%d')
 jq --indent 4 \
     --arg vsn "$NEW_TAG" \
@@ -66,7 +66,7 @@ jq --indent 4 \
     ' codemeta.json  > _codemeta.json \
 && mv _codemeta.json codemeta.json
 
-git add codemta.json 
+git add codemeta.json
 git commit -m "Update codemta.json metadata"
 
 # --- Merge into develop locally ---
