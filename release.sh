@@ -60,14 +60,14 @@ jq --indent 4 \
     --arg vsn "$NEW_TAG" \
     --arg ymd "$ymd" \
     '
-        .version=$vsn,
-        .dateModified=$ymd,
+        .version=$vsn |
+        .dateModified=$ymd |
         .datePublished=$ymd
     ' codemeta.json  > _codemeta.json \
 && mv _codemeta.json codemeta.json
 
 git add codemeta.json
-git commit -m "Update codemta.json metadata"
+git commit -m "Update codemeta.json metadata"
 
 # --- Merge into develop locally ---
 git checkout develop
