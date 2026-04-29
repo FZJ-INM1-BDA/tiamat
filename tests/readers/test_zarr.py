@@ -1,22 +1,15 @@
 import json
+import sys
 import zipfile
+from copy import deepcopy
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
-
-from tiamat.readers.zarr import OmeZarrReader
-import tiamat.readers.zarr as zarr_reader
-
-from tempfile import TemporaryDirectory
-from pathlib import Path
-import json
-import sys
-from copy import deepcopy
-
 import pytest
 
+import tiamat.readers.zarr as zarr_reader
 from tiamat.readers.zarr import OmeZarrReader
-
 
 zarrcontent = {
     "attributes": {
@@ -315,7 +308,7 @@ def test_reader_uses_tensorstore_for_metadata_and_slice_access(monkeypatch):
                             }
                         ],
                     }
-                ]
+                ],
             }
         }
     }
@@ -387,7 +380,7 @@ def test_reader_uses_multiscales_as_scale_source_of_truth(monkeypatch):
                             },
                         ],
                     }
-                ]
+                ],
             }
         }
     }

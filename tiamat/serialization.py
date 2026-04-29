@@ -145,10 +145,7 @@ def load_pipeline_from_config(
 
         register_all_readers()
 
-    metadata_overrides = {
-        k: config[k]
-        for k in set(config) - set(pipeline_keys)
-    }
+    metadata_overrides = {k: config[k] for k in set(config) - set(pipeline_keys)}
 
     # Resolve confusion between reader_factory and reader args
     if "reader_factory" in config.keys():

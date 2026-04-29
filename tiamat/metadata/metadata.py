@@ -5,7 +5,7 @@ Metadata on images.
 from collections.abc import Iterable
 from dataclasses import dataclass, field, fields
 from itertools import product, repeat
-from typing import Mapping, Any
+from typing import Any, Mapping
 
 import numpy as np
 
