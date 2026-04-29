@@ -82,7 +82,7 @@
     ],
     "schema:releaseNotes": "New release",
     "runtimePlatform": "docker",
-    "version": "0.1.12",
+    "version": "v0.1.13",
     "contIntegration": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/jobs",
     "codemeta:continuousIntegration": {
         "id": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/jobs"
