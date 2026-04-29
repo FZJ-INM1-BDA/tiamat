@@ -32,7 +32,7 @@
             "email": "j.kropp@fz-juelich.de",
             "familyName": "Kropp",
             "givenName": "Jan-Oliver",
-            "@id": "_:author_jk",
+            "@id": "https://orcid.org/0000-0002-4770-6612",
             "@type": "Person"
         },
         {
