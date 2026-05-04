@@ -7,6 +7,7 @@ set -o pipefail
 
 INCREMENT_PART="patch"
 TEST_CMD="pytest tests/ -q"
+PRECOMMIT_CMD="pre-commit run --all-files"
 
 echo "🚀 Starting weekly release..."
 
@@ -50,6 +51,15 @@ if $TEST_CMD; then
   echo "✅ Tests passed!"
 else
   echo "❌ Tests failed! Aborting release."
+  git flow release delete "${NEW_TAG}" -f
+  exit 1
+fi
+
+# --- Run pre-commit ---
+if "$PRECOMMIT_CMD"; then
+  echo "✅ pre-commit passed!"
+else
+  echo "❌ pre-commit failed! Aborting release."
   git flow release delete "${NEW_TAG}" -f
   exit 1
 fi
