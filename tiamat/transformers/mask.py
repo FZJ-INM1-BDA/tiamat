@@ -49,7 +49,8 @@ class ApplyMaskTransformer(Transformer):
     @staticmethod
     def apply_mask(image: np.ndarray, mask: np.ndarray, mask_value: int | float) -> np.ndarray:
         """Apply the mask to the image, setting masked pixels to mask_value."""
-        masked_image = np.where(mask, image, mask_value)
+        masked_image = image.copy()
+        masked_image[mask == 0] = mask_value
         return masked_image
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
