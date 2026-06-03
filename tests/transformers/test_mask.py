@@ -49,6 +49,7 @@ def test_transform_methods_and_image_masking_pipeline(sample_metadata):
     mask = np.array([[1, 0], [1, 0]], dtype=np.uint8)
 
     reader = MagicMock()
+    reader.read_metadata.return_value = ImageMetadata("image", (2, 2), (0, 255), np.uint8)
     reader.read_image.return_value = mask
     transformer = ApplyMaskTransformer(
         mask_file="mask.npy",
@@ -64,7 +65,27 @@ def test_transform_methods_and_image_masking_pipeline(sample_metadata):
     result = transformer.transform_image(image, sample_metadata, accessor)
 
     npt.assert_array_equal(result, np.array([[10, 42], [30, 42]], dtype=np.uint8))
+    reader.read_metadata.assert_called_once()
     reader.read_image.assert_called_once_with(accessor)
+
+
+@pytest.mark.parametrize(
+    "mask_metadata,expected_match",
+    [
+        (ImageMetadata("image", (3, 2), (0, 255), np.uint8), "Spatial shape mismatch"),
+        (ImageMetadata("image", (2, 2), (0, 255), np.uint8, spacing=1.0), "Spacing mismatch"),
+        (ImageMetadata("image", (2, 2), (0, 255), np.uint8, scales=0.5), "Scales mismatch"),
+    ],
+)
+def test_transform_image_raises_for_incompatible_mask_metadata(sample_metadata, mask_metadata, expected_match):
+    image = np.array([[10, 20], [30, 40]], dtype=np.uint8)
+    reader = MagicMock()
+    reader.read_metadata.return_value = mask_metadata
+    transformer = ApplyMaskTransformer(mask_file="mask.npy", reader_factory=lambda _: reader)
+    accessor = ImageAccessor(x=(0, 2), y=(0, 2))
+
+    with pytest.raises(ValueError, match=expected_match):
+        transformer.transform_image(image, sample_metadata, accessor)
 
 
 def test_from_json_builds_transformer_with_reader_factory_from_config():

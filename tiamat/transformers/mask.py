@@ -60,6 +60,30 @@ class ApplyMaskTransformer(Transformer):
         return metadata
 
     def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
+
+        metadata_mask = self.mask_file_handle.read_metadata()
+        if metadata.spatial_shape != metadata_mask.spatial_shape:
+            raise ValueError(
+                "Spatial shape mismatch: "
+                f"mask={metadata_mask.spatial_shape}, "
+                f"image={metadata.spatial_shape}. "
+                "It is currently required to match exactly."
+            )
+        if metadata.spacing != metadata_mask.spacing:
+            raise ValueError(
+                "Spacing mismatch: "
+                f"mask={metadata_mask.spacing}, "
+                f"image={metadata.spacing}. "
+                "It is currently required to match exactly."
+            )
+        if metadata.scales != metadata_mask.scales:
+            raise ValueError(
+                "Scales mismatch: "
+                f"mask={metadata_mask.scales}, "
+                f"image={metadata.scales}. "
+                "It is currently required to match exactly."
+            )
+
         return self.apply_mask(image, self.mask_file_handle.read_image(accessor), self.mask_value)
 
     @classmethod
