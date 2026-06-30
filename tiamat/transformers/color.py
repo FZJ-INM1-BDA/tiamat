@@ -14,15 +14,27 @@ class LUTTransformer(Transformer):
     Apply a look-up table (LUT) or color map to an image.
     """
 
-    def __init__(self, color_map: str | np.ndarray | list | tuple) -> None:
+    def __init__(
+        self,
+        color_map: str | np.ndarray | list | tuple,
+        vmin: float | None = None,
+        vmax: float | None = None,
+    ) -> None:
         """
         Initialize a LUTTransformer.
 
         Args:
             color_map: Colormap to apply. Can be a string (matplotlib name), numpy array,
                 list, or tuple.
+            vmin: Optional lower bound used for normalization when `color_map` is a
+                matplotlib colormap name. If `None`, metadata.value_range[0] is used.
+            vmax: Optional upper bound used for normalization when `color_map` is a
+                matplotlib colormap name. If `None`, metadata.value_range[1] is used.
         """
+
         self.color_map = color_map
+        self.vmin = vmin
+        self.vmax = vmax
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         """
@@ -49,9 +61,16 @@ class LUTTransformer(Transformer):
         Returns:
             Color-mapped image as ndarray.
         """
-        assert metadata.value_range is not None, "LUTTransformer requires metadata.value_range."
+        if self.vmin is None or self.vmax is None:
+            assert metadata.value_range is not None, "LUTTransformer requires metadata.value_range."
+            metadata_vmin, metadata_vmax = metadata.value_range
+        else:
+            metadata_vmin, metadata_vmax = (None, None)
 
-        image = self._apply_color_map(image=image, value_range=metadata.value_range)
+        vmin = self.vmin if self.vmin is not None else metadata_vmin
+        vmax = self.vmax if self.vmax is not None else metadata_vmax
+
+        image = self._apply_color_map(image=image, value_range=(vmin, vmax))
 
         return image
 

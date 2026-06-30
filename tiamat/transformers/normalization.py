@@ -50,7 +50,6 @@ class MinMaxNormalizationTransformer(Transformer):
         from dataclasses import replace
 
         metadata = replace(metadata)
-
         metadata.dtype = self.target_dtype
         metadata.value_range = (0.0, 1.0)
 
@@ -71,7 +70,6 @@ class MinMaxNormalizationTransformer(Transformer):
         assert metadata.value_range is not None, "MinMaxNormalizationTransformer requires metadata.value_range."
 
         vmin, vmax = metadata.value_range
+        image = (image - vmin) / (vmax - vmin)
 
-        image = (image.astype(self.target_dtype) - vmin) / (vmax - vmin)
-
-        return image
+        return image.astype(self.target_dtype)
