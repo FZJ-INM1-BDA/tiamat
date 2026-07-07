@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
 from tiamat.transformers.normalization import MinMaxNormalizationTransformer
@@ -29,6 +30,7 @@ def test_minmax_normalization_transform_metadata_sets_value_range():
     assert metadata.dtype == np.uint8
     assert metadata.__dict__ == metadata_dict
 
+
 def test_minmax_normalization_transform_metadata_sets_dtype():
     metadata = ImageMetadata("image", (2, 3), (10, 110), np.uint8)
     transformer = MinMaxNormalizationTransformer(target_dtype=np.float64)
@@ -37,6 +39,7 @@ def test_minmax_normalization_transform_metadata_sets_dtype():
 
     assert transformed_metadata.dtype == np.float64
     assert transformed_metadata.value_range == (0.0, 1.0)
+
 
 @pytest.mark.parametrize("target_dtype", [np.float32, np.float64])
 def test_minmax_normalization_transform_image_scales_values(target_dtype):

@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
 from tiamat.transformers.intensity_mapping import (
