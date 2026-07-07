@@ -124,6 +124,33 @@ class TestLUTTransformer:
         np.testing.assert_array_equal(result[0, 2], [0, 1, 0])
         np.testing.assert_array_equal(result[0, 3], [0, 0, 1])
 
+    def test_matplotlib_vmin_vmax_override_and_fallback(self):
+        """Test LUT vmin/vmax explicit values and metadata fallback behavior."""
+        import matplotlib
+        from matplotlib.colors import Normalize
+
+        image = np.array([[0, 50, 100]], dtype=np.uint8)
+        metadata = ImageMetadata("image", image.shape, (0, 100), np.uint8)
+        cmap = matplotlib.colormaps.get_cmap("viridis")
+
+        # Fallback to metadata.value_range
+        default_transformer = LUTTransformer(color_map="viridis")
+        default_result = default_transformer.transform_image(image, metadata, ImageAccessor())
+        default_expected = cmap(Normalize(vmin=0, vmax=100)(image))
+        np.testing.assert_allclose(default_result, default_expected)
+
+        # Fully explicit override
+        override_transformer = LUTTransformer(color_map="viridis", vmin=25, vmax=75)
+        override_result = override_transformer.transform_image(image, metadata, ImageAccessor())
+        override_expected = cmap(Normalize(vmin=25, vmax=75)(image))
+        np.testing.assert_allclose(override_result, override_expected)
+
+        # Partial override: vmax falls back to metadata.value_range[1]
+        partial_transformer = LUTTransformer(color_map="viridis", vmin=10)
+        partial_result = partial_transformer.transform_image(image, metadata, ImageAccessor())
+        partial_expected = cmap(Normalize(vmin=10, vmax=100)(image))
+        np.testing.assert_allclose(partial_result, partial_expected)
+
 
 class TestGrayscaleTransformer:
     """Compact unit tests for GrayscaleTransformer."""
