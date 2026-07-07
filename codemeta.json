@@ -72,8 +72,8 @@
     "contributor": [],
     "codeRepository": "git+https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat.git",
     "dateCreated": "2023-11-15",
-    "dateModified": "2026-04-29",
-    "datePublished": "2026-04-29",
+    "dateModified": "2026-07-07",
+    "datePublished": "2026-07-07",
     "description": "tiamat is a modular Python toolkit for accessing, transforming, and exposing large scientific image datasets.",
     "license": "https://spdx.org/licenses/Apache-2.0",
     "name": "tiamat",
@@ -82,7 +82,7 @@
     ],
     "schema:releaseNotes": "New release",
     "runtimePlatform": "docker",
-    "version": "v0.1.13",
+    "version": "v0.1.14",
     "contIntegration": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/jobs",
     "codemeta:continuousIntegration": {
         "id": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/jobs"
