@@ -36,7 +36,6 @@ class ApplyMaskTransformer(Transformer):
 
         from tiamat.readers.factory import get_reader
 
-
         self.mask_file = mask_file
         self.mask_value = mask_value
         self.reader_factory = reader_factory or get_reader

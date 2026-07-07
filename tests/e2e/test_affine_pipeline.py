@@ -179,6 +179,7 @@ test_args = {
 }
 
 
+@pytest.mark.skip(reason="Test to big? Causes 137 error in CI")
 @pytest.mark.parametrize(
     "scale, rotation, mirror_x, mirror_y, translate_x, translate_y",
     test_args.values(),

@@ -34,9 +34,7 @@ class MappingTransformer(Transformer):
         self.mapping_function = mapping_function
         self.target_dtype = target_dtype
 
-    def transform_access(
-        self, accessor: ImageAccessor, metadata: ImageMetadata
-    ) -> ImageAccessor:
+    def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         """
         No changes to the accessor are needed for intensity mapping.
 
@@ -67,16 +65,12 @@ class MappingTransformer(Transformer):
         metadata = replace(metadata)
 
         metadata.dtype = self.target_dtype
-        assert metadata.value_range is not None, (
-            f"{type(self).__name__} requires metadata.value_range."
-        )
+        assert metadata.value_range is not None, f"{type(self).__name__} requires metadata.value_range."
         metadata.value_range = self._map_value_range(metadata.value_range)
 
         return metadata
 
-    def transform_image(
-        self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor
-    ) -> np.ndarray:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
         Apply pointwise intensity mapping to the image.
 
@@ -239,9 +233,9 @@ class BrightnessContrastIntensityMappingTransformer(Transformer):
         metadata = replace(metadata)
         metadata.dtype = self.target_dtype
 
-        assert metadata.value_range is not None, (
-            "BrightnessContrastIntensityMappingTransformer requires metadata.value_range."
-        )
+        assert (
+            metadata.value_range is not None
+        ), "BrightnessContrastIntensityMappingTransformer requires metadata.value_range."
 
         vmin, vmax = metadata.value_range
         midpoint = (vmin + vmax) / 2.0
@@ -261,9 +255,7 @@ class BrightnessContrastIntensityMappingTransformer(Transformer):
 
         return metadata
 
-    def transform_image(
-        self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor
-    ) -> np.ndarray:
+    def transform_image(self, image: np.ndarray, metadata: ImageMetadata, accessor: ImageAccessor) -> np.ndarray:
         """
         Apply brightness and contrast intensity mapping to the image.
 
@@ -277,9 +269,9 @@ class BrightnessContrastIntensityMappingTransformer(Transformer):
             value_range.
         """
 
-        assert metadata.value_range is not None, (
-            "BrightnessContrastIntensityMappingTransformer requires metadata.value_range."
-        )
+        assert (
+            metadata.value_range is not None
+        ), "BrightnessContrastIntensityMappingTransformer requires metadata.value_range."
 
         vmin, vmax = metadata.value_range
         midpoint = (vmin + vmax) / 2.0
@@ -288,9 +280,7 @@ class BrightnessContrastIntensityMappingTransformer(Transformer):
         # Apply contrast around native midpoint and brightness as a fraction of range,
         # then clip to metadata range.
         self.mapping_function = lambda value: np.clip(
-            (value.astype(self.target_dtype) - midpoint) * self.contrast
-            + midpoint
-            + self.brightness * value_range,
+            (value.astype(self.target_dtype) - midpoint) * self.contrast + midpoint + self.brightness * value_range,
             vmin,
             vmax,
         )
