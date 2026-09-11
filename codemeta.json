@@ -87,5 +87,6 @@
     "codemeta:continuousIntegration": {
         "id": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/jobs"
     },
-    "issueTracker": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/issues"
+    "issueTracker": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/issues",
+    "downloadUrl": "https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/archive/v0.1.15/tiamat-v0.1.15.zip"
 }
