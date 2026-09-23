@@ -10,6 +10,7 @@ from tiamat.transformers.intensity_mapping import (
     Log1pIntensityMappingTransformer,
     LogIntensityMappingTransformer,
     MappingTransformer,
+    ReplaceValueTransformer,
 )
 
 
@@ -75,6 +76,33 @@ def test_mapping_transformer_preserve_range_keeps_metadata_range():
 
     assert transformed_metadata.dtype == np.float64
     assert transformed_metadata.value_range == (0.0, 1.0)
+
+
+def test_replace_value_transformer_replaces_nan_in_image_and_metadata():
+    """NaN values can be replaced with the configured value everywhere."""
+
+    image = np.array([[1.0, np.nan, 3.0]], dtype=np.float64)
+    metadata = ImageMetadata("image", image.shape, (np.nan, 3.0), image.dtype)
+    transformer = ReplaceValueTransformer(np.nan, -1.0, target_dtype=np.float64)
+
+    result = transformer.transform_image(image, metadata, ImageAccessor())
+    transformed_metadata = transformer.transform_metadata(metadata)
+
+    np.testing.assert_array_equal(result, np.array([[1.0, -1.0, 3.0]]))
+    assert result.dtype == np.float64
+    assert transformed_metadata.value_range == (-1.0, 3.0)
+
+
+def test_replace_value_transformer_replaces_zero_with_nan():
+    """Ordinary values can be replaced with NaN."""
+
+    image = np.array([[0.0, 1.0, 0.0]], dtype=np.float64)
+    metadata = ImageMetadata("image", image.shape, (0.0, 1.0), image.dtype)
+    transformer = ReplaceValueTransformer(0.0, np.nan, target_dtype=np.float64)
+
+    result = transformer.transform_image(image, metadata, ImageAccessor())
+
+    np.testing.assert_array_equal(result, np.array([[np.nan, 1.0, np.nan]]))
 
 
 def test_log_intensity_mapping_uses_log_on_data():

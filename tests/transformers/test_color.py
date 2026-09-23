@@ -151,6 +151,37 @@ class TestLUTTransformer:
         partial_expected = cmap(Normalize(vmin=10, vmax=100)(image))
         np.testing.assert_allclose(partial_result, partial_expected)
 
+    def test_nan_color_renders_nan_as_black(self):
+        """NaN pixels can be rendered as black explicitly."""
+        color_map = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
+        transformer = LUTTransformer(color_map=color_map, nan_color=0)
+        image = np.array([[0.0, np.nan, 1.0]])
+        metadata = ImageMetadata("image", image.shape, (0, 1), image.dtype)
+
+        result = transformer.transform_image(image, metadata, ImageAccessor())
+
+        np.testing.assert_array_equal(result, np.array([[[0, 0, 0], [0, 0, 0], [1, 0, 0]]], dtype=np.float32))
+
+    def test_nan_color_uses_default_behavior_by_default(self):
+        """NaN pixels use the colormap's default behavior by default."""
+        transformer = LUTTransformer(color_map="viridis")
+        image = np.array([[0.0, np.nan, 1.0]])
+        metadata = ImageMetadata("image", image.shape, (0, 1), image.dtype)
+
+        result = transformer.transform_image(image, metadata, ImageAccessor())
+
+        np.testing.assert_array_equal(result[0, 1], [0.0, 0.0, 0.0, 0.0])
+
+    def test_nan_color_rgb_adds_opaque_alpha(self):
+        """An RGB NaN color is rendered with alpha set to one."""
+        transformer = LUTTransformer(color_map="viridis", nan_color=(1.0, 0.0, 0.0))
+        image = np.array([[0.0, np.nan, 1.0]])
+        metadata = ImageMetadata("image", image.shape, (0, 1), image.dtype)
+
+        result = transformer.transform_image(image, metadata, ImageAccessor())
+
+        np.testing.assert_array_equal(result[0, 1], [1.0, 0.0, 0.0, 1.0])
+
 
 class TestGrayscaleTransformer:
     """Compact unit tests for GrayscaleTransformer."""

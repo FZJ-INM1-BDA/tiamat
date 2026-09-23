@@ -56,7 +56,7 @@ else
 fi
 
 # --- Run pre-commit ---
-if "$PRECOMMIT_CMD"; then
+if $PRECOMMIT_CMD; then
   echo "✅ pre-commit passed!"
 else
   echo "❌ pre-commit failed! Aborting release."
@@ -66,13 +66,16 @@ fi
 
 # --- Write metadata to codemeta.json ---
 export ymd=$(date '+%Y-%m-%d')
+export downloadurl="https://jugit.fz-juelich.de/inm-1/bda/software/data_access/tiamat/tiamat/-/archive/$NEW_TAG/tiamat-$NEW_TAG.zip"
 jq --indent 4 \
     --arg vsn "$NEW_TAG" \
     --arg ymd "$ymd" \
+    --arg downloadurl "$downloadurl" \
     '
         .version=$vsn |
         .dateModified=$ymd |
-        .datePublished=$ymd
+        .datePublished=$ymd |
+        .downloadUrl=$downloadurl
     ' codemeta.json  > _codemeta.json \
 && mv _codemeta.json codemeta.json
 
