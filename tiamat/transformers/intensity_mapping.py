@@ -103,6 +103,53 @@ class MappingTransformer(Transformer):
         return self.mapping_function(value)
 
 
+class ReplaceValueTransformer(MappingTransformer):
+    """
+    Replace one numeric value with another.
+    """
+
+    def __init__(
+        self,
+        value_to_replace: float,
+        replacement_value: float,
+        target_dtype: type[np.floating] = np.float32,
+    ) -> None:
+        """
+        Initialize the transformer.
+
+        Args:
+            value_to_replace: Numeric value to replace. NaN is supported.
+            replacement_value: Numeric value to use as the replacement.
+            target_dtype: Floating point dtype for the transformed image.
+                Defaults to np.float32.
+        """
+
+        super().__init__(
+            mapping_function=self._replace_value(
+                value_to_replace,
+                replacement_value,
+            ),
+            target_dtype=target_dtype,
+        )
+
+    @staticmethod
+    def _replace_value(value_to_replace: float, replacement_value: float) -> Callable:
+        """Create a mapping function that also supports matching NaN."""
+
+        if np.isnan(value_to_replace):
+
+            def mapping_function(input_value):
+                return np.where(np.isnan(input_value), replacement_value, input_value)
+        else:
+
+            def mapping_function(input_value):
+                return np.where(
+                    input_value == value_to_replace, replacement_value, input_value
+                )
+
+        return mapping_function
+
+
 # maybe only in tiamat-openseadragon?
 # Commen used functions
 class LogIntensityMappingTransformer(MappingTransformer):
