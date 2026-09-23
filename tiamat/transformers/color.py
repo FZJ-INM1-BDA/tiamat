@@ -19,6 +19,7 @@ class LUTTransformer(Transformer):
         color_map: str | np.ndarray | list | tuple,
         vmin: float | None = None,
         vmax: float | None = None,
+        nan_color: float | tuple[float, ...] | None = None,
     ) -> None:
         """
         Initialize a LUTTransformer.
@@ -30,11 +31,14 @@ class LUTTransformer(Transformer):
                 matplotlib colormap name. If `None`, metadata.value_range[0] is used.
             vmax: Optional upper bound used for normalization when `color_map` is a
                 matplotlib colormap name. If `None`, metadata.value_range[1] is used.
+            nan_color: Optional color value used for NaN pixels after color mapping.
+                If `None`, the colormap's default NaN behavior is preserved.
         """
 
         self.color_map = color_map
         self.vmin = vmin
         self.vmax = vmax
+        self.nan_color = nan_color
 
     def transform_access(self, accessor: ImageAccessor, metadata: ImageMetadata) -> ImageAccessor:
         """
@@ -70,9 +74,31 @@ class LUTTransformer(Transformer):
         vmin = self.vmin if self.vmin is not None else metadata_vmin
         vmax = self.vmax if self.vmax is not None else metadata_vmax
 
-        image = self._apply_color_map(image=image, value_range=(vmin, vmax))
+        nan_mask = None
+        if self.nan_color is not None:
+            nan_mask = np.isnan(image)
+            image = np.where(nan_mask, vmin, image)
 
-        return image
+        mapped_image = self._apply_color_map(
+            image=image,
+            value_range=(vmin, vmax),
+        )
+
+        if self.nan_color is not None and np.any(nan_mask):
+            output_channels = mapped_image.shape[-1] if mapped_image.ndim > image.ndim else None
+            if np.isscalar(self.nan_color):
+                nan_color = (self.nan_color,) * 3
+            else:
+                nan_color = tuple(self.nan_color)
+
+            if len(nan_color) == 3 and output_channels == 4:
+                nan_color = (*nan_color, 1)
+            elif len(nan_color) != output_channels:
+                raise ValueError("nan_color length must match the output channel count")
+
+            mapped_image[nan_mask] = nan_color
+
+        return mapped_image
 
     def _apply_color_map(self, image: np.ndarray, value_range: tuple[float, float]) -> np.ndarray:
         """
@@ -100,7 +126,7 @@ class LUTTransformer(Transformer):
         elif isinstance(self.color_map, (np.ndarray, (tuple, list))):
             # Color map provided as indexable array.
             color_map = np.asarray(self.color_map)
-            return color_map[image]
+            return color_map[image.astype(int)]
         else:
             raise RuntimeError(f"Unknown type for color map: {type(self.color_map)}")
 
