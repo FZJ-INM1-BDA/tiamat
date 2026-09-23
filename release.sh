@@ -56,7 +56,7 @@ else
 fi
 
 # --- Run pre-commit ---
-if "$PRECOMMIT_CMD"; then
+if $PRECOMMIT_CMD; then
   echo "✅ pre-commit passed!"
 else
   echo "❌ pre-commit failed! Aborting release."
