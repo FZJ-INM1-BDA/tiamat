@@ -140,12 +140,11 @@ class ReplaceValueTransformer(MappingTransformer):
 
             def mapping_function(input_value):
                 return np.where(np.isnan(input_value), replacement_value, input_value)
+
         else:
 
             def mapping_function(input_value):
-                return np.where(
-                    input_value == value_to_replace, replacement_value, input_value
-                )
+                return np.where(input_value == value_to_replace, replacement_value, input_value)
 
         return mapping_function
 

@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 import pytest
 from PIL import Image
+
 from tiamat.io import ImageAccessor
 from tiamat.metadata import ImageMetadata
 from tiamat.metadata.dimensions import RGB, RGBA, X, Y
@@ -159,9 +160,7 @@ class TestLUTTransformer:
 
         result = transformer.transform_image(image, metadata, ImageAccessor())
 
-        np.testing.assert_array_equal(
-            result, np.array([[[0, 0, 0], [0, 0, 0], [1, 0, 0]]], dtype=np.float32)
-        )
+        np.testing.assert_array_equal(result, np.array([[[0, 0, 0], [0, 0, 0], [1, 0, 0]]], dtype=np.float32))
 
     def test_nan_color_uses_default_behavior_by_default(self):
         """NaN pixels use the colormap's default behavior by default."""
